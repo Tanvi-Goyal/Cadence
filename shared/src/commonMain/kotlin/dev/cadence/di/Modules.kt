@@ -1,0 +1,43 @@
+package dev.cadence.di
+
+import dev.cadence.data.SessionRepository
+import dev.cadence.data.SessionRepositoryImpl
+import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.buildDatabase
+import dev.cadence.presentation.HomeViewModel
+import org.koin.core.KoinApplication
+import org.koin.core.context.startKoin
+import org.koin.core.module.Module
+import org.koin.core.module.dsl.viewModelOf
+import org.koin.dsl.KoinAppDeclaration
+import org.koin.dsl.bind
+import org.koin.dsl.module
+
+/**
+ * Platform-supplied bindings. Each platform provides a [RoomDatabase.Builder] differently
+ * (Android needs a `Context`, iOS a file path), so this is the DI expression of the DB seam.
+ */
+expect val platformModule: Module
+
+/** Shared data graph: DB → DAOs → repository. Plain constructor wiring, no class annotations. */
+val dataModule = module {
+    single { buildDatabase(get()) }
+    single { get<AppDatabase>().sessionDao() }
+    single { get<AppDatabase>().outboxDao() }
+    single { SessionRepositoryImpl(get()) } bind SessionRepository::class
+}
+
+/** Shared presentation graph. */
+val viewModelModule = module {
+    viewModelOf(::HomeViewModel)
+}
+
+/**
+ * Single entry point for starting Koin, called from each platform. [config] lets a platform add
+ * bindings it alone can supply — e.g. Android passes `androidContext(this)`; iOS passes nothing.
+ */
+fun initKoin(config: KoinAppDeclaration? = null): KoinApplication =
+    startKoin {
+        config?.invoke(this)
+        modules(platformModule, dataModule, viewModelModule)
+    }

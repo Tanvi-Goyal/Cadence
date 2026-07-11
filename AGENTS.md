@@ -24,7 +24,9 @@ tools read it directly. Keep it lean — every line must change agent behavior.
 - `./gradlew :composeApp:assembleDebug`      # Android debug build
 - `./gradlew :shared:testAndroidHostTest`    # shared unit tests (androidLibrary
   Gradle plugin uses "hostTest" terminology, not the classic testDebugUnitTest)
-- (add benchmark + iOS commands here as they get wired)
+- `./gradlew :shared:iosSimulatorArm64Test`  # shared tests on iOS (Room integration
+  tests live in iosTest — the no-arg in-memory DB builder is Context-free on native)
+- (add benchmark commands here as they get wired)
 
 ## Operating contract — how to work with me
 I am building this to learn, and I must be able to defend every decision in an
