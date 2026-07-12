@@ -1,5 +1,8 @@
 package dev.cadence.data
 
+import androidx.paging.PagingData
+import dev.cadence.data.local.Exercise
+import dev.cadence.data.local.LoggedItemWithSets
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
 import kotlinx.coroutines.flow.Flow
@@ -16,12 +19,40 @@ interface SessionRepository {
     /** The current planned/next session shown on the Home "Today" card (null if none). */
     fun observePlannedSession(): Flow<PlannedSession?>
 
+    /** One session, reactive — for the Log Workout header. */
+    fun observeSession(sessionId: String): Flow<Session?>
+
+    /** A session's logged exercises with their sets, reactive — what Log Workout renders. */
+    fun observeLoggedItems(sessionId: String): Flow<List<LoggedItemWithSets>>
+
+    /** Strength volume (Σ reps×loadKg) keyed by session id, reactive — for Home stats/rows. */
+    fun observeVolumesBySession(): Flow<Map<String, Double>>
+
+    /** Paged, filtered exercise library (empty query = all). Backed by a Room [PagingSource]. */
+    fun searchExercises(query: String): Flow<PagingData<Exercise>>
+
+    /** The full seeded catalog as a lookup, for resolving `exerciseId` → name/metric in the UI. */
+    suspend fun exercisesById(): Map<String, Exercise>
+
     /** Creates a blank session, persisting it and enqueuing its sync mutation atomically. */
-    suspend fun createSession(): Session
+    suspend fun createSession(type: String): Session
 
     /** Starts a real session from a plan (carries its name/type), atomically with its outbox row. */
     suspend fun startPlannedSession(plan: PlannedSession): Session
 
-    /** Inserts a sensible default plan if none exists, so the Today card has real content. */
+    /** Adds an exercise to a session (a new [dev.cadence.data.local.LoggedItem]). */
+    suspend fun addExercise(sessionId: String, exerciseId: String)
+
+    /** Appends a set to a logged item. Strength uses reps/loadKg; conditioning uses timeSec/distanceM. */
+    suspend fun addSet(
+        sessionId: String,
+        loggedItemId: String,
+        reps: Int? = null,
+        loadKg: Double? = null,
+        timeSec: Int? = null,
+        distanceM: Int? = null,
+    )
+
+    /** Inserts a sensible default plan + the exercise catalog if absent. */
     suspend fun ensureSeeded()
 }

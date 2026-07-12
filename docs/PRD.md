@@ -285,4 +285,32 @@ An interviewer reads this before they read your code. It must contain:
 
 ---
 
+## Appendix: Architecture Decision Records (as built)
+
+**ADR-1 — Koin over Metro for DI.** Chose Koin (mature, first-class KMP+Compose) over Metro
+(compile-time compiler-plugin DI, ~8 months old, native multi-module aggregation still gated on
+KT-75865 — exactly this module shape). All business classes use plain constructor injection; the
+only Koin surface is the `di/` package, so a Metro swap is bounded. Added Koin's K2 compiler plugin
+(DSL mode, no class annotations) for compile-time graph work without lock-in.
+
+**ADR-2 — LWW, aggregate (per-session) sync.** Conflict resolution is Last-Write-Wins by
+`updatedAt`, applied symmetrically (server rejects stale pushes; client ignores stale pulls). The
+**session is the sync unit**: its logged items + sets travel as one document, and any child edit
+bumps the parent `updatedAt`. Rationale: a session is a bounded aggregate with effectively one
+writer at a time, so per-set outbox/conflict granularity is unnecessary complexity. The pull path
+replaces a session's children wholesale. Exercises are seeded reference data (stable slug ids),
+referenced by id and never synced. Evolution ladder if needed: per-field merge → version vectors →
+CRDTs; stopping at aggregate-LWW is the deliberate single-user-multi-device call.
+
+**ADR-3 — Room 3.0 upgrade + Paging 3 in commonMain (vs filtered Flow).** The exercise library uses
+a real `PagingSource` DAO in commonMain, which required upgrading Room 2.8.4 → 3.0 (`androidx.room3`,
+`room3-paging`'s `@DaoReturnTypeConverters`). Honest tradeoff: for a ~50-row bundled catalog a
+filtered `Flow<List>` would suffice and Paging is arguably over-engineering here — the defensible
+version of this choice is knowing the threshold (large/remote data) at which Paging earns its keep,
+and that cross-platform Paging on KMP is what forces Room 3.0.
+
+**ADR-4 — Room `@Relation` avoided in commonMain.** Room 3.0's `@Relation`/`@Embedded` relation
+POJOs fail KSP codegen in commonMain (KMP); "items with their sets" is composed from two plain
+queries in the repository instead — more robust across targets, explicit join logic.
+
 *Living document — expand the v2/v3 sections and ADRs as you build. Every phase completed is also a blog post; every blog post is a public depth signal that almost no L4 candidate brings.*

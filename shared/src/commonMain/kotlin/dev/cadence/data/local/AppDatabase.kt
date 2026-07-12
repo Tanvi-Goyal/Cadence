@@ -1,9 +1,9 @@
 package dev.cadence.data.local
 
-import androidx.room.ConstructedBy
-import androidx.room.Database
-import androidx.room.RoomDatabase
-import androidx.room.RoomDatabaseConstructor
+import androidx.room3.ConstructedBy
+import androidx.room3.Database
+import androidx.room3.RoomDatabase
+import androidx.room3.RoomDatabaseConstructor
 
 /**
  * The Room database — the single source of truth the whole app reads through.
@@ -13,8 +13,11 @@ import androidx.room.RoomDatabaseConstructor
  * per target, so each platform gets a concrete constructor without any reflective lookup.
  */
 @Database(
-    entities = [Session::class, OutboxEntry::class, SyncMeta::class, PlannedSession::class],
-    version = 3,
+    entities = [
+        Session::class, OutboxEntry::class, SyncMeta::class, PlannedSession::class,
+        Exercise::class, LoggedItem::class, SetEntry::class,
+    ],
+    version = 4,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -23,6 +26,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun outboxDao(): OutboxDao
     abstract fun syncMetaDao(): SyncMetaDao
     abstract fun plannedSessionDao(): PlannedSessionDao
+    abstract fun exerciseDao(): ExerciseDao
+    abstract fun loggedItemDao(): LoggedItemDao
+    abstract fun setEntryDao(): SetEntryDao
 }
 
 // KSP generates the actual implementation per target.

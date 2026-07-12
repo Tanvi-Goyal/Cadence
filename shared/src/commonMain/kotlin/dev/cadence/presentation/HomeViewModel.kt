@@ -7,9 +7,12 @@ import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
 import dev.cadence.sync.SyncEngine
 import dev.cadence.sync.SyncResult
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -19,11 +22,11 @@ import kotlin.time.ExperimentalTime
 /** Where a sync pass currently stands, for the UI's sync indicator. */
 enum class SyncStatusUi { Idle, Syncing, Error }
 
-/** Home summary stats, all derived from the session list (no volume — needs the set model). */
+/** Home summary stats derived from the session list + logged-set volumes. */
 data class HomeStats(
     val total: Int = 0,
-    val last7Days: Int = 0,
     val dayStreak: Int = 0,
+    val totalVolumeKg: Double = 0.0,
 )
 
 /** Immutable UI state for the Home screen. */
@@ -31,6 +34,7 @@ data class HomeUiState(
     val sessions: List<Session> = emptyList(),
     val plannedSession: PlannedSession? = null,
     val stats: HomeStats = HomeStats(),
+    val volumeBySession: Map<String, Double> = emptyMap(),
     val syncStatus: SyncStatusUi = SyncStatusUi.Idle,
     val syncError: String? = null,
 )
@@ -48,17 +52,23 @@ class HomeViewModel(
     private val syncStatus = MutableStateFlow(SyncStatusUi.Idle)
     private val syncError = MutableStateFlow<String?>(null)
 
+    /** One-shot navigation: emits the id of a session to open in Log Workout. */
+    private val _openSession = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val openSession: SharedFlow<String> = _openSession.asSharedFlow()
+
     val uiState: StateFlow<HomeUiState> =
         combine(
             repository.observeSessions(),
             repository.observePlannedSession(),
+            repository.observeVolumesBySession(),
             syncStatus,
             syncError,
-        ) { sessions, planned, status, error ->
+        ) { sessions, planned, volumes, status, error ->
             HomeUiState(
                 sessions = sessions,
                 plannedSession = planned,
-                stats = computeStats(sessions),
+                stats = computeStats(sessions, volumes.values.sum()),
+                volumeBySession = volumes,
                 syncStatus = status,
                 syncError = error,
             )
@@ -74,10 +84,13 @@ class HomeViewModel(
         sync()
     }
 
-    /** Intent: start the planned session. The write is local-first and instant. */
+    /** Intent: start the planned session, then navigate into Log Workout on the new session. */
     fun onStartPlannedSession() {
         val plan = uiState.value.plannedSession ?: return
-        viewModelScope.launch { repository.startPlannedSession(plan) }
+        viewModelScope.launch {
+            val session = repository.startPlannedSession(plan)
+            _openSession.tryEmit(session.id)
+        }
     }
 
     /** Intent: run a foreground sync pass (push the outbox, pull remote changes). */
@@ -102,12 +115,10 @@ class HomeViewModel(
     }
 
     @OptIn(ExperimentalTime::class)
-    private fun computeStats(sessions: List<Session>): HomeStats {
-        if (sessions.isEmpty()) return HomeStats()
+    private fun computeStats(sessions: List<Session>, totalVolumeKg: Double): HomeStats {
+        if (sessions.isEmpty()) return HomeStats(totalVolumeKg = totalVolumeKg)
         val now = Clock.System.now().toEpochMilliseconds()
         val dayMs = 86_400_000L
-
-        val last7 = sessions.count { it.startedAt >= now - 7 * dayMs }
 
         // Streak: consecutive UTC epoch-days with >=1 session, ending today (or yesterday if today
         // has none yet, so an active streak doesn't "break" until a full day is missed). UTC-bucketed
@@ -121,6 +132,6 @@ class HomeViewModel(
             cursor--
         }
 
-        return HomeStats(total = sessions.size, last7Days = last7, dayStreak = streak)
+        return HomeStats(total = sessions.size, dayStreak = streak, totalVolumeKg = totalVolumeKg)
     }
 }

@@ -1,10 +1,11 @@
 package dev.cadence.data.local
 
-import androidx.room.Dao
-import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.PrimaryKey
-import androidx.room.Query
+import androidx.room3.Dao
+import androidx.room3.Entity
+import androidx.room3.Insert
+import androidx.room3.PrimaryKey
+import androidx.room3.Query
+import androidx.room3.Upsert
 
 /**
  * The sync outbox. Each row is a pending mutation to push to the backend in Phase 2.
@@ -28,6 +29,10 @@ data class OutboxEntry(
 interface OutboxDao {
     @Insert
     suspend fun insert(entry: OutboxEntry)
+
+    /** One row per session (deterministic id): repeated edits refresh rather than pile up. */
+    @Upsert
+    suspend fun upsert(entry: OutboxEntry)
 
     @Query("SELECT COUNT(*) FROM outbox")
     suspend fun count(): Int

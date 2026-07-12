@@ -19,4 +19,26 @@ data class SessionDto(
     val notes: String? = null,
     val updatedAt: Long,
     val deleted: Boolean = false,
+    // The session's logged exercises + sets travel WITH it (aggregate sync). The session is the
+    // sync unit; editing any set bumps the parent `updatedAt`, so aggregate LWW is correct and we
+    // avoid per-set outbox/conflict granularity. Exercises themselves aren't sent — they're seeded
+    // reference data on every device, referenced here by `exerciseId`.
+    val loggedItems: List<LoggedItemDto> = emptyList(),
+)
+
+@Serializable
+data class LoggedItemDto(
+    val exerciseId: String,
+    val orderIndex: Int,
+    val sets: List<SetDto> = emptyList(),
+)
+
+@Serializable
+data class SetDto(
+    val setNumber: Int,
+    val reps: Int? = null,
+    val loadKg: Double? = null,
+    val timeSec: Int? = null,
+    val distanceM: Int? = null,
+    val rpe: Int? = null,
 )

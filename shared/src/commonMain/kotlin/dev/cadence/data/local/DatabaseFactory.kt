@@ -1,6 +1,6 @@
 package dev.cadence.data.local
 
-import androidx.room.RoomDatabase
+import androidx.room3.RoomDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 
 /**

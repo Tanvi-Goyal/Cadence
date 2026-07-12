@@ -15,8 +15,10 @@ kotlin = "2.4.0"
 material3 = "1.11.0-alpha07"
 # Phase 0 additions
 ksp = "2.3.10"                 # KSP2 standalone version; changelog confirms Kotlin 2.4.0 support
-room = "2.8.4"                 # Room-KMP stable; 3.0 is alpha-only
-androidx-sqlite = "2.7.0"      # BundledSQLiteDriver (unified common driver)
+room = "3.0.0"                 # Room-KMP; 3.0 moved to androidx.room3 group, enables Paging in commonMain
+androidx-sqlite = "2.7.0"      # BundledSQLiteDriver (androidx.sqlite group — NOT rebranded to room3)
+paging = "3.5.0"               # multiplatform Paging 3 (paging-common/-compose)
+navigation = "2.9.2"           # JetBrains multiplatform navigation-compose (aligns with JB Compose)
 koin = "4.2.2"                 # koin-bom
 koinCompiler = "1.0.1"         # Koin K2 compiler plugin; one artifact spans Kotlin 2.3.20–2.4.x
 coroutines = "1.10.2"
@@ -46,9 +48,13 @@ compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-previ
 androidx-lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "androidx-lifecycle" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+room-runtime = { module = "androidx.room3:room3-runtime", version.ref = "room" }
+room-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room" }
+room-paging = { module = "androidx.room3:room3-paging", version.ref = "room" }
 androidx-sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "androidx-sqlite" }
+androidx-paging-common = { module = "androidx.paging:paging-common", version.ref = "paging" }
+androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
+androidx-navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }
 koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin" }
 koin-core = { module = "io.insert-koin:koin-core" }
 koin-core-viewmodel = { module = "io.insert-koin:koin-core-viewmodel" }
@@ -78,5 +84,5 @@ kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
-room = { id = "androidx.room", version.ref = "room" }
+room = { id = "androidx.room3", version.ref = "room" }
 koinCompiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koinCompiler" }

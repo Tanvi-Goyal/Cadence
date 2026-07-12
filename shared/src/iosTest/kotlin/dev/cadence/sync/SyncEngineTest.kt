@@ -1,13 +1,16 @@
 package dev.cadence.sync
 
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import dev.cadence.contracts.LoggedItemDto
 import dev.cadence.contracts.PullResponse
 import dev.cadence.contracts.PushResponse
 import dev.cadence.contracts.SessionDto
+import dev.cadence.contracts.SetDto
 import dev.cadence.data.SessionRepositoryImpl
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.Session
+import dev.cadence.data.local.SessionType
 import dev.cadence.data.local.SyncStatus
 import dev.cadence.data.remote.SyncApi
 import kotlinx.coroutines.flow.first
@@ -62,7 +65,7 @@ class SyncEngineTest {
     @Test
     fun push_drains_outbox_and_marks_session_synced() = runTest {
         val repo = SessionRepositoryImpl(database)
-        val created = repo.createSession() // enqueues an outbox row (Phase 0 behavior)
+        val created = repo.createSession(SessionType.STRENGTH) // enqueues an outbox row
         assertEquals(1, database.outboxDao().count())
 
         val api = FakeSyncApi()
@@ -130,6 +133,51 @@ class SyncEngineTest {
         val pulled = database.sessionDao().getById("s2")
         assertEquals("Hyrox Sim", pulled?.name)
         assertEquals("HYROX", pulled?.type)
+    }
+
+    @Test
+    fun logged_sets_ride_with_the_session_through_nested_push_and_pull() = runTest {
+        val repo = SessionRepositoryImpl(database)
+
+        // Log a session with one exercise + one set, then push.
+        val session = repo.createSession(SessionType.STRENGTH)
+        repo.addExercise(session.id, "bench-press")
+        val itemId = database.loggedItemDao().getBySession(session.id).first().id
+        repo.addSet(session.id, itemId, reps = 10, loadKg = 60.0)
+
+        val api = FakeSyncApi()
+        engineWith(api).sync()
+
+        // The aggregate DTO carries the exercise and its set.
+        val pushed = api.pushed.first { it.id == session.id }
+        assertEquals("bench-press", pushed.loggedItems.first().exerciseId)
+        assertEquals(10, pushed.loggedItems.first().sets.first().reps)
+        assertEquals(60.0, pushed.loggedItems.first().sets.first().loadKg)
+
+        // Pulling a nested remote session materializes its items + sets locally.
+        engineWith(
+            FakeSyncApi(
+                pullChanges = listOf(
+                    SessionDto(
+                        id = "remote1", startedAt = 1, updatedAt = 900,
+                        loggedItems = listOf(
+                            LoggedItemDto(
+                                exerciseId = "back-squat", orderIndex = 0,
+                                sets = listOf(SetDto(setNumber = 1, reps = 5, loadKg = 100.0)),
+                            ),
+                        ),
+                    ),
+                ),
+                nextCursor = 9,
+            ),
+        ).sync()
+
+        val remoteItems = database.loggedItemDao().getBySession("remote1")
+        assertEquals(1, remoteItems.size)
+        assertEquals("back-squat", remoteItems.first().exerciseId)
+        val remoteSets = database.setEntryDao().getForLoggedItem(remoteItems.first().id)
+        assertEquals(1, remoteSets.size)
+        assertEquals(100.0, remoteSets.first().loadKg)
     }
 
     private fun dto(id: String, updatedAt: Long, deleted: Boolean = false) =
