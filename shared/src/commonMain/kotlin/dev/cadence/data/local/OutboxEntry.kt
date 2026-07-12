@@ -31,4 +31,12 @@ interface OutboxDao {
 
     @Query("SELECT COUNT(*) FROM outbox")
     suspend fun count(): Int
+
+    /** All pending mutations, oldest first — the sync engine drains these in order. */
+    @Query("SELECT * FROM outbox ORDER BY createdAt ASC")
+    suspend fun getAll(): List<OutboxEntry>
+
+    /** Remove entries once their push is confirmed (done in the same txn that marks rows synced). */
+    @Query("DELETE FROM outbox WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
 }

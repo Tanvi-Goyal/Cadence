@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
     alias(libs.plugins.koinCompiler)
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
@@ -38,16 +39,25 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(projects.contracts)
             implementation(libs.room.runtime)
             implementation(libs.androidx.sqlite.bundled)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.androidx.lifecycle.viewmodel)
+            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.contentNegotiation)
+            implementation(libs.ktor.serialization.kotlinxJson)
             api(project.dependencies.platform(libs.koin.bom))
             api(libs.koin.core)
             api(libs.koin.core.viewmodel)
         }
         androidMain.dependencies {
             implementation(libs.koin.android)
+            implementation(libs.ktor.client.okhttp)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

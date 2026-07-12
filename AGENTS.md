@@ -26,6 +26,8 @@ tools read it directly. Keep it lean — every line must change agent behavior.
   Gradle plugin uses "hostTest" terminology, not the classic testDebugUnitTest)
 - `./gradlew :shared:iosSimulatorArm64Test`  # shared tests on iOS (Room integration
   tests live in iosTest — the no-arg in-memory DB builder is Context-free on native)
+- `./gradlew :server:run`                     # start the Ktor sync backend on :8080
+- `./gradlew :server:test`                    # sync route tests (LWW / cursor / soft delete)
 - (add benchmark commands here as they get wired)
 
 ## Operating contract — how to work with me

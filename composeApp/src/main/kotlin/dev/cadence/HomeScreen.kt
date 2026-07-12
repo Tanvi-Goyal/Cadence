@@ -1,6 +1,7 @@
 package dev.cadence
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.Session
 import dev.cadence.presentation.HomeUiState
 import dev.cadence.presentation.HomeViewModel
+import dev.cadence.presentation.SyncStatusUi
 import org.koin.compose.viewmodel.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -68,6 +70,7 @@ fun HomeScreen(viewModel: HomeViewModel = koinViewModel()) {
             HomeContent(
                 state = state,
                 onNewSession = viewModel::onNewSessionClick,
+                onSync = viewModel::onSyncClick,
                 contentPadding = padding,
             )
         }
@@ -78,6 +81,7 @@ fun HomeScreen(viewModel: HomeViewModel = koinViewModel()) {
 private fun HomeContent(
     state: HomeUiState,
     onNewSession: () -> Unit,
+    onSync: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     Column(
@@ -88,13 +92,15 @@ private fun HomeContent(
             .padding(horizontal = 20.dp),
     ) {
         Spacer(Modifier.height(16.dp))
-        HomeHeader()
+        HomeHeader(syncStatus = state.syncStatus, onSync = onSync)
         Spacer(Modifier.height(24.dp))
         Button(
             onClick = onNewSession,
             colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
             shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
         ) {
             Text("+  New session", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
@@ -119,7 +125,7 @@ private fun HomeContent(
 }
 
 @Composable
-private fun HomeHeader() {
+private fun HomeHeader(syncStatus: SyncStatusUi, onSync: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -129,13 +135,42 @@ private fun HomeHeader() {
             Text("TODAY", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Text("Hey, Tanvi", color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         }
-        Box(
-            modifier = Modifier.size(44.dp).clip(CircleShape).background(Surface),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("T", color = Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SyncIndicator(syncStatus = syncStatus, onSync = onSync)
+            Spacer(Modifier.size(12.dp))
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Surface),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("T", color = Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
+}
+
+/** Subtle sync affordance (PRD's "last synced" indicator): tap to sync, reflects current state. */
+@Composable
+private fun SyncIndicator(syncStatus: SyncStatusUi, onSync: () -> Unit) {
+    val label = when (syncStatus) {
+        SyncStatusUi.Idle -> "Sync"
+        SyncStatusUi.Syncing -> "Syncing…"
+        SyncStatusUi.Error -> "Retry"
+    }
+    val color = if (syncStatus == SyncStatusUi.Error) Color(0xFFE24B4A) else TextSecondary
+    Text(
+        text = label,
+        color = color,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Surface)
+            .clickable(enabled = syncStatus != SyncStatusUi.Syncing, onClick = onSync)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    )
 }
 
 @Composable
@@ -149,7 +184,10 @@ private fun SessionRow(session: Session) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Background),
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Background),
             contentAlignment = Alignment.Center,
         ) {
             Text("S", color = Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -193,7 +231,12 @@ private fun CadenceBottomBar() {
 }
 
 private fun formatTimestamp(epochMillis: Long): String =
-    SimpleDateFormat("EEE, d MMM · HH:mm", Locale.getDefault()).format(Date(epochMillis))
+    SimpleDateFormat(
+        "EEE, d MMM · HH:mm",
+        Locale.getDefault()
+    ).format(
+        Date(epochMillis)
+    )
 
 @Preview
 @Composable
@@ -202,6 +245,7 @@ private fun HomeContentPreview() {
         HomeContent(
             state = HomeUiState(),
             onNewSession = {},
+            onSync = {},
             contentPadding = PaddingValues(0.dp),
         )
     }

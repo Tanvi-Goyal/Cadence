@@ -3,6 +3,7 @@ package dev.cadence.data.local
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -17,4 +18,16 @@ interface SessionDao {
 
     @Insert
     suspend fun insert(session: Session)
+
+    /** Insert-or-replace, used by the pull path to apply a remote version of a row. */
+    @Upsert
+    suspend fun upsert(session: Session)
+
+    /** Read one row (may be soft-deleted) — the sync engine needs it to apply Last-Write-Wins. */
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    suspend fun getById(id: String): Session?
+
+    /** Mark a set of sessions as synced after a successful push. */
+    @Query("UPDATE sessions SET syncStatus = :status WHERE id IN (:ids)")
+    suspend fun markStatus(ids: List<String>, status: String)
 }

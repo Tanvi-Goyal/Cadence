@@ -4,7 +4,12 @@ import dev.cadence.data.SessionRepository
 import dev.cadence.data.SessionRepositoryImpl
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.buildDatabase
+import dev.cadence.data.remote.KtorSyncApi
+import dev.cadence.data.remote.SyncApi
+import dev.cadence.data.remote.createHttpClient
+import dev.cadence.data.remote.syncBaseUrl
 import dev.cadence.presentation.HomeViewModel
+import dev.cadence.sync.SyncEngine
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
@@ -24,7 +29,15 @@ val dataModule = module {
     single { buildDatabase(get()) }
     single { get<AppDatabase>().sessionDao() }
     single { get<AppDatabase>().outboxDao() }
+    single { get<AppDatabase>().syncMetaDao() }
     single { SessionRepositoryImpl(get()) } bind SessionRepository::class
+}
+
+/** Sync graph: HTTP client (from the platform engine) → transport → engine. */
+val networkModule = module {
+    single { createHttpClient(get()) }
+    single<SyncApi> { KtorSyncApi(get(), syncBaseUrl) }
+    single { SyncEngine(get(), get(), get(), get(), get()) }
 }
 
 /** Shared presentation graph. */
@@ -39,5 +52,5 @@ val viewModelModule = module {
 fun initKoin(config: KoinAppDeclaration? = null): KoinApplication =
     startKoin {
         config?.invoke(this)
-        modules(platformModule, dataModule, viewModelModule)
+        modules(platformModule, dataModule, networkModule, viewModelModule)
     }
