@@ -4,7 +4,9 @@ import androidx.room.immediateTransaction
 import androidx.room.useWriterConnection
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.OutboxEntry
+import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
+import dev.cadence.data.local.SessionType
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -22,19 +24,25 @@ class SessionRepositoryImpl(
     override fun observeSessions(): Flow<List<Session>> =
         database.sessionDao().observeAll()
 
-    /**
-     * The heart of offline-first: the local write and the outbox enqueue happen in ONE
-     * transaction via `useWriterConnection { immediateTransaction { … } }` (the KMP-common
-     * equivalent of Android's `withTransaction`). If the process dies mid-way, SQLite rolls both
-     * back together — there is no window where a session exists locally but its "tell the server"
-     * intent was lost, nor vice versa. That atomicity is what makes the outbox trustworthy.
-     */
+    override fun observePlannedSession(): Flow<PlannedSession?> =
+        database.plannedSessionDao().observeCurrent()
+
+    /** Blank/ad-hoc session with defaults. */
+    override suspend fun createSession(): Session =
+        insertSession(name = "Session", type = SessionType.STRENGTH)
+
+    /** Start the planned session — the real session carries the plan's name/type. */
+    override suspend fun startPlannedSession(plan: PlannedSession): Session =
+        insertSession(name = plan.name, type = plan.type)
+
     @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
-    override suspend fun createSession(): Session {
+    private suspend fun insertSession(name: String, type: String): Session {
         val now = Clock.System.now().toEpochMilliseconds()
         val session = Session(
             id = Uuid.random().toString(),
             startedAt = now,
+            name = name,
+            type = type,
             updatedAt = now,
         )
         val outboxEntry = OutboxEntry(
@@ -45,6 +53,7 @@ class SessionRepositoryImpl(
             payload = "",
             createdAt = now,
         )
+        // Local write + outbox enqueue in ONE transaction — the offline-first atomicity guarantee.
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 database.sessionDao().insert(session)
@@ -52,5 +61,19 @@ class SessionRepositoryImpl(
             }
         }
         return session
+    }
+
+    @OptIn(ExperimentalUuidApi::class)
+    override suspend fun ensureSeeded() {
+        if (database.plannedSessionDao().getCurrent() != null) return
+        database.plannedSessionDao().upsert(
+            PlannedSession(
+                id = Uuid.random().toString(),
+                name = "Upper Strength",
+                type = SessionType.STRENGTH,
+                targetDurationMin = 55,
+                focus = "Push focus",
+            ),
+        )
     }
 }

@@ -13,8 +13,8 @@ import androidx.room.RoomDatabaseConstructor
  * per target, so each platform gets a concrete constructor without any reflective lookup.
  */
 @Database(
-    entities = [Session::class, OutboxEntry::class, SyncMeta::class],
-    version = 2,
+    entities = [Session::class, OutboxEntry::class, SyncMeta::class, PlannedSession::class],
+    version = 3,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -22,6 +22,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
     abstract fun outboxDao(): OutboxDao
     abstract fun syncMetaDao(): SyncMetaDao
+    abstract fun plannedSessionDao(): PlannedSessionDao
 }
 
 // KSP generates the actual implementation per target.

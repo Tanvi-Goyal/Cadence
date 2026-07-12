@@ -93,13 +93,23 @@ class SyncEngine(
 }
 
 private fun Session.toDto(): SessionDto =
-    SessionDto(id = id, startedAt = startedAt, notes = notes, updatedAt = updatedAt, deleted = deleted)
+    SessionDto(
+        id = id,
+        startedAt = startedAt,
+        name = name,
+        type = type,
+        notes = notes,
+        updatedAt = updatedAt,
+        deleted = deleted,
+    )
 
 /** A pulled row is authoritative-from-server, so it lands already SYNCED (no outbox entry). */
 private fun SessionDto.toEntity(): Session =
     Session(
         id = id,
         startedAt = startedAt,
+        name = name,
+        type = type,
         notes = notes,
         updatedAt = updatedAt,
         deleted = deleted,

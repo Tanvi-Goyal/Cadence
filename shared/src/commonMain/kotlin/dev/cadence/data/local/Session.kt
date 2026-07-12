@@ -15,6 +15,8 @@ import androidx.room.PrimaryKey
 data class Session(
     @PrimaryKey val id: String,
     val startedAt: Long,
+    val name: String = "Session",
+    val type: String = SessionType.STRENGTH,
     val notes: String? = null,
     val updatedAt: Long,
     val deleted: Boolean = false,
@@ -25,4 +27,12 @@ data class Session(
 object SyncStatus {
     const val PENDING = "PENDING"
     const val SYNCED = "SYNCED"
+}
+
+/** Training modality of a session. String constants (stored as TEXT) drive the Recent-row badge. */
+object SessionType {
+    const val STRENGTH = "STRENGTH"
+    const val CONDITIONING = "CONDITIONING"
+    const val HYROX = "HYROX"
+    const val MIXED = "MIXED"
 }

@@ -102,6 +102,36 @@ class SyncEngineTest {
         )
     }
 
+    @Test
+    fun session_name_and_type_round_trip_through_push_and_pull() = runTest {
+        val repo = SessionRepositoryImpl(database)
+        val plan = dev.cadence.data.local.PlannedSession(
+            id = "p1", name = "Leg Day", type = dev.cadence.data.local.SessionType.CONDITIONING,
+            targetDurationMin = 40, focus = "Pull focus",
+        )
+        val created = repo.startPlannedSession(plan)
+
+        val api = FakeSyncApi()
+        engineWith(api).sync()
+
+        // Push carries name/type over the wire.
+        assertEquals("Leg Day", api.pushed.first().name)
+        assertEquals(dev.cadence.data.local.SessionType.CONDITIONING, api.pushed.first().type)
+
+        // Pull writes a remote name/type into the local entity.
+        engineWith(
+            FakeSyncApi(
+                pullChanges = listOf(
+                    SessionDto(id = "s2", startedAt = 1, name = "Hyrox Sim", type = "HYROX", updatedAt = 500),
+                ),
+                nextCursor = 5,
+            ),
+        ).sync()
+        val pulled = database.sessionDao().getById("s2")
+        assertEquals("Hyrox Sim", pulled?.name)
+        assertEquals("HYROX", pulled?.type)
+    }
+
     private fun dto(id: String, updatedAt: Long, deleted: Boolean = false) =
         SessionDto(id = id, startedAt = 1, notes = null, updatedAt = updatedAt, deleted = deleted)
 }

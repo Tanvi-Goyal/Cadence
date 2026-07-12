@@ -14,6 +14,8 @@ import kotlinx.serialization.Serializable
 data class SessionDto(
     val id: String,
     val startedAt: Long,
+    val name: String = "Session",
+    val type: String = "STRENGTH",
     val notes: String? = null,
     val updatedAt: Long,
     val deleted: Boolean = false,
