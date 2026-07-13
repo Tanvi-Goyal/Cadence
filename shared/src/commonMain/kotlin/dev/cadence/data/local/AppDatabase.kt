@@ -29,6 +29,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
     abstract fun loggedItemDao(): LoggedItemDao
     abstract fun setEntryDao(): SetEntryDao
+    abstract fun statsDao(): StatsDao
 }
 
 // KSP generates the actual implementation per target.

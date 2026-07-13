@@ -64,6 +64,11 @@ class SessionRepositoryImpl(
     override fun observeVolumesBySession(): Flow<Map<String, Double>> =
         setEntries.observeSessionVolumes().map { list -> list.associate { it.sessionId to it.volume } }
 
+    override fun observeExercisesWithHistory() = database.statsDao().exercisesWithHistory()
+
+    override fun observeVolumeOverTime(exerciseId: String) =
+        database.statsDao().volumeOverTime(exerciseId)
+
     override fun searchExercises(query: String): Flow<PagingData<Exercise>> =
         Pager(PagingConfig(pageSize = 30)) { exercises.search(query) }.flow
 

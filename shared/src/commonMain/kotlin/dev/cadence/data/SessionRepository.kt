@@ -2,9 +2,11 @@ package dev.cadence.data
 
 import androidx.paging.PagingData
 import dev.cadence.data.local.Exercise
+import dev.cadence.data.local.ExerciseRef
 import dev.cadence.data.local.LoggedItemWithSets
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
+import dev.cadence.data.local.VolumePoint
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -27,6 +29,12 @@ interface SessionRepository {
 
     /** Strength volume (Σ reps×loadKg) keyed by session id, reactive — for Home stats/rows. */
     fun observeVolumesBySession(): Flow<Map<String, Double>>
+
+    /** Exercises that have logged data — for the Stats chart selector. */
+    fun observeExercisesWithHistory(): Flow<List<ExerciseRef>>
+
+    /** Per-exercise volume over time (oldest→newest) — the Stats trend chart. */
+    fun observeVolumeOverTime(exerciseId: String): Flow<List<VolumePoint>>
 
     /** Paged, filtered exercise library (empty query = all). Backed by a Room [PagingSource]. */
     fun searchExercises(query: String): Flow<PagingData<Exercise>>

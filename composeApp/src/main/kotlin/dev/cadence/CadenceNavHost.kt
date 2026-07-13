@@ -3,6 +3,8 @@ package dev.cadence
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -12,28 +14,48 @@ import androidx.navigation.navArgument
 private const val PICKED_EXERCISE = "pickedExercise"
 
 private object Routes {
-    const val HOME = "home"
     const val NEW_SESSION = "newSession"
     const val LOG_WORKOUT = "logWorkout/{sessionId}"
     const val EXERCISE_PICKER = "exercisePicker"
+    const val SESSION_DETAIL = "sessionDetail/{sessionId}"
     fun logWorkout(sessionId: String) = "logWorkout/$sessionId"
+    fun sessionDetail(sessionId: String) = "sessionDetail/$sessionId"
 }
 
 /**
- * App navigation. Native (JetBrains Compose Navigation), kept in the Android app per the PRD's
- * "navigation stays native" decision. Home → New Session → Log Workout, with the Exercise Picker
- * reached from Log Workout.
+ * App navigation (JetBrains Compose Navigation, kept native per the PRD). The four tabs
+ * (Home/History/Stats/Profile) are top-level destinations reached via [switchTab]; New Session,
+ * Log Workout, Exercise Picker and Session Detail are full-screen pushes over them.
  */
 @Composable
 fun CadenceNavHost() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Routes.HOME) {
-        composable(Routes.HOME) {
+    NavHost(navController = nav, startDestination = Tab.Home.route) {
+
+        // ---- Bottom-nav tabs ----
+        composable(Tab.Home.route) {
             HomeScreen(
                 onOpenSession = { id -> nav.navigate(Routes.logWorkout(id)) },
                 onNewSession = { nav.navigate(Routes.NEW_SESSION) },
+                onOpenDetail = { id -> nav.navigate(Routes.sessionDetail(id)) },
+                onSeeAll = { nav.switchTab(Tab.History.route) },
+                onTab = nav::switchTab,
             )
         }
+        composable(Tab.History.route) {
+            HistoryScreen(
+                onOpenDetail = { id -> nav.navigate(Routes.sessionDetail(id)) },
+                onTab = nav::switchTab,
+            )
+        }
+        composable(Tab.Stats.route) {
+            StatsScreen(onTab = nav::switchTab)
+        }
+        composable(Tab.Profile.route) {
+            ProfileScreen(onTab = nav::switchTab)
+        }
+
+        // ---- Full-screen pushes ----
         composable(Routes.NEW_SESSION) {
             NewSessionScreen(
                 onBack = { nav.popBackStack() },
@@ -61,18 +83,40 @@ fun CadenceNavHost() {
                 onExerciseConsumed = { entry.savedStateHandle[PICKED_EXERCISE] = null },
                 onBack = { nav.popBackStack() },
                 onAddExercise = { nav.navigate(Routes.EXERCISE_PICKER) },
-                onFinish = { nav.popBackStack(Routes.HOME, inclusive = false) },
+                onFinish = { nav.popBackStack(Tab.Home.route, inclusive = false) },
             )
         }
         composable(Routes.EXERCISE_PICKER) {
             ExercisePickerScreen(
                 onPick = { exerciseId ->
-                    // Return the pick to the Log Workout entry, then pop back to it.
                     nav.previousBackStackEntry?.savedStateHandle?.set(PICKED_EXERCISE, exerciseId)
                     nav.popBackStack()
                 },
                 onBack = { nav.popBackStack() },
             )
         }
+        composable(
+            route = Routes.SESSION_DETAIL,
+            arguments = listOf(navArgument("sessionId") { type = NavType.StringType }),
+        ) { entry ->
+            SessionDetailScreen(
+                sessionId = entry.arguments?.getString("sessionId").orEmpty(),
+                onBack = { nav.popBackStack() },
+            )
+        }
+    }
+}
+
+/**
+ * Switch to a bottom-nav tab. `popUpTo(startDestination) { saveState }` + `restoreState` +
+ * `launchSingleTop` is the standard pattern so each tab keeps its own state and the back stack
+ * doesn't grow a new entry every time you tap between tabs.
+ */
+private fun NavController.switchTab(route: String) {
+    if (currentDestination?.route == route) return
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }
