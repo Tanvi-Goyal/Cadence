@@ -24,6 +24,10 @@ koinCompiler = "1.0.1"         # Koin K2 compiler plugin; one artifact spans Kot
 coroutines = "1.10.2"
 ktor = "3.5.1"                 # Ktor client + server; changelog confirms Kotlin 2.4 compat
 kotlinxSerialization = "1.11.0"
+# Phase 3 (performance) additions
+benchmark = "1.5.0-alpha06"    # Macrobenchmark + baselineprofile; 1.4.1 wants legacy TestExtension (fails on AGP 9's new DSL), and android.newDsl=false isn't an option (our KMP :shared needs the new DSL). This alpha supports AGP 9 natively.
+profileinstaller = "1.4.1"     # installs the baseline profile at runtime (required in the app)
+uiautomator = "2.3.0"          # device gestures for the scroll benchmark
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -73,6 +77,11 @@ ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor"
 ktor-server-contentNegotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
 ktor-server-testHost = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
 
+# Phase 3 additions
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
+androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
+androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
+
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
@@ -81,8 +90,11 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room3", version.ref = "room" }
 koinCompiler = { id = "io.insert-koin.compiler.plugin", version.ref = "koinCompiler" }
+androidTest = { id = "com.android.test", version.ref = "agp" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }

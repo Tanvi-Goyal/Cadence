@@ -1,35 +1,79 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# Cadence
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+A cross-platform training log for hybrid/functional athletes (strength + conditioning + running).
+**Offline-first**: the local database is the single source of truth, the UI only ever observes it,
+and changes sync to a backend and pull back on another device. Built with Kotlin Multiplatform —
+shared domain/data/sync/ViewModels, native UI (Jetpack Compose on Android, a thin SwiftUI shell on
+iOS).
 
-* [/sharedLogic](./sharedLogic/src) is for the code that will be shared between app targets in the project.
-  The most important subfolder is [commonMain](./sharedLogic/src/commonMain/kotlin). If preferred, you
-  can add code to the platform-specific folders here too.
+> Portfolio project. The interesting parts are the **KMP seam**, the **offline-first sync engine**,
+> and **measured performance** — see below.
 
-* [/sharedUI](./sharedUI/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./sharedUI/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./sharedUI/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./sharedUI/src/jvmMain/kotlin)
-    folder is the appropriate location.
+## Architecture
 
-### Running the apps
+```
+Compose UI ──observes──► ViewModel ──► Repository
+                                          │
+                          ┌───────────────┴───────────────┐
+                          ▼                                ▼
+                  Local DB (Room-KMP)  ◄── single source ── Sync Engine
+                  (UI ALWAYS reads here)     of truth        (Ktor ↔ Ktor server)
+```
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+- **`:shared`** (KMP) — domain, Room 3.0 database, repositories, sync engine, ViewModels
+  (`commonMain`); platform seams (`androidMain`/`iosMain`) only for OS-governed capabilities
+  (DB driver path, HTTP engine).
+- **`:composeApp`** — Android app (Jetpack Compose, navigation, Paging 3 exercise library).
+- **`:contracts`** — `@Serializable` sync DTOs shared by client and server.
+- **`:server`** — minimal Ktor backend (in-memory) for sync.
+- **`:benchmark`** — Macrobenchmark + Baseline Profile (this phase).
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+### Offline-first & sync
+Local writes are instant and enqueue an **outbox** row in the same Room transaction. The sync
+engine drains the outbox (**push**) and pulls changes by a server-authoritative **cursor**
+(**pull**); conflicts resolve **Last-Write-Wins** by `updatedAt`, applied symmetrically on server
+and client. Sessions sync as an **aggregate** (their logged exercises + sets travel as one
+document). Full rationale in the ADRs (`docs/PRD.md` appendix).
 
-### Running tests
+## Performance (Baseline Profile + Macrobenchmark)
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+Cold-start and scroll performance are **measured**, not asserted. `:benchmark` runs a Startup
+Macrobenchmark (cold launch) and a Scroll Macrobenchmark (frame timing on the History list, seeded
+to ~200 sessions), each under two compilation modes: `None` (no AOT — the "before") and
+`Partial` + the generated **Baseline Profile** (the "after").
 
-- Android tests: `./gradlew :sharedUI:testAndroidHostTest :sharedLogic:testAndroidHostTest`
-- iOS tests: `./gradlew :sharedLogic:iosSimulatorArm64Test`
+_Measured on a physical `<device model>` — relative improvement from the Baseline Profile._
 
----
+| Metric | None (before) | Baseline Profile (after) | Change |
+|---|---|---|---|
+| Cold start — timeToInitialDisplay P50 | _ ms | _ ms | ↓ _% |
+| Cold start — timeToInitialDisplay P90 | _ ms | _ ms | ↓ _% |
+| History scroll — frameOverrunMs P90 | _ ms | _ ms | ↓ _% |
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+<!-- Fill from the benchmark output (see "Running the benchmarks"). -->
+
+### Running the benchmarks (physical device, USB debugging)
+```bash
+# 1. Generate the Baseline Profile (packaged into the app APK).
+./gradlew :composeApp:generateBaselineProfile
+
+# 2. Startup: StartupBenchmark runs None vs Baseline Profile (before/after) — cold start.
+./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=dev.cadence.benchmark.StartupBenchmark
+
+# 3. Scroll frame timing on the seeded History list.
+./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=dev.cadence.benchmark.ScrollBenchmark
+```
+Results print per-metric (P50/P90/P99) and are written under `benchmark/build/outputs/`.
+
+## Build & run
+- `./gradlew :composeApp:assembleDebug` — Android app
+- `./gradlew :shared:testAndroidHostTest` / `:shared:iosSimulatorArm64Test` — shared tests
+- `./gradlew :server:run` — sync backend on :8080
+- See `AGENTS.md` for the full command list and architecture rules.
+
+## Status
+Phases 0–3 complete: offline-first core (logging, exercise library, history, trends), sync engine
+(outbox/cursor/LWW, multi-device), and performance instrumentation. Next: a Perfetto-guided fix,
+and the iOS app rendering a real shared screen.

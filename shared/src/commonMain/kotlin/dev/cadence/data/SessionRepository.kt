@@ -63,4 +63,10 @@ interface SessionRepository {
 
     /** Inserts a sensible default plan + the exercise catalog if absent. */
     suspend fun ensureSeeded()
+
+    /**
+     * Benchmark-only: ensure at least [target] logged sessions exist (with a few sets each) so the
+     * History scroll benchmark has a non-trivial list. Idempotent — a no-op once the count is met.
+     */
+    suspend fun seedBenchmarkSessions(target: Int)
 }

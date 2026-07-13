@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.baselineprofile)
 }
 
 kotlin {
@@ -29,8 +30,14 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.paging.compose)
 
+    // Installs the baseline profile packaged in the APK at first run (Phase 3).
+    implementation(libs.androidx.profileinstaller)
+
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
+
+    // The :benchmark module produces the baseline profile this app consumes.
+    baselineProfile(projects.benchmark)
 }
 
 android {
@@ -52,6 +59,14 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+        }
+        // Non-debuggable, profileable variant Macrobenchmark runs against (it refuses debuggable
+        // builds). Signed with the debug key so the release-like APK still installs locally.
+        create("benchmark") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+            matchingFallbacks += listOf("release")
         }
     }
     compileOptions {

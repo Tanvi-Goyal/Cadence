@@ -191,4 +191,46 @@ class SessionRepositoryImpl(
         SessionType.MIXED -> "Mixed"
         else -> "Strength"
     }
+
+    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
+    override suspend fun seedBenchmarkSessions(target: Int) {
+        ensureSeeded() // exercise catalog must exist for the volume join
+        val existing = sessions.count()
+        if (existing >= target) return
+
+        val now = Clock.System.now().toEpochMilliseconds()
+        val dayMs = 86_400_000L
+        val names = listOf("Upper Strength", "Lower Strength", "Push Day", "Pull Day", "Full Body")
+        // One writer transaction for the whole batch — bulk insert is far faster than N transactions.
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                for (i in existing until target) {
+                    val sessionId = Uuid.random().toString()
+                    sessions.insert(
+                        Session(
+                            id = sessionId,
+                            startedAt = now - i * dayMs,
+                            name = names[i % names.size],
+                            type = SessionType.STRENGTH,
+                            updatedAt = now - i * dayMs,
+                            syncStatus = SyncStatus.SYNCED,
+                        ),
+                    )
+                    val itemId = Uuid.random().toString()
+                    loggedItems.insert(LoggedItem(itemId, sessionId, "bench-press", 0))
+                    repeat(3) { s ->
+                        setEntries.insert(
+                            SetEntry(
+                                id = Uuid.random().toString(),
+                                loggedItemId = itemId,
+                                setNumber = s + 1,
+                                reps = 8 + s,
+                                loadKg = (40 + (i % 60)).toDouble(),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

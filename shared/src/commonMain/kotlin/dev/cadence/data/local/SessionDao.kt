@@ -33,4 +33,7 @@ interface SessionDao {
     /** Mark a set of sessions as synced after a successful push. */
     @Query("UPDATE sessions SET syncStatus = :status WHERE id IN (:ids)")
     suspend fun markStatus(ids: List<String>, status: String)
+
+    @Query("SELECT COUNT(*) FROM sessions")
+    suspend fun count(): Int
 }

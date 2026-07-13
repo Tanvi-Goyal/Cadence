@@ -28,7 +28,9 @@ tools read it directly. Keep it lean — every line must change agent behavior.
   tests live in iosTest — the no-arg in-memory DB builder is Context-free on native)
 - `./gradlew :server:run`                     # start the Ktor sync backend on :8080
 - `./gradlew :server:test`                    # sync route tests (LWW / cursor / soft delete)
-- (add benchmark commands here as they get wired)
+- `./gradlew :composeApp:generateBaselineProfile`  # generate + package the baseline profile (needs a device)
+- `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`  # run Macrobenchmarks (Startup/Scroll) on a device
+  # benchmark plugin pinned to 1.5.0-alpha06 — 1.4.1 needs the legacy TestExtension which AGP 9's new DSL dropped
 
 ## Operating contract — how to work with me
 I am building this to learn, and I must be able to defend every decision in an
