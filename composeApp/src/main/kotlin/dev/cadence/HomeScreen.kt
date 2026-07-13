@@ -18,10 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
@@ -47,36 +46,32 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-private val Background = Color(0xFF0E0E0F)
-private val Surface = Color(0xFF1A1A1C)
-private val SurfaceHi = Color(0xFF232326)
-private val Accent = Color(0xFFC7F04D)
-private val OnAccent = Color(0xFF14210A)
-private val TextPrimary = Color(0xFFF5F5F5)
-private val TextSecondary = Color(0xFF8E8E93)
-private val Danger = Color(0xFFE24B4A)
-
-private val CadenceColors = darkColorScheme(
-    primary = Accent,
-    onPrimary = OnAccent,
-    background = Background,
-    surface = Surface,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary,
-)
-
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = koinViewModel()) {
+fun HomeScreen(
+    onOpenSession: (String) -> Unit,
+    onNewSession: () -> Unit,
+    onOpenDetail: (String) -> Unit,
+    onSeeAll: () -> Unit,
+    onTab: (String) -> Unit,
+    viewModel: HomeViewModel = koinViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    MaterialTheme(colorScheme = CadenceColors) {
+    // Starting the planned session creates it, then emits its id here to open Log Workout.
+    LaunchedEffect(Unit) {
+        viewModel.openSession.collect { onOpenSession(it) }
+    }
+    CadenceTheme {
         Scaffold(
             containerColor = Background,
-            bottomBar = { CadenceBottomBar() },
+            bottomBar = { CadenceBottomBar(current = Tab.Home.route, onTab = onTab) },
         ) { padding ->
             HomeContent(
                 state = state,
                 onStartPlanned = viewModel::onStartPlannedSession,
+                onNewSession = onNewSession,
                 onSync = viewModel::onSyncClick,
+                onOpenDetail = onOpenDetail,
+                onSeeAll = onSeeAll,
                 contentPadding = padding,
             )
         }
@@ -87,7 +82,10 @@ fun HomeScreen(viewModel: HomeViewModel = koinViewModel()) {
 private fun HomeContent(
     state: HomeUiState,
     onStartPlanned: () -> Unit,
+    onNewSession: () -> Unit,
     onSync: () -> Unit,
+    onOpenDetail: (String) -> Unit,
+    onSeeAll: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     LazyColumn(
@@ -114,12 +112,27 @@ private fun HomeContent(
             }
         }
         item {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "+ New session",
+                color = Accent,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(onClick = onNewSession)
+                    .padding(vertical = 12.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
+        item {
             Spacer(Modifier.height(4.dp))
             StatsRow(stats = state.stats)
         }
         item {
             Spacer(Modifier.height(12.dp))
-            SectionHeader()
+            SectionHeader(onSeeAll = onSeeAll)
         }
         if (state.sessions.isEmpty()) {
             item {
@@ -130,8 +143,12 @@ private fun HomeContent(
                 )
             }
         } else {
-            items(state.sessions, key = { it.id }) { session ->
-                SessionRow(session)
+            items(state.sessions.take(5), key = { it.id }) { session ->
+                SessionRow(
+                    session,
+                    volumeKg = state.volumeBySession[session.id] ?: 0.0,
+                    onClick = { onOpenDetail(session.id) },
+                )
             }
         }
     }
@@ -251,7 +268,7 @@ private fun TodayCard(plan: PlannedSession, onStart: () -> Unit) {
 private fun StatsRow(stats: HomeStats) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         StatTile(value = stats.total.toString(), label = "Sessions", modifier = Modifier.weight(1f))
-        StatTile(value = stats.last7Days.toString(), label = "Last 7 days", modifier = Modifier.weight(1f))
+        StatTile(value = formatVolume(stats.totalVolumeKg), label = "Volume kg", modifier = Modifier.weight(1f))
         StatTile(value = stats.dayStreak.toString(), label = "Day streak", modifier = Modifier.weight(1f))
     }
 }
@@ -271,24 +288,31 @@ private fun StatTile(value: String, label: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun SectionHeader() {
+private fun SectionHeader(onSeeAll: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("Recent", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        Text("See all", color = Accent, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(
+            "See all",
+            color = Accent,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onSeeAll).padding(4.dp),
+        )
     }
 }
 
 @Composable
-private fun SessionRow(session: Session) {
+internal fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(Surface)
+            .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -302,40 +326,28 @@ private fun SessionRow(session: Session) {
             Text(typeBadge(session.type), color = Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.size(12.dp))
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(session.name, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             Text(relativeDate(session.startedAt), color = TextSecondary, fontSize = 13.sp)
         }
-    }
-}
-
-@Composable
-private fun CadenceBottomBar() {
-    val items = listOf("Home", "History", "Stats", "Profile")
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Background)
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        items.forEachIndexed { index, label ->
-            val active = index == 0
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (active) Accent else Surface),
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(label, color = if (active) TextPrimary else TextSecondary, fontSize = 12.sp)
-            }
+        if (volumeKg > 0.0) {
+            Text(
+                "${formatVolume(volumeKg)} kg",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+            )
         }
     }
 }
 
-private fun typeBadge(type: String): String = when (type) {
+/** Compact volume: 12,400 → "12.4k", 850 → "850". */
+internal fun formatVolume(kg: Double): String {
+    val v = kg.toInt()
+    return if (v >= 1000) "${(v / 100) / 10.0}k" else v.toString()
+}
+
+internal fun typeBadge(type: String): String = when (type) {
     SessionType.CONDITIONING -> "C"
     SessionType.HYROX -> "H"
     SessionType.MIXED -> "M"
@@ -347,7 +359,7 @@ private fun todayLabel(): String =
     SimpleDateFormat("EEEE · d MMM", Locale.getDefault()).format(Date()).uppercase(Locale.getDefault())
 
 /** "Today" / "Yesterday" / "Sun, 12 Jul" — day-relative, computed in the Android UI layer. */
-private fun relativeDate(epochMillis: Long): String {
+internal fun relativeDate(epochMillis: Long): String {
     val cal = Calendar.getInstance()
     val startOfToday = cal.apply {
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
@@ -364,14 +376,17 @@ private fun relativeDate(epochMillis: Long): String {
 @Preview
 @Composable
 private fun HomeContentPreview() {
-    MaterialTheme(colorScheme = CadenceColors) {
+    CadenceTheme {
         HomeContent(
             state = HomeUiState(
                 plannedSession = PlannedSession("1", "Upper Strength", SessionType.STRENGTH, 55, "Push focus"),
-                stats = HomeStats(total = 4, last7Days = 3, dayStreak = 9),
+                stats = HomeStats(total = 4, dayStreak = 9, totalVolumeKg = 12400.0),
             ),
             onStartPlanned = {},
+            onNewSession = {},
             onSync = {},
+            onOpenDetail = {},
+            onSeeAll = {},
             contentPadding = PaddingValues(0.dp),
         )
     }

@@ -1,9 +1,9 @@
 package dev.cadence.data.local
 
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.Query
-import androidx.room.Upsert
+import androidx.room3.Dao
+import androidx.room3.Insert
+import androidx.room3.Query
+import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -15,6 +15,9 @@ interface SessionDao {
 
     @Query("SELECT * FROM sessions WHERE deleted = 0 ORDER BY startedAt DESC")
     fun observeAll(): Flow<List<Session>>
+
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    fun observeById(id: String): Flow<Session?>
 
     @Insert
     suspend fun insert(session: Session)

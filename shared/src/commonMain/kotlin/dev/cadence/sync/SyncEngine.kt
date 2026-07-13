@@ -1,17 +1,23 @@
 package dev.cadence.sync
 
-import androidx.room.immediateTransaction
-import androidx.room.useWriterConnection
+import androidx.room3.immediateTransaction
+import androidx.room3.useWriterConnection
+import dev.cadence.contracts.LoggedItemDto
 import dev.cadence.contracts.SessionDto
+import dev.cadence.contracts.SetDto
 import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.LoggedItem
 import dev.cadence.data.local.OutboxDao
 import dev.cadence.data.local.Session
 import dev.cadence.data.local.SessionDao
+import dev.cadence.data.local.SetEntry
 import dev.cadence.data.local.SyncMeta
 import dev.cadence.data.local.SyncMetaDao
 import dev.cadence.data.local.SyncMetaKeys
 import dev.cadence.data.local.SyncStatus
 import dev.cadence.data.remote.SyncApi
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /** Outcome of a sync pass, surfaced to the ViewModel for the UI's sync indicator. */
 sealed interface SyncResult {
@@ -24,8 +30,10 @@ sealed interface SyncResult {
  * ever observes Room. The engine's whole job is to (1) drain the outbox to the server and (2) feed
  * server changes back into Room. One `sync()` pass does push-then-pull.
  *
- * Push before pull: land this device's local changes on the server first, so the subsequent pull
- * returns the already-merged view (including the server's LWW verdict on anything that conflicted).
+ * **Aggregate sync**: the session is the sync unit; its logged items + sets travel with it as one
+ * document. A session is a bounded aggregate edited by effectively one device at a time, so this
+ * avoids per-set outbox rows and per-set conflict resolution — aggregate Last-Write-Wins by
+ * `Session.updatedAt` is correct and far simpler. Exercises aren't synced (seeded on every device).
  */
 class SyncEngine(
     private val database: AppDatabase,
@@ -34,6 +42,8 @@ class SyncEngine(
     private val syncMetaDao: SyncMetaDao,
     private val api: SyncApi,
 ) {
+    private val loggedItemDao get() = database.loggedItemDao()
+    private val setEntryDao get() = database.setEntryDao()
 
     suspend fun sync(): SyncResult =
         try {
@@ -47,10 +57,10 @@ class SyncEngine(
         }
 
     /**
-     * Drain the outbox. Map each pending session (including soft-deleted ones — a deletion is a
-     * change that must propagate) to its DTO, push them, and ONLY on success remove the outbox
-     * rows and flip the sessions to SYNCED — both in ONE Room transaction so the local "it's
-     * synced" record can't drift from the outbox being cleared.
+     * Drain the outbox. Build each pending session's full aggregate DTO (session + its logged
+     * items + sets), push them, and ONLY on success remove the outbox rows and flip the sessions
+     * to SYNCED — both in ONE Room transaction so the local "it's synced" record can't drift from
+     * the outbox being cleared.
      */
     private suspend fun push() {
         val pending = outboxDao.getAll()
@@ -59,7 +69,7 @@ class SyncEngine(
         val sessionIds = pending.filter { it.entityType == "session" }
             .map { it.entityId }
             .distinct()
-        val dtos = sessionIds.mapNotNull { id -> sessionDao.getById(id)?.toDto() }
+        val dtos = sessionIds.mapNotNull { id -> buildSessionDto(id) }
 
         api.push(dtos) // throws on transport failure → caught by sync(); outbox stays intact
 
@@ -72,10 +82,11 @@ class SyncEngine(
     }
 
     /**
-     * Pull everything changed since our cursor and merge it under Last-Write-Wins: a remote row is
-     * applied only if we have no local copy or the remote `updatedAt` is strictly newer — so a
-     * local edit that hasn't pushed yet is never clobbered by a stale server copy. Pulled writes
-     * do NOT enqueue outbox rows (that would create a sync loop). Advance the cursor last.
+     * Pull everything changed since our cursor and merge under Last-Write-Wins: a remote session
+     * is applied only if we have no local copy or the remote `updatedAt` is strictly newer. When
+     * it wins, the session row AND its children are replaced wholesale (delete local items/sets,
+     * insert the remote ones) in one transaction — that's the aggregate write. Pulled writes do
+     * NOT enqueue outbox rows (that would loop). Advance the cursor last.
      */
     private suspend fun pull() {
         val cursor = syncMetaDao.get(SyncMetaKeys.PULL_CURSOR)?.toLongOrNull()
@@ -84,34 +95,80 @@ class SyncEngine(
         for (dto in response.changes) {
             val local = sessionDao.getById(dto.id)
             if (local == null || dto.updatedAt > local.updatedAt) {
-                sessionDao.upsert(dto.toEntity())
+                applyRemoteSession(dto)
             }
         }
 
         syncMetaDao.set(SyncMeta(SyncMetaKeys.PULL_CURSOR, response.nextCursor.toString()))
     }
+
+    /** Load a session and its children into the nested wire DTO. */
+    private suspend fun buildSessionDto(sessionId: String): SessionDto? {
+        val session = sessionDao.getById(sessionId) ?: return null
+        val items = loggedItemDao.getBySession(sessionId).map { item ->
+            LoggedItemDto(
+                exerciseId = item.exerciseId,
+                orderIndex = item.orderIndex,
+                sets = setEntryDao.getForLoggedItem(item.id).map { set ->
+                    SetDto(set.setNumber, set.reps, set.loadKg, set.timeSec, set.distanceM, set.rpe)
+                },
+            )
+        }
+        return SessionDto(
+            id = session.id,
+            startedAt = session.startedAt,
+            name = session.name,
+            type = session.type,
+            notes = session.notes,
+            updatedAt = session.updatedAt,
+            deleted = session.deleted,
+            loggedItems = items,
+        )
+    }
+
+    /** Replace a session + its children with the remote aggregate, atomically. */
+    @OptIn(ExperimentalUuidApi::class)
+    private suspend fun applyRemoteSession(dto: SessionDto) {
+        val session = Session(
+            id = dto.id,
+            startedAt = dto.startedAt,
+            name = dto.name,
+            type = dto.type,
+            notes = dto.notes,
+            updatedAt = dto.updatedAt,
+            deleted = dto.deleted,
+            syncStatus = SyncStatus.SYNCED, // authoritative from server → already synced
+        )
+        // Rebuild the child rows locally with fresh ids (children are replaced wholesale, so ids
+        // are purely local — the wire contract carries no child ids).
+        val itemsWithSets = dto.loggedItems.map { itemDto ->
+            val itemId = Uuid.random().toString()
+            val item = LoggedItem(itemId, dto.id, itemDto.exerciseId, itemDto.orderIndex)
+            val sets = itemDto.sets.map { setDto ->
+                SetEntry(
+                    id = Uuid.random().toString(),
+                    loggedItemId = itemId,
+                    setNumber = setDto.setNumber,
+                    reps = setDto.reps,
+                    loadKg = setDto.loadKg,
+                    timeSec = setDto.timeSec,
+                    distanceM = setDto.distanceM,
+                    rpe = setDto.rpe,
+                )
+            }
+            item to sets
+        }
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                val oldItemIds = loggedItemDao.getBySession(dto.id).map { it.id }
+                if (oldItemIds.isNotEmpty()) setEntryDao.deleteForLoggedItems(oldItemIds)
+                loggedItemDao.deleteBySession(dto.id)
+                sessionDao.upsert(session)
+                itemsWithSets.forEach { (item, sets) ->
+                    loggedItemDao.insert(item)
+                    sets.forEach { setEntryDao.insert(it) }
+                }
+            }
+        }
+    }
 }
-
-private fun Session.toDto(): SessionDto =
-    SessionDto(
-        id = id,
-        startedAt = startedAt,
-        name = name,
-        type = type,
-        notes = notes,
-        updatedAt = updatedAt,
-        deleted = deleted,
-    )
-
-/** A pulled row is authoritative-from-server, so it lands already SYNCED (no outbox entry). */
-private fun SessionDto.toEntity(): Session =
-    Session(
-        id = id,
-        startedAt = startedAt,
-        name = name,
-        type = type,
-        notes = notes,
-        updatedAt = updatedAt,
-        deleted = deleted,
-        syncStatus = SyncStatus.SYNCED,
-    )

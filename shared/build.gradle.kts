@@ -41,6 +41,8 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.contracts)
             implementation(libs.room.runtime)
+            implementation(libs.room.paging)
+            implementation(libs.androidx.paging.common)
             implementation(libs.androidx.sqlite.bundled)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.androidx.lifecycle.viewmodel)
@@ -66,8 +68,8 @@ kotlin {
     }
 }
 
-// Room-KMP: schema export location shared across all KSP targets.
-room {
+// Room-KMP (3.0, androidx.room3): schema export location shared across all KSP targets.
+room3 {
     schemaDirectory("$projectDir/schemas")
 }
 

@@ -1,8 +1,9 @@
 package dev.cadence.data
 
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.SessionType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -37,7 +38,7 @@ class SessionRepositoryTest {
     fun createSession_persistsSessionAndEnqueuesOutbox() = runTest {
         val repository = SessionRepositoryImpl(database)
 
-        val created = repository.createSession()
+        val created = repository.createSession(SessionType.STRENGTH)
 
         val sessions = repository.observeSessions().first()
         assertEquals(1, sessions.size, "session should be persisted")

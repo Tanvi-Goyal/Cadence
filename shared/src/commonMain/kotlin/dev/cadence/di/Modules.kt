@@ -8,11 +8,18 @@ import dev.cadence.data.remote.KtorSyncApi
 import dev.cadence.data.remote.SyncApi
 import dev.cadence.data.remote.createHttpClient
 import dev.cadence.data.remote.syncBaseUrl
+import dev.cadence.presentation.ExerciseLibraryViewModel
+import dev.cadence.presentation.HistoryViewModel
 import dev.cadence.presentation.HomeViewModel
+import dev.cadence.presentation.LogWorkoutViewModel
+import dev.cadence.presentation.NewSessionViewModel
+import dev.cadence.presentation.SessionDetailViewModel
+import dev.cadence.presentation.StatsViewModel
 import dev.cadence.sync.SyncEngine
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.core.module.Module
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.bind
@@ -43,6 +50,13 @@ val networkModule = module {
 /** Shared presentation graph. */
 val viewModelModule = module {
     viewModelOf(::HomeViewModel)
+    viewModelOf(::ExerciseLibraryViewModel)
+    viewModelOf(::NewSessionViewModel)
+    viewModelOf(::HistoryViewModel)
+    viewModelOf(::StatsViewModel)
+    // LogWorkout + SessionDetail need a runtime sessionId → parameterized factories.
+    viewModel { params -> LogWorkoutViewModel(get(), params.get()) }
+    viewModel { params -> SessionDetailViewModel(get(), params.get()) }
 }
 
 /**
