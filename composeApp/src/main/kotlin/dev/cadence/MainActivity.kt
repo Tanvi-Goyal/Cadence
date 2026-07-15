@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import dev.cadence.data.SessionRepository
 import kotlinx.coroutines.runBlocking
 import org.koin.core.context.GlobalContext
@@ -21,7 +25,12 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            CadenceNavHost()
+            // testTagsAsResourceId maps every Compose testTag to a UI Automator resource-id.
+            // Set once at the root; it propagates down the semantics tree to all descendants.
+            // Zero cost in production traffic — it only changes what the accessibility tree exposes.
+            Box(Modifier.semantics { testTagsAsResourceId = true }) {
+                CadenceNavHost()
+            }
         }
     }
 }
