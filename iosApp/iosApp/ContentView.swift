@@ -2,13 +2,19 @@ import SwiftUI
 import Shared
 
 struct ContentView: View {
-    var body: some View {
-        HistoryView()
-    }
-}
+    @State private var selection = 0
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+    var body: some View {
+        TabView(selection: $selection) {
+            HomeView()
+                .tabItem { Label("Home", systemImage: "house") }
+                .tag(0)
+            HistoryView()
+                .tabItem { Label("History", systemImage: "clock") }
+                .tag(1)
+            StatsView()
+                .tabItem { Label("Stats", systemImage: "chart.line.uptrend.xyaxis") }
+                .tag(2)
+        }
     }
 }
