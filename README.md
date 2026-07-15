@@ -42,15 +42,23 @@ Macrobenchmark (cold launch) and a Scroll Macrobenchmark (frame timing on the Hi
 to ~200 sessions), each under two compilation modes: `None` (no AOT — the "before") and
 `Partial` + the generated **Baseline Profile** (the "after").
 
-_Measured on a physical `<device model>` — relative improvement from the Baseline Profile._
+_Measured on a physical **Google Pixel 9 Pro**, 10 iterations per mode. `timeToInitialDisplay`
+(TTID) is the time from launch to the first frame with content — Macrobenchmark reports it as
+min/median/max (a trace metric, not sampled), so no percentiles here._
 
 | Metric | None (before) | Baseline Profile (after) | Change |
 |---|---|---|---|
-| Cold start — timeToInitialDisplay P50 | _ ms | _ ms | ↓ _% |
-| Cold start — timeToInitialDisplay P90 | _ ms | _ ms | ↓ _% |
-| History scroll — frameOverrunMs P90 | _ ms | _ ms | ↓ _% |
+| Cold start — TTID median | 249.3 ms | 202.4 ms | ↓ 18.8% |
+| Cold start — TTID max (worst case) | 264.2 ms | 214.7 ms | ↓ 18.7% |
+| Cold start — TTID min (best case) | 229.6 ms | 191.2 ms | ↓ 16.7% |
 
-<!-- Fill from the benchmark output (see "Running the benchmarks"). -->
+The Baseline Profile shifts the **entire distribution** down (~19% at the median), not just the
+average — the win comes from AOT-compiling the hot startup path so it isn't JIT-compiled on the
+critical path of the first launch.
+
+_History scroll (`frameOverrunMs`) is instrumented and runnable but not yet reported here —
+capturing it requires an idle, undisturbed device (a foreground call or other app skews frame
+timing and steals focus mid-fling). Numbers land once a clean run is captured._
 
 ### Running the benchmarks (physical device, USB debugging)
 ```bash
@@ -65,7 +73,8 @@ _Measured on a physical `<device model>` — relative improvement from the Basel
 ./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=dev.cadence.benchmark.ScrollBenchmark
 ```
-Results print per-metric (P50/P90/P99) and are written under `benchmark/build/outputs/`.
+Results print per-metric (min/median/max for startup; P50/P90/P95/P99 for frame timing) and are
+written under `benchmark/build/outputs/`.
 
 ## Build & run
 - `./gradlew :composeApp:assembleDebug` — Android app
