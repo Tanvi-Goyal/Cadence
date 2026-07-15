@@ -2,7 +2,6 @@ package dev.cadence.benchmark
 
 import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.FrameTimingMetric
-import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.junit4.MacrobenchmarkRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -26,11 +25,14 @@ class ScrollBenchmark {
     @Test
     fun scrollBaselineProfile() = measure(CompilationMode.Partial())
 
+    // No `startupMode`: it's a startup-benchmark concept. With StartupMode.COLD the framework
+    // kills the process *between* setupBlock and measureBlock (so the measureBlock can measure a
+    // fresh launch) — which would kill the app we just navigated to History. A scroll benchmark
+    // wants the app alive and on the loaded list, measuring only the fling frames, so we omit it.
     private fun measure(compilationMode: CompilationMode) = rule.measureRepeated(
         packageName = TARGET_PACKAGE,
         metrics = listOf(FrameTimingMetric()),
         compilationMode = compilationMode,
-        startupMode = StartupMode.COLD,
         iterations = 10,
         setupBlock = {
             launchWithSeed()   // seed + land on Home

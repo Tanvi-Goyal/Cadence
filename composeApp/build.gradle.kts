@@ -12,6 +12,20 @@ kotlin {
         jvmTarget = JvmTarget.JVM_11
     }
 }
+
+composeCompiler {
+    // Treat immutable :shared model types as stable (that module has no Compose compiler to infer
+    // it). See composeApp/compose_stability.conf for the rationale and scope.
+    stabilityConfigurationFiles.add(layout.projectDirectory.file("compose_stability.conf"))
+
+    // Compose compiler stability/skippability reports, opt-in via `-PcomposeReports=true` so normal
+    // builds aren't slowed. Output lands in composeApp/build/compose_compiler/*.txt.
+    if (project.findProperty("composeReports") == "true") {
+        val dir = layout.buildDirectory.dir("compose_compiler")
+        reportsDestination = dir
+        metricsDestination = dir
+    }
+}
 dependencies {
     implementation(projects.shared)
 
