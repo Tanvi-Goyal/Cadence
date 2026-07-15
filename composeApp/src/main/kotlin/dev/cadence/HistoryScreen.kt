@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,7 +32,9 @@ fun HistoryScreen(
             bottomBar = { CadenceBottomBar(current = Tab.History.route, onTab = onTab) },
         ) { padding ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize().background(Background),
+                // Stable handle for the scroll Macrobenchmark (exposed to UI Automator via
+                // testTagsAsResourceId at the app root). Distinguishes this list from other screens'.
+                modifier = Modifier.fillMaxSize().background(Background).testTag("history_list"),
                 contentPadding = PaddingValues(
                     start = 20.dp,
                     end = 20.dp,

@@ -12,6 +12,10 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <!-- Lets Macrobenchmark capture traces from the non-debuggable benchmark build. -->
+        <profileable android:shell="true" />
+
         <activity
             android:exported="true"
             android:name=".MainActivity">
