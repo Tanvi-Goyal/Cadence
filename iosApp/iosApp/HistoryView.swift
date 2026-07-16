@@ -5,6 +5,7 @@ import Shared
 /// comes from `HistoryViewModel.rows` (shared Kotlin), observed via `HistoryStore`.
 struct HistoryView: View {
     @StateObject private var store = HistoryStore()
+    @EnvironmentObject private var prefs: PreferencesStore
 
     var body: some View {
         NavigationStack {
@@ -19,7 +20,7 @@ struct HistoryView: View {
                                 .foregroundColor(.secondary)
                             Spacer()
                             if row.volumeKg > 0 {
-                                Text(Format.volume(row.volumeKg))
+                                Text(Format.volume(row.volumeKg, prefs.units))
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }

@@ -109,6 +109,7 @@ private fun ExerciseSelector(state: StatsUiState, onSelect: (String) -> Unit) {
 @Composable
 private fun VolumeChart(points: List<VolumePoint>, modifier: Modifier = Modifier) {
     val max = points.maxOf { it.volume }.coerceAtLeast(1.0)
+    val barColor = Accent // read the token in composable scope; the Canvas lambda is a DrawScope
     Box(modifier = modifier.clip(RoundedCornerShape(16.dp)).background(Surface).padding(16.dp)) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val n = points.size
@@ -119,7 +120,7 @@ private fun VolumeChart(points: List<VolumePoint>, modifier: Modifier = Modifier
                 val h = (point.volume / max * maxBarHeight).toFloat()
                 val left = i * (barWidth + gap)
                 drawRect(
-                    color = Accent,
+                    color = barColor,
                     topLeft = Offset(left, maxBarHeight - h),
                     size = Size(barWidth, h),
                 )

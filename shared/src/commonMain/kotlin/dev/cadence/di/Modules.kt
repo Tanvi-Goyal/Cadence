@@ -1,5 +1,7 @@
 package dev.cadence.di
 
+import dev.cadence.data.PreferencesRepository
+import dev.cadence.data.PreferencesRepositoryImpl
 import dev.cadence.data.SessionRepository
 import dev.cadence.data.SessionRepositoryImpl
 import dev.cadence.data.local.AppDatabase
@@ -13,6 +15,7 @@ import dev.cadence.presentation.HistoryViewModel
 import dev.cadence.presentation.HomeViewModel
 import dev.cadence.presentation.LogWorkoutViewModel
 import dev.cadence.presentation.NewSessionViewModel
+import dev.cadence.presentation.PreferencesViewModel
 import dev.cadence.presentation.SessionDetailViewModel
 import dev.cadence.presentation.StatsViewModel
 import dev.cadence.sync.SyncEngine
@@ -38,6 +41,7 @@ val dataModule = module {
     single { get<AppDatabase>().outboxDao() }
     single { get<AppDatabase>().syncMetaDao() }
     single { SessionRepositoryImpl(get()) } bind SessionRepository::class
+    single { PreferencesRepositoryImpl(get()) } bind PreferencesRepository::class
 }
 
 /** Sync graph: HTTP client (from the platform engine) → transport → engine. */
@@ -54,6 +58,7 @@ val viewModelModule = module {
     viewModelOf(::NewSessionViewModel)
     viewModelOf(::HistoryViewModel)
     viewModelOf(::StatsViewModel)
+    viewModelOf(::PreferencesViewModel)
     // LogWorkout + SessionDetail need a runtime sessionId → parameterized factories.
     viewModel { params -> LogWorkoutViewModel(get(), params.get()) }
     viewModel { params -> SessionDetailViewModel(get(), params.get()) }

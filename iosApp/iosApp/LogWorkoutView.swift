@@ -6,6 +6,7 @@ import Shared
 struct LogWorkoutView: View {
     private let onFinish: () -> Void
     @StateObject private var store: LogWorkoutStore
+    @EnvironmentObject private var prefs: PreferencesStore
     @State private var showPicker = false
 
     init(sessionId: String, onFinish: @escaping () -> Void) {
@@ -29,7 +30,7 @@ struct LogWorkoutView: View {
                                 Text(setDescription(set)).foregroundColor(.secondary)
                             }
                         }
-                        AddSetRow(metric: item.metric) { reps, load in
+                        AddSetRow(metric: item.metric, unit: prefs.units) { reps, load in
                             store.addStrengthSet(item.loggedItemId, reps: reps, loadKg: load)
                         } onAddCardio: { time, distance in
                             store.addCardioSet(item.loggedItemId, timeSec: time, distanceM: distance)
@@ -62,7 +63,7 @@ struct LogWorkoutView: View {
         }
         let reps = set.reps?.intValue
         let load = set.loadKg?.doubleValue
-        if let reps, let load { return "\(reps) reps × \(Int(load)) kg" }
+        if let reps, let load { return "\(reps) reps × \(Format.weight(load, prefs.units))" }
         if let reps { return "\(reps) reps" }
         return ""
     }
@@ -71,6 +72,7 @@ struct LogWorkoutView: View {
 /// Inline set entry — branches on the exercise's metric (strength: reps × kg, cardio: sec / m).
 private struct AddSetRow: View {
     let metric: String
+    let unit: WeightUnit
     let onAddStrength: (Int32, Double) -> Void
     let onAddCardio: (Int32, Int32) -> Void
 
@@ -89,9 +91,11 @@ private struct AddSetRow: View {
                 .disabled(first.isEmpty)
             } else {
                 TextField("reps", text: $first).keyboardType(.numberPad)
-                TextField("kg", text: $second).keyboardType(.decimalPad)
+                TextField(Units.shared.label(unit: unit), text: $second).keyboardType(.decimalPad)
                 Button("Add") {
-                    onAddStrength(Int32(first) ?? 0, Double(second) ?? 0)
+                    // Input is in the display unit; store canonical kg.
+                    let kg = Units.shared.toKg(input: Double(second) ?? 0, unit: unit)
+                    onAddStrength(Int32(first) ?? 0, kg)
                     first = ""; second = ""
                 }
                 .disabled(first.isEmpty)

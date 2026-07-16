@@ -36,6 +36,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
 import dev.cadence.data.local.SessionType
+import dev.cadence.domain.Units
+import dev.cadence.domain.WeightUnit
 import dev.cadence.presentation.HomeStats
 import dev.cadence.presentation.HomeUiState
 import dev.cadence.presentation.HomeViewModel
@@ -266,9 +268,10 @@ private fun TodayCard(plan: PlannedSession, onStart: () -> Unit) {
 
 @Composable
 private fun StatsRow(stats: HomeStats) {
+    val unit = LocalWeightUnit.current
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         StatTile(value = stats.total.toString(), label = "Sessions", modifier = Modifier.weight(1f))
-        StatTile(value = formatVolume(stats.totalVolumeKg), label = "Volume kg", modifier = Modifier.weight(1f))
+        StatTile(value = formatVolume(stats.totalVolumeKg, unit), label = "Volume ${Units.label(unit)}", modifier = Modifier.weight(1f))
         StatTile(value = stats.dayStreak.toString(), label = "Day streak", modifier = Modifier.weight(1f))
     }
 }
@@ -331,8 +334,9 @@ internal fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit)
             Text(relativeDate(session.startedAt), color = TextSecondary, fontSize = 13.sp)
         }
         if (volumeKg > 0.0) {
+            val unit = LocalWeightUnit.current
             Text(
-                "${formatVolume(volumeKg)} kg",
+                "${formatVolume(volumeKg, unit)} ${Units.label(unit)}",
                 color = TextSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
@@ -341,9 +345,9 @@ internal fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit)
     }
 }
 
-/** Compact volume: 12,400 → "12.4k", 850 → "850". */
-internal fun formatVolume(kg: Double): String {
-    val v = kg.toInt()
+/** Compact volume in the user's [unit]: 12,400 → "12.4k", 850 → "850". */
+internal fun formatVolume(kg: Double, unit: WeightUnit): String {
+    val v = Units.toDisplay(kg, unit).toInt()
     return if (v >= 1000) "${(v / 100) / 10.0}k" else v.toString()
 }
 
