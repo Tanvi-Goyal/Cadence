@@ -17,7 +17,7 @@ import androidx.room3.RoomDatabaseConstructor
         Session::class, OutboxEntry::class, SyncMeta::class, PlannedSession::class,
         Exercise::class, LoggedItem::class, SetEntry::class, PreferencesEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)

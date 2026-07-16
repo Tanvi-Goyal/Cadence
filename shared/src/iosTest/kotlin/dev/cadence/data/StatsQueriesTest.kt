@@ -29,7 +29,7 @@ class StatsQueriesTest {
 
     @Test
     fun volumeOverTime_sums_sets_per_session_for_the_exercise() = runTest {
-        val repo = SessionRepositoryImpl(database)
+        val repo = SessionRepositoryImpl(database, benchPressAssetReader)
         repo.ensureSeeded() // exercisesWithHistory INNER JOINs the catalog, so seed it (as the app does)
         val session = repo.createSession(SessionType.STRENGTH)
         repo.addExercise(session.id, "bench-press")

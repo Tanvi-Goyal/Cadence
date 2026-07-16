@@ -40,7 +40,7 @@ val dataModule = module {
     single { get<AppDatabase>().sessionDao() }
     single { get<AppDatabase>().outboxDao() }
     single { get<AppDatabase>().syncMetaDao() }
-    single { SessionRepositoryImpl(get()) } bind SessionRepository::class
+    single { SessionRepositoryImpl(get(), get()) } bind SessionRepository::class
     single { PreferencesRepositoryImpl(get()) } bind PreferencesRepository::class
 }
 

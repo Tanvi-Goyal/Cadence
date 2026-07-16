@@ -36,8 +36,16 @@ interface SessionRepository {
     /** Per-exercise volume over time (oldest→newest) — the Stats trend chart. */
     fun observeVolumeOverTime(exerciseId: String): Flow<List<VolumePoint>>
 
-    /** Paged, filtered exercise library (empty query = all). Backed by a Room [PagingSource]. */
-    fun searchExercises(query: String): Flow<PagingData<Exercise>>
+    /**
+     * Paged exercise library. Empty [query] = all; [query] free-text matches name/muscle/equipment;
+     * [equipment] and [muscle] narrow by exact equipment and primary-muscle membership. Backed by a
+     * Room [PagingSource].
+     */
+    fun searchExercises(
+        query: String,
+        equipment: String? = null,
+        muscle: String? = null,
+    ): Flow<PagingData<Exercise>>
 
     /** The full seeded catalog as a lookup, for resolving `exerciseId` → name/metric in the UI. */
     suspend fun exercisesById(): Map<String, Exercise>

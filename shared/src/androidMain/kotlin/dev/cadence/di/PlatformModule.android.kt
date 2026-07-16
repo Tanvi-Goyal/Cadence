@@ -1,6 +1,8 @@
 package dev.cadence.di
 
+import dev.cadence.data.local.ExerciseAssetReader
 import dev.cadence.data.local.androidDatabaseBuilder
+import dev.cadence.data.local.androidExerciseAssetReader
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.engine.okhttp.OkHttp
 import org.koin.android.ext.koin.androidContext
@@ -13,5 +15,6 @@ import org.koin.dsl.module
  */
 actual val platformModule: Module = module {
     single { androidDatabaseBuilder(androidContext()) }
+    single<ExerciseAssetReader> { androidExerciseAssetReader(androidContext()) }
     single<HttpClientEngine> { OkHttp.create() }
 }

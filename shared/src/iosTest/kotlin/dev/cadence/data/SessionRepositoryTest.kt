@@ -36,7 +36,7 @@ class SessionRepositoryTest {
 
     @Test
     fun createSession_persistsSessionAndEnqueuesOutbox() = runTest {
-        val repository = SessionRepositoryImpl(database)
+        val repository = SessionRepositoryImpl(database, emptyExerciseAssetReader)
 
         val created = repository.createSession(SessionType.STRENGTH)
 

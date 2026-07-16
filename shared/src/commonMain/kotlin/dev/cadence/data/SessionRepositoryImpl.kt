@@ -7,7 +7,8 @@ import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.Exercise
-import dev.cadence.data.local.ExerciseCatalog
+import dev.cadence.data.local.ExerciseAssetReader
+import dev.cadence.data.local.ExerciseImporter
 import dev.cadence.data.local.LoggedItem
 import dev.cadence.data.local.LoggedItemWithSets
 import dev.cadence.data.local.OutboxEntry
@@ -35,6 +36,7 @@ import kotlin.uuid.Uuid
  */
 class SessionRepositoryImpl(
     private val database: AppDatabase,
+    private val exerciseAssetReader: ExerciseAssetReader,
 ) : SessionRepository {
 
     private val sessions get() = database.sessionDao()
@@ -69,8 +71,12 @@ class SessionRepositoryImpl(
     override fun observeVolumeOverTime(exerciseId: String) =
         database.statsDao().volumeOverTime(exerciseId)
 
-    override fun searchExercises(query: String): Flow<PagingData<Exercise>> =
-        Pager(PagingConfig(pageSize = 30)) { exercises.search(query) }.flow
+    override fun searchExercises(
+        query: String,
+        equipment: String?,
+        muscle: String?,
+    ): Flow<PagingData<Exercise>> =
+        Pager(PagingConfig(pageSize = 30)) { exercises.search(query, equipment, muscle) }.flow
 
     override suspend fun exercisesById(): Map<String, Exercise> =
         exercises.getAll().associateBy { it.id }
@@ -170,7 +176,7 @@ class SessionRepositoryImpl(
     @OptIn(ExperimentalUuidApi::class)
     override suspend fun ensureSeeded() {
         if (exercises.count() == 0) {
-            exercises.insertAll(ExerciseCatalog.all)
+            exercises.insertAll(ExerciseImporter.parse(exerciseAssetReader.readExercisesJson()))
         }
         if (plans.getCurrent() == null) {
             plans.upsert(
