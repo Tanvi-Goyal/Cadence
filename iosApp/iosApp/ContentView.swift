@@ -2,21 +2,19 @@ import SwiftUI
 import Shared
 
 struct ContentView: View {
-    var body: some View {
-        VStack(spacing: 12) {
-            Text("Cadence")
-                .font(.largeTitle.bold())
-            Text("Shared KMP module loaded.\niOS Home screen lands in Phase 4.")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding()
-    }
-}
+    @State private var selection = 0
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+    var body: some View {
+        TabView(selection: $selection) {
+            HomeView()
+                .tabItem { Label("Home", systemImage: "house") }
+                .tag(0)
+            HistoryView()
+                .tabItem { Label("History", systemImage: "clock") }
+                .tag(1)
+            StatsView()
+                .tabItem { Label("Stats", systemImage: "chart.line.uptrend.xyaxis") }
+                .tag(2)
+        }
     }
 }
