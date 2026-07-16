@@ -7,6 +7,7 @@ import dev.cadence.presentation.HistoryViewModel
 import dev.cadence.presentation.HomeViewModel
 import dev.cadence.presentation.LogWorkoutViewModel
 import dev.cadence.presentation.NewSessionViewModel
+import dev.cadence.presentation.PreferencesViewModel
 import dev.cadence.presentation.SessionDetailViewModel
 import dev.cadence.presentation.StatsViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -34,6 +35,8 @@ fun homeViewModel(): HomeViewModel = KoinPlatform.getKoin().get()
 
 fun statsViewModel(): StatsViewModel = KoinPlatform.getKoin().get()
 
+fun preferencesViewModel(): PreferencesViewModel = KoinPlatform.getKoin().get()
+
 /** Parameterized: the [SessionDetailViewModel] factory takes the sessionId via Koin `parametersOf`. */
 fun sessionDetailViewModel(sessionId: String): SessionDetailViewModel =
     KoinPlatform.getKoin().get { parametersOf(sessionId) }
@@ -58,16 +61,4 @@ fun loadExercises(onResult: (List<Exercise>) -> Unit): FlowSubscription {
         onResult(catalog.values.toList())
     }
     return FlowSubscription(scope)
-}
-
-/**
- * Dev-only: top up the DB to a small set of sessions so the History screen shows real data on iOS
- * (there is no create-session screen on iOS yet). Idempotent; fire-and-forget off the main thread.
- * Remove once iOS can create sessions itself.
- */
-fun seedDemoData() {
-    val repository = KoinPlatform.getKoin().get<SessionRepository>()
-    CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-        repository.seedBenchmarkSessions(20)
-    }
 }

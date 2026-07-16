@@ -6,6 +6,7 @@ import Shared
 struct SessionDetailView: View {
     private let sessionId: String
     @StateObject private var store: SessionDetailStore
+    @EnvironmentObject private var prefs: PreferencesStore
 
     init(sessionId: String) {
         self.sessionId = sessionId
@@ -20,7 +21,7 @@ struct SessionDetailView: View {
                         Text(Format.relativeDate(state.startedAt))
                             .font(.subheadline).foregroundColor(.secondary)
                         if state.totalVolumeKg > 0 {
-                            Text("Total volume: \(Format.volume(state.totalVolumeKg))")
+                            Text("Total volume: \(Format.volume(state.totalVolumeKg, prefs.units))")
                                 .font(.subheadline).foregroundColor(.secondary)
                         }
                     }
@@ -31,7 +32,7 @@ struct SessionDetailView: View {
                             HStack {
                                 Text("Set \(set.setNumber)")
                                 Spacer()
-                                Text(Self.setDescription(set)).foregroundColor(.secondary)
+                                Text(Self.setDescription(set, prefs.units)).foregroundColor(.secondary)
                             }
                         }
                     }
@@ -42,11 +43,11 @@ struct SessionDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private static func setDescription(_ set: SetEntry) -> String {
+    private static func setDescription(_ set: SetEntry, _ unit: WeightUnit) -> String {
         let reps = set.reps?.intValue
         let load = set.loadKg?.doubleValue
         if let reps, let load {
-            return "\(reps) reps × \(Int(load)) kg"
+            return "\(reps) reps × \(Format.weight(load, unit))"
         }
         if let reps {
             return "\(reps) reps"

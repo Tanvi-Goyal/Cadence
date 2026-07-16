@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.ExerciseMetric
+import dev.cadence.domain.Units
+import dev.cadence.domain.WeightUnit
 import dev.cadence.data.local.SetEntry
 import dev.cadence.presentation.LoggedItemUi
 import dev.cadence.presentation.SessionDetailViewModel
@@ -62,8 +64,9 @@ fun SessionDetailScreen(
                         Spacer(Modifier.size(12.dp))
                         Column {
                             Text(state.name.ifEmpty { "Session" }, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            val unit = LocalWeightUnit.current
                             Text(
-                                "${relativeDate(state.startedAt)} · ${formatVolume(state.totalVolumeKg)} kg",
+                                "${relativeDate(state.startedAt)} · ${formatVolume(state.totalVolumeKg, unit)} ${Units.label(unit)}",
                                 color = TextSecondary,
                                 fontSize = 13.sp,
                             )
@@ -93,10 +96,11 @@ private fun DetailCard(item: LoggedItemUi) {
         Text(item.exerciseName, color = TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
         Text("${item.sets.size} sets", color = TextSecondary, fontSize = 12.sp)
         Spacer(Modifier.size(8.dp))
-        item.sets.forEach { set -> Text(setLine(set, isStrength), color = TextPrimary, fontSize = 14.sp, modifier = Modifier.padding(vertical = 2.dp)) }
+        val unit = LocalWeightUnit.current
+        item.sets.forEach { set -> Text(setLine(set, isStrength, unit), color = TextPrimary, fontSize = 14.sp, modifier = Modifier.padding(vertical = 2.dp)) }
     }
 }
 
-private fun setLine(set: SetEntry, isStrength: Boolean): String =
-    if (isStrength) "Set ${set.setNumber}:  ${set.reps ?: 0} reps × ${formatVolume((set.loadKg ?: 0.0))} kg"
+private fun setLine(set: SetEntry, isStrength: Boolean, unit: WeightUnit): String =
+    if (isStrength) "Set ${set.setNumber}:  ${set.reps ?: 0} reps × ${formatVolume((set.loadKg ?: 0.0), unit)} ${Units.label(unit)}"
     else "Set ${set.setNumber}:  ${set.timeSec ?: 0}s · ${set.distanceM ?: 0} m"

@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.ExerciseMetric
+import dev.cadence.domain.Units
+import dev.cadence.domain.WeightUnit
 import dev.cadence.data.local.SetEntry
 import dev.cadence.presentation.LoggedItemUi
 import dev.cadence.presentation.LogWorkoutViewModel
@@ -155,8 +157,9 @@ private fun ExerciseCard(
 
 @Composable
 private fun SetRow(set: SetEntry, isStrength: Boolean) {
+    val unit = LocalWeightUnit.current
     val text = if (isStrength) {
-        "Set ${set.setNumber}:  ${set.reps ?: 0} reps × ${formatKg(set.loadKg)} kg"
+        "Set ${set.setNumber}:  ${set.reps ?: 0} reps × ${formatKg(set.loadKg, unit)} ${Units.label(unit)}"
     } else {
         "Set ${set.setNumber}:  ${set.timeSec ?: 0}s · ${set.distanceM ?: 0} m"
     }
@@ -169,6 +172,7 @@ private fun AddSetRow(
     onAddStrengthSet: (Int, Double) -> Unit,
     onAddCardioSet: (Int, Int) -> Unit,
 ) {
+    val unit = LocalWeightUnit.current
     var first by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -181,7 +185,7 @@ private fun AddSetRow(
         NumberField(
             value = second,
             onValueChange = { second = it },
-            label = if (isStrength) "kg" else "m",
+            label = if (isStrength) Units.label(unit) else "m",
             modifier = Modifier.weight(1f),
         )
         Box(
@@ -191,9 +195,10 @@ private fun AddSetRow(
                 .clickable {
                     if (isStrength) {
                         val reps = first.toIntOrNull()
-                        val kg = second.toDoubleOrNull()
-                        if (reps != null && kg != null) {
-                            onAddStrengthSet(reps, kg); first = ""; second = ""
+                        val entered = second.toDoubleOrNull()
+                        if (reps != null && entered != null) {
+                            // Input is in the display unit; store canonical kg.
+                            onAddStrengthSet(reps, Units.toKg(entered, unit)); first = ""; second = ""
                         }
                     } else {
                         val sec = first.toIntOrNull()
@@ -228,7 +233,8 @@ private fun NumberField(value: String, onValueChange: (String) -> Unit, label: S
     )
 }
 
-private fun formatKg(kg: Double?): String {
+private fun formatKg(kg: Double?, unit: WeightUnit): String {
     if (kg == null) return "0"
-    return if (kg % 1.0 == 0.0) kg.toInt().toString() else kg.toString()
+    val v = Units.toDisplay(kg, unit)
+    return if (v % 1.0 == 0.0) v.toInt().toString() else ((v * 10).toInt() / 10.0).toString()
 }

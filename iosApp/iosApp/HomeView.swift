@@ -7,10 +7,12 @@ import Shared
 enum LogRoute: Hashable {
     case newSession
     case logWorkout(String)
+    case sessionDetail(String)
 }
 
 struct HomeView: View {
     @StateObject private var store = HomeStore()
+    @EnvironmentObject private var prefs: PreferencesStore
     @State private var path: [LogRoute] = []
 
     var body: some View {
@@ -45,6 +47,8 @@ struct HomeView: View {
                     NewSessionView { sessionId in path = [.logWorkout(sessionId)] }
                 case .logWorkout(let sessionId):
                     LogWorkoutView(sessionId: sessionId) { path = [] }
+                case .sessionDetail(let sessionId):
+                    SessionDetailView(sessionId: sessionId)
                 }
             }
         }
@@ -54,7 +58,7 @@ struct HomeView: View {
         HStack(spacing: 12) {
             statTile("Sessions", "\(stats.total)")
             statTile("Day streak", "\(stats.dayStreak)")
-            statTile("Volume", Format.volume(stats.totalVolumeKg))
+            statTile("Volume", Format.volume(stats.totalVolumeKg, prefs.units))
         }
     }
 
@@ -89,18 +93,22 @@ struct HomeView: View {
             Text("No sessions logged yet.").foregroundColor(.secondary)
         } else {
             ForEach(state.sessions.prefix(10), id: \.id) { session in
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(session.name).font(.body.weight(.medium))
-                        Text(Format.relativeDate(session.startedAt))
-                            .font(.caption).foregroundColor(.secondary)
+                NavigationLink(value: LogRoute.sessionDetail(session.id)) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(session.name).font(.body.weight(.medium)).foregroundStyle(.primary)
+                            Text(Format.relativeDate(session.startedAt))
+                                .font(.caption).foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        let volume = state.volumeBySession[session.id]?.doubleValue ?? 0
+                        if volume > 0 {
+                            Text(Format.volume(volume, prefs.units)).font(.subheadline).foregroundColor(.secondary)
+                        }
                     }
-                    Spacer()
-                    let volume = state.volumeBySession[session.id]?.doubleValue ?? 0
-                    if volume > 0 {
-                        Text(Format.volume(volume)).font(.subheadline).foregroundColor(.secondary)
-                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .padding(.vertical, 6)
                 Divider()
             }
