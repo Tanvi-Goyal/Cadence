@@ -50,6 +50,9 @@ interface SessionRepository {
     /** The full seeded catalog as a lookup, for resolving `exerciseId` → name/metric in the UI. */
     suspend fun exercisesById(): Map<String, Exercise>
 
+    /** A single catalog exercise by id (for the Exercise Detail screen). */
+    suspend fun exerciseById(id: String): Exercise?
+
     /** Creates a blank session, persisting it and enqueuing its sync mutation atomically. */
     suspend fun createSession(type: String): Session
 

@@ -44,6 +44,10 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.paging.compose)
 
+    // Lazy-loaded exercise images (Coil 3, with OkHttp network fetcher + disk cache).
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
     // Installs the baseline profile packaged in the APK at first run (Phase 3).
     implementation(libs.androidx.profileinstaller)
 

@@ -28,6 +28,7 @@ kotlinxSerialization = "1.11.0"
 benchmark = "1.5.0-alpha06"    # Macrobenchmark + baselineprofile; 1.4.1 wants legacy TestExtension (fails on AGP 9's new DSL), and android.newDsl=false isn't an option (our KMP :shared needs the new DSL). This alpha supports AGP 9 natively.
 profileinstaller = "1.4.1"     # installs the baseline profile at runtime (required in the app)
 uiautomator = "2.3.0"          # device gestures for the scroll benchmark
+coil = "3.1.0"                 # Coil 3 (Compose Multiplatform) for lazy exercise image loading
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -81,6 +82,8 @@ ktor-server-testHost = { module = "io.ktor:ktor-server-test-host", version.ref =
 androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "benchmark" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
