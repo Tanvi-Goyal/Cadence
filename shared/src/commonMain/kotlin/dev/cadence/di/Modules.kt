@@ -1,5 +1,6 @@
 package dev.cadence.di
 
+import dev.cadence.data.MuscleImageProvider
 import dev.cadence.data.PreferencesRepository
 import dev.cadence.data.PreferencesRepositoryImpl
 import dev.cadence.data.SessionRepository
@@ -8,6 +9,7 @@ import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.buildDatabase
 import dev.cadence.data.remote.KtorSyncApi
 import dev.cadence.data.remote.SyncApi
+import dev.cadence.data.remote.WgerApi
 import dev.cadence.data.remote.createHttpClient
 import dev.cadence.data.remote.syncBaseUrl
 import dev.cadence.presentation.ExerciseDetailViewModel
@@ -50,6 +52,8 @@ val networkModule = module {
     single { createHttpClient(get()) }
     single<SyncApi> { KtorSyncApi(get(), syncBaseUrl) }
     single { SyncEngine(get(), get(), get(), get(), get()) }
+    single { WgerApi(get()) }
+    single { MuscleImageProvider(get()) }
 }
 
 /** Shared presentation graph. */
@@ -63,7 +67,7 @@ val viewModelModule = module {
     // LogWorkout + SessionDetail need a runtime sessionId → parameterized factories.
     viewModel { params -> LogWorkoutViewModel(get(), params.get()) }
     viewModel { params -> SessionDetailViewModel(get(), params.get()) }
-    viewModel { params -> ExerciseDetailViewModel(get(), params.get()) }
+    viewModel { params -> ExerciseDetailViewModel(get(), get(), params.get()) }
 }
 
 /**

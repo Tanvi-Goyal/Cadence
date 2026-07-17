@@ -46,6 +46,7 @@ fun ExerciseDetailScreen(
     viewModel: ExerciseDetailViewModel = koinViewModel { parametersOf(exerciseId) },
 ) {
     val exercise by viewModel.exercise.collectAsStateWithLifecycle()
+    val muscleDiagram by viewModel.muscleDiagram.collectAsStateWithLifecycle()
     CadenceTheme {
         Scaffold(
             containerColor = Background,
@@ -95,6 +96,29 @@ fun ExerciseDetailScreen(
                     }
                     item { TagRow(ex) }
                     item { MuscleChips(ex) }
+                    muscleDiagram?.let { diagram ->
+                        item {
+                            Column {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().height(220.dp)
+                                        .clip(RoundedCornerShape(16.dp)).background(SurfaceHi).padding(12.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    // Base body silhouette + highlighted-muscle overlay, layered
+                                    // (same wger canvas, so identical bounds align them).
+                                    AsyncImage(model = diagram.baseUrl, contentDescription = null,
+                                        modifier = Modifier.fillMaxSize())
+                                    AsyncImage(model = diagram.overlayUrl, contentDescription = "Target muscle",
+                                        modifier = Modifier.fillMaxSize())
+                                }
+                                Text(
+                                    "Muscle diagram: wger.de · CC-BY-SA",
+                                    color = TextSecondary, fontSize = 11.sp,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                )
+                            }
+                        }
+                    }
                     if (ex.instructionsList.isNotEmpty()) {
                         item { Text("Instructions", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
                         itemsIndexedSteps(ex.instructionsList)

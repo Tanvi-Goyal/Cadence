@@ -1,6 +1,8 @@
 package dev.cadence.di
 
 import dev.cadence.FlowSubscription
+import dev.cadence.data.MuscleDiagram
+import dev.cadence.data.MuscleImageProvider
 import dev.cadence.data.SessionRepository
 import dev.cadence.data.local.Exercise
 import dev.cadence.presentation.HistoryViewModel
@@ -62,3 +64,7 @@ fun loadExercises(onResult: (List<Exercise>) -> Unit): FlowSubscription {
     }
     return FlowSubscription(scope)
 }
+
+/** wger muscle diagram (base body + overlay URLs) for a muscle name; suspend → Swift async. Null if unmapped/offline. */
+suspend fun muscleDiagram(muscleName: String): MuscleDiagram? =
+    KoinPlatform.getKoin().get<MuscleImageProvider>().diagram(muscleName)

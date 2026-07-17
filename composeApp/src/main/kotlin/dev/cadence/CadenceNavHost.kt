@@ -19,6 +19,7 @@ private object Routes {
     const val EXERCISE_PICKER = "exercisePicker"
     const val EXERCISE_DETAIL = "exerciseDetail/{exerciseId}"
     const val SESSION_DETAIL = "sessionDetail/{sessionId}"
+    const val CREDITS = "credits"
     fun logWorkout(sessionId: String) = "logWorkout/$sessionId"
     fun exerciseDetail(exerciseId: String) = "exerciseDetail/$exerciseId"
     fun sessionDetail(sessionId: String) = "sessionDetail/$sessionId"
@@ -54,7 +55,10 @@ fun CadenceNavHost() {
             StatsScreen(onTab = nav::switchTab)
         }
         composable(Tab.Profile.route) {
-            ProfileScreen(onTab = nav::switchTab)
+            ProfileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Routes.CREDITS) })
+        }
+        composable(Routes.CREDITS) {
+            CreditsScreen(onBack = { nav.popBackStack() })
         }
 
         // ---- Full-screen pushes ----

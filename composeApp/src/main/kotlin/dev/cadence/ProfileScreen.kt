@@ -29,6 +29,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ProfileScreen(
     onTab: (String) -> Unit,
+    onOpenCredits: () -> Unit,
     viewModel: PreferencesViewModel = koinViewModel(),
 ) {
     val prefs by viewModel.preferences.collectAsStateWithLifecycle()
@@ -76,6 +77,11 @@ fun ProfileScreen(
                                 onClick = { viewModel.onThemeModeChange(mode) },
                             )
                         }
+                    }
+                }
+                item {
+                    PreferenceSection("About") {
+                        Pill(label = "Open data & credits", selected = false, onClick = onOpenCredits)
                     }
                 }
             }

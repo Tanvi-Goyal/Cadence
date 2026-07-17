@@ -28,6 +28,10 @@ struct ExerciseDetailView: View {
                 )
                 FlowChips(tags: exercise.primaryMusclesList.map { $0.capitalized }, filled: true)
 
+                if let muscle = exercise.primaryMusclesList.first {
+                    MuscleDiagramView(muscleName: muscle)
+                }
+
                 if !exercise.instructionsList.isEmpty {
                     Text("Instructions").font(.headline)
                     ForEach(Array(exercise.instructionsList.enumerated()), id: \.offset) { i, step in
