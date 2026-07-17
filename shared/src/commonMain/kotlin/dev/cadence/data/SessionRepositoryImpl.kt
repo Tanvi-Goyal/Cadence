@@ -81,6 +81,8 @@ class SessionRepositoryImpl(
     override suspend fun exercisesById(): Map<String, Exercise> =
         exercises.getAll().associateBy { it.id }
 
+    override suspend fun exerciseById(id: String): Exercise? = exercises.getById(id)
+
     override suspend fun createSession(type: String): Session =
         insertSession(name = displayName(type), type = type)
 

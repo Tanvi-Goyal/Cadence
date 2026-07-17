@@ -17,8 +17,10 @@ private object Routes {
     const val NEW_SESSION = "newSession"
     const val LOG_WORKOUT = "logWorkout/{sessionId}"
     const val EXERCISE_PICKER = "exercisePicker"
+    const val EXERCISE_DETAIL = "exerciseDetail/{exerciseId}"
     const val SESSION_DETAIL = "sessionDetail/{sessionId}"
     fun logWorkout(sessionId: String) = "logWorkout/$sessionId"
+    fun exerciseDetail(exerciseId: String) = "exerciseDetail/$exerciseId"
     fun sessionDetail(sessionId: String) = "sessionDetail/$sessionId"
 }
 
@@ -88,9 +90,21 @@ fun CadenceNavHost() {
         }
         composable(Routes.EXERCISE_PICKER) {
             ExercisePickerScreen(
-                onPick = { exerciseId ->
-                    nav.previousBackStackEntry?.savedStateHandle?.set(PICKED_EXERCISE, exerciseId)
-                    nav.popBackStack()
+                onOpenDetail = { exerciseId -> nav.navigate(Routes.exerciseDetail(exerciseId)) },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(
+            route = Routes.EXERCISE_DETAIL,
+            arguments = listOf(navArgument("exerciseId") { type = NavType.StringType }),
+        ) { entry ->
+            val exerciseId = entry.arguments?.getString("exerciseId").orEmpty()
+            ExerciseDetailScreen(
+                exerciseId = exerciseId,
+                onAdd = {
+                    // Hand the pick to the Log Workout entry (2 back) and return to it.
+                    nav.getBackStackEntry(Routes.LOG_WORKOUT).savedStateHandle[PICKED_EXERCISE] = exerciseId
+                    nav.popBackStack(Routes.LOG_WORKOUT, inclusive = false)
                 },
                 onBack = { nav.popBackStack() },
             )

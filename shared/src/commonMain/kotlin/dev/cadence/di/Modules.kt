@@ -10,6 +10,7 @@ import dev.cadence.data.remote.KtorSyncApi
 import dev.cadence.data.remote.SyncApi
 import dev.cadence.data.remote.createHttpClient
 import dev.cadence.data.remote.syncBaseUrl
+import dev.cadence.presentation.ExerciseDetailViewModel
 import dev.cadence.presentation.ExerciseLibraryViewModel
 import dev.cadence.presentation.HistoryViewModel
 import dev.cadence.presentation.HomeViewModel
@@ -62,6 +63,7 @@ val viewModelModule = module {
     // LogWorkout + SessionDetail need a runtime sessionId → parameterized factories.
     viewModel { params -> LogWorkoutViewModel(get(), params.get()) }
     viewModel { params -> SessionDetailViewModel(get(), params.get()) }
+    viewModel { params -> ExerciseDetailViewModel(get(), params.get()) }
 }
 
 /**
