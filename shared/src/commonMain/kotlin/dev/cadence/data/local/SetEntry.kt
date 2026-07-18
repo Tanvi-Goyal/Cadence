@@ -10,20 +10,36 @@ import androidx.room3.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
- * One logged set. Unified for both modalities (PRD §4): strength uses [reps]/[loadKg], conditioning
- * uses [timeSec]/[distanceM]; the others are null. Which pair is meaningful is decided by the
- * parent exercise's [Exercise.metric].
+ * One set in the session tree — the single unit of work (D1: one wide, typed row).
+ *
+ * Every set carries BOTH a prescription and a performance (D2, template-first capture):
+ * - **Actuals** ([reps]/[loadKg]/[timeSec]/[distanceM]) — what was performed. Unified across
+ *   modalities: strength uses [reps]/[loadKg], conditioning uses [timeSec]/[distanceM]; the rest
+ *   are null. Which pair is meaningful is decided by the parent exercise's [Exercise.metric].
+ * - **Targets** ([targetReps]/[targetLoadKg]/[targetTimeSec]/[targetDistanceM]) — the prescription.
+ *   In a template row (parent session `isTemplate = true`) only the targets are populated; actuals
+ *   are null. Instantiating a template deep-copies targets → targets and leaves actuals null, which
+ *   is what gives the UI "ghost values" (target shown greyed until the actual is entered).
+ *
+ * Note the actuals are deliberately left un-prefixed (not `actualReps`) to keep existing read
+ * queries, DTOs, and UI untouched; the `target*` prefix marks the prescription.
  */
 @Entity(tableName = "set_entries", indices = [Index("loggedItemId")])
 data class SetEntry(
     @PrimaryKey val id: String,
     val loggedItemId: String,
     val setNumber: Int,
+    // Performance (actuals):
     val reps: Int? = null,
     val loadKg: Double? = null,
     val timeSec: Int? = null,
     val distanceM: Int? = null,
     val rpe: Int? = null,
+    // Prescription (targets) — populated in template rows, copied on instantiation:
+    val targetReps: Int? = null,
+    val targetLoadKg: Double? = null,
+    val targetTimeSec: Int? = null,
+    val targetDistanceM: Int? = null,
 )
 
 /** Per-session training volume (Σ reps × loadKg over strength sets) — a plain query-result POJO. */
@@ -57,7 +73,11 @@ interface SetEntryDao {
     @Query("DELETE FROM set_entries WHERE loggedItemId IN (:loggedItemIds)")
     suspend fun deleteForLoggedItems(loggedItemIds: List<String>)
 
-    /** Strength volume per session, for Home's Volume stat + per-row metric. Reactive. */
+    /**
+     * Strength volume per session, for Home's Volume stat + per-row metric. Reactive.
+     * No template filter needed: template sets carry only targets, so their [reps]/[loadKg] actuals
+     * are null and the `IS NOT NULL` guards below exclude them by construction.
+     */
     @Query(
         """
         SELECT li.sessionId AS sessionId, COALESCE(SUM(s.reps * s.loadKg), 0) AS volume

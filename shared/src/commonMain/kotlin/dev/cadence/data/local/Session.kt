@@ -18,6 +18,13 @@ data class Session(
     val name: String = "Session",
     val type: String = SessionType.STRENGTH,
     val notes: String? = null,
+    // Template support (D2): a template is a session with [isTemplate] = true whose sets carry only
+    // targets. [templateId] records which template a real session was spawned from (provenance, for
+    // plan-adherence later). [startedAt] is meaningless for templates but stays non-null — the flag,
+    // not a null timestamp, is what excludes templates from the history list and stats.
+    val isTemplate: Boolean = false,
+    val source: String = SessionSource.MANUAL,
+    val templateId: String? = null,
     val updatedAt: Long,
     val deleted: Boolean = false,
     val syncStatus: String = SyncStatus.PENDING,
@@ -35,4 +42,16 @@ object SessionType {
     const val CONDITIONING = "CONDITIONING"
     const val HYROX = "HYROX"
     const val MIXED = "MIXED"
+}
+
+/**
+ * How a session came to exist (D2 §8, the four generation doors). String constants (stored as TEXT).
+ * Only [MANUAL] and [FROM_TEMPLATE] are produced today; [RACE_SIM] and [HEALTH_CONNECT] are reserved
+ * for later phases so their sessions need no schema change when those pipelines land.
+ */
+object SessionSource {
+    const val MANUAL = "MANUAL"
+    const val FROM_TEMPLATE = "FROM_TEMPLATE"
+    const val RACE_SIM = "RACE_SIM"
+    const val HEALTH_CONNECT = "HEALTH_CONNECT"
 }

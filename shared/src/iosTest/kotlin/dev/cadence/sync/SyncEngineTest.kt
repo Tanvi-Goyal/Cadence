@@ -20,6 +20,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -179,6 +180,56 @@ class SyncEngineTest {
         val remoteSets = database.setEntryDao().getForLoggedItem(remoteItems.first().id)
         assertEquals(1, remoteSets.size)
         assertEquals(100.0, remoteSets.first().loadKg)
+    }
+
+    @Test
+    fun template_and_its_targets_ride_through_push_and_pull() = runTest {
+        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+
+        // A template with one exercise and one target-only (prescription) set.
+        val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
+        repo.addExercise(template.id, "bench-press")
+        val itemId = database.loggedItemDao().getBySession(template.id).first().id
+        repo.addTargetSet(template.id, itemId, reps = 5, loadKg = 100.0)
+
+        val api = FakeSyncApi()
+        engineWith(api).sync()
+
+        // Push carries isTemplate + the target metrics; actuals are absent.
+        val pushed = api.pushed.first { it.id == template.id }
+        assertTrue(pushed.isTemplate, "template flag crosses the wire")
+        assertEquals("MANUAL", pushed.source)
+        val pushedSet = pushed.loggedItems.first().sets.first()
+        assertEquals(5, pushedSet.targetReps)
+        assertEquals(100.0, pushedSet.targetLoadKg)
+        assertNull(pushedSet.reps, "a template set has no actuals")
+
+        // Pulling a remote template materializes it locally as a template with its targets intact.
+        engineWith(
+            FakeSyncApi(
+                pullChanges = listOf(
+                    SessionDto(
+                        id = "remoteT", startedAt = 1, name = "Remote Tmpl", updatedAt = 700,
+                        isTemplate = true, source = "MANUAL",
+                        loggedItems = listOf(
+                            LoggedItemDto(
+                                exerciseId = "back-squat", orderIndex = 0,
+                                sets = listOf(SetDto(setNumber = 1, targetReps = 3, targetLoadKg = 140.0)),
+                            ),
+                        ),
+                    ),
+                ),
+                nextCursor = 7,
+            ),
+        ).sync()
+
+        val pulled = database.sessionDao().getById("remoteT")
+        assertTrue(pulled!!.isTemplate)
+        val pulledItem = database.loggedItemDao().getBySession("remoteT").first()
+        val pulledSet = database.setEntryDao().getForLoggedItem(pulledItem.id).first()
+        assertEquals(3, pulledSet.targetReps)
+        assertEquals(140.0, pulledSet.targetLoadKg)
+        assertNull(pulledSet.reps)
     }
 
     private fun dto(id: String, updatedAt: Long, deleted: Boolean = false) =

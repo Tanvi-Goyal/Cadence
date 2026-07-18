@@ -10,15 +10,20 @@ tools read it directly. Keep it lean — every line must change agent behavior.
 
 ## Project snapshot
 - Modules: `:composeApp` (Android UI) · `:shared` (commonMain domain/data/sync/
-  ViewModels, plus androidMain + iosMain seams) · `:benchmark` (Macrobenchmark +
-  Baseline Profile — not yet created, lands in Phase 3). `iosApp/` is a thin
-  SwiftUI shell.
+  ViewModels, plus androidMain + iosMain seams) · `:contracts` (shared wire DTOs,
+  consumed by client + server) · `:server` (Ktor sync backend) · `:benchmark`
+  (Macrobenchmark + Baseline Profile — exists). `iosApp/` is a SwiftUI shell at
+  feature parity (shared ViewModels back both platforms).
 - Stack: Kotlin 2.4 (K2), Room-KMP, Ktor 3, Koin, Coroutines/Flow, Compose.
   Versions live in `gradle/libs.versions.toml` — read there, never guess.
-- Backend: minimal Ktor server for Phase 2 sync (chosen over Supabase —
-  full-stack-Kotlin signal over lower ops).
+- Backend: custom Ktor sync engine (outbox push / cursor pull / LWW / soft
+  deletes). Being hardened — Postgres + Firebase-Auth JWT — NOT replaced by a
+  BaaS (Supabase/Firestore rejected; see `docs/ROADMAP.md`). Server store is
+  currently in-memory; Postgres lands in Phase 2.
 - Architecture: offline-first, DB as single source of truth; MVI (unidirectional
   state) in shared ViewModels, exposed to UI as StateFlow.
+- Direction: see `docs/ROADMAP.md` — daily-driver + beta for Hyrox Mumbai
+  (Sept 2026); template-first capture; Hyrox race module; Health Connect import.
 
 ## Build & run
 - `./gradlew :composeApp:assembleDebug`      # Android debug build

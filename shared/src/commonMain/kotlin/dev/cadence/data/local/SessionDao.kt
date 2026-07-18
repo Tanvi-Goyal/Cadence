@@ -13,8 +13,12 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface SessionDao {
 
-    @Query("SELECT * FROM sessions WHERE deleted = 0 ORDER BY startedAt DESC")
+    @Query("SELECT * FROM sessions WHERE deleted = 0 AND isTemplate = 0 ORDER BY startedAt DESC")
     fun observeAll(): Flow<List<Session>>
+
+    /** Templates only (D2) — for the template picker. Ordered by name since they have no real time. */
+    @Query("SELECT * FROM sessions WHERE deleted = 0 AND isTemplate = 1 ORDER BY name")
+    fun observeTemplates(): Flow<List<Session>>
 
     @Query("SELECT * FROM sessions WHERE id = :id")
     fun observeById(id: String): Flow<Session?>

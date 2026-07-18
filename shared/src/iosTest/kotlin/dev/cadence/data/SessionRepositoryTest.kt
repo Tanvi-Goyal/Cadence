@@ -3,6 +3,7 @@ package dev.cadence.data
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.SessionSource
 import dev.cadence.data.local.SessionType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -10,6 +11,9 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Proves the offline-first invariant: creating a session persists the row AND enqueues its outbox
@@ -44,5 +48,77 @@ class SessionRepositoryTest {
         assertEquals(1, sessions.size, "session should be persisted")
         assertEquals(created.id, sessions.first().id, "persisted session should match returned one")
         assertEquals(1, database.outboxDao().count(), "outbox entry should be enqueued in the same write")
+    }
+
+    /**
+     * D2 core flow: instantiating a template deep-copies its tree with fresh ids, carrying the
+     * prescription (`target*`) over and leaving actuals null so the UI can show ghost values. The
+     * spawned row is a real (non-template) session that records its `templateId` provenance and,
+     * unlike the template, appears in the history list.
+     */
+    @Test
+    fun instantiateTemplate_deepCopiesTargetsAndLeavesActualsNull() = runTest {
+        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+
+        val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
+        repo.addExercise(template.id, "bench-press")
+        val templateItemId = database.loggedItemDao().getBySession(template.id).first().id
+        repo.addTargetSet(template.id, templateItemId, reps = 5, loadKg = 100.0)
+
+        assertTrue(
+            repo.observeSessions().first().none { it.id == template.id },
+            "a template must not appear in the history list",
+        )
+
+        val session = repo.instantiateTemplate(template.id)
+
+        assertEquals(false, session.isTemplate)
+        assertEquals(SessionSource.FROM_TEMPLATE, session.source)
+        assertEquals(template.id, session.templateId, "spawned session records its provenance")
+        assertNotEquals(template.id, session.id, "spawned session gets a fresh id")
+        assertTrue(
+            repo.observeSessions().first().any { it.id == session.id },
+            "the spawned (non-template) session shows up in history",
+        )
+        assertTrue(
+            database.outboxDao().getAll().any { it.entityId == session.id },
+            "the spawned session enqueues its own outbox row",
+        )
+
+        val items = database.loggedItemDao().getBySession(session.id)
+        assertEquals(1, items.size)
+        assertNotEquals(templateItemId, items.first().id, "copied logged item gets a fresh id")
+        assertEquals("bench-press", items.first().exerciseId)
+
+        val sets = database.setEntryDao().getForLoggedItem(items.first().id)
+        assertEquals(1, sets.size)
+        assertEquals(5, sets.first().targetReps, "prescription reps copied")
+        assertEquals(100.0, sets.first().targetLoadKg, "prescription load copied")
+        assertNull(sets.first().reps, "actual reps must be null on a fresh instantiation")
+        assertNull(sets.first().loadKg, "actual load must be null on a fresh instantiation")
+    }
+
+    /**
+     * The D2 "cost to accept": copy-on-instantiate means a template edit after spawning must never
+     * leak into an already-spawned session. Guaranteed because the spawned session owns fresh rows.
+     */
+    @Test
+    fun editingTemplateAfterInstantiation_doesNotMutateSpawnedSession() = runTest {
+        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+
+        val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
+        repo.addExercise(template.id, "bench-press")
+        val templateItemId = database.loggedItemDao().getBySession(template.id).first().id
+        repo.addTargetSet(template.id, templateItemId, reps = 5, loadKg = 100.0)
+
+        val session = repo.instantiateTemplate(template.id)
+
+        // Mutate the template AFTER spawning.
+        repo.addTargetSet(template.id, templateItemId, reps = 3, loadKg = 110.0)
+
+        val spawnedItemId = database.loggedItemDao().getBySession(session.id).first().id
+        val spawnedSets = database.setEntryDao().getForLoggedItem(spawnedItemId)
+        assertEquals(1, spawnedSets.size, "spawned session must not see sets added to the template later")
+        assertEquals(5, spawnedSets.first().targetReps)
     }
 }

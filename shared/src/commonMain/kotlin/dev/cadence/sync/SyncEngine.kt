@@ -110,7 +110,18 @@ class SyncEngine(
                 exerciseId = item.exerciseId,
                 orderIndex = item.orderIndex,
                 sets = setEntryDao.getForLoggedItem(item.id).map { set ->
-                    SetDto(set.setNumber, set.reps, set.loadKg, set.timeSec, set.distanceM, set.rpe)
+                    SetDto(
+                        setNumber = set.setNumber,
+                        reps = set.reps,
+                        loadKg = set.loadKg,
+                        timeSec = set.timeSec,
+                        distanceM = set.distanceM,
+                        rpe = set.rpe,
+                        targetReps = set.targetReps,
+                        targetLoadKg = set.targetLoadKg,
+                        targetTimeSec = set.targetTimeSec,
+                        targetDistanceM = set.targetDistanceM,
+                    )
                 },
             )
         }
@@ -120,6 +131,9 @@ class SyncEngine(
             name = session.name,
             type = session.type,
             notes = session.notes,
+            isTemplate = session.isTemplate,
+            source = session.source,
+            templateId = session.templateId,
             updatedAt = session.updatedAt,
             deleted = session.deleted,
             loggedItems = items,
@@ -135,6 +149,9 @@ class SyncEngine(
             name = dto.name,
             type = dto.type,
             notes = dto.notes,
+            isTemplate = dto.isTemplate,
+            source = dto.source,
+            templateId = dto.templateId,
             updatedAt = dto.updatedAt,
             deleted = dto.deleted,
             syncStatus = SyncStatus.SYNCED, // authoritative from server → already synced
@@ -154,6 +171,10 @@ class SyncEngine(
                     timeSec = setDto.timeSec,
                     distanceM = setDto.distanceM,
                     rpe = setDto.rpe,
+                    targetReps = setDto.targetReps,
+                    targetLoadKg = setDto.targetLoadKg,
+                    targetTimeSec = setDto.targetTimeSec,
+                    targetDistanceM = setDto.targetDistanceM,
                 )
             }
             item to sets

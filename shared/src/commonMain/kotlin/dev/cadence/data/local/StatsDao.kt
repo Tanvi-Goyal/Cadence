@@ -30,6 +30,8 @@ interface StatsDao {
         SELECT DISTINCT e.id AS id, e.name AS name
         FROM exercises e
         INNER JOIN logged_items li ON li.exerciseId = e.id
+        INNER JOIN sessions s ON li.sessionId = s.id
+        WHERE s.isTemplate = 0 AND s.deleted = 0
         ORDER BY e.name
         """,
     )
@@ -44,7 +46,7 @@ interface StatsDao {
         INNER JOIN sessions s ON li.sessionId = s.id
         WHERE li.exerciseId = :exerciseId
           AND se.reps IS NOT NULL AND se.loadKg IS NOT NULL
-          AND s.deleted = 0
+          AND s.deleted = 0 AND s.isTemplate = 0
         GROUP BY s.id
         ORDER BY s.startedAt ASC
         """,
