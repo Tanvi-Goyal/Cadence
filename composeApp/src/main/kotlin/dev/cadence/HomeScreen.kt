@@ -1,37 +1,41 @@
 package dev.cadence
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
@@ -43,10 +47,13 @@ import dev.cadence.presentation.HomeUiState
 import dev.cadence.presentation.HomeViewModel
 import dev.cadence.presentation.SyncStatusUi
 import org.koin.compose.viewmodel.koinViewModel
-import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
+import java.text.SimpleDateFormat
 import java.util.Locale
+
+/** Screen-edge gutter for Home; the Figma frame uses a 20dp margin (not the 16dp grid default). */
+private val ScreenGutter = 20.dp
 
 @Composable
 fun HomeScreen(
@@ -65,7 +72,7 @@ fun HomeScreen(
     }
     CadenceTheme {
         Scaffold(
-            containerColor = Background,
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = { CadenceBottomBar(current = Tab.Home.route, onTab = onTab) },
         ) { padding ->
             HomeContent(
@@ -93,264 +100,330 @@ private fun HomeContent(
     onSeeAll: () -> Unit,
     contentPadding: PaddingValues,
 ) {
+    val spacing = MaterialTheme.spacing
     LazyColumn(
-        modifier = Modifier.background(Background),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(
-            start = 20.dp,
-            end = 20.dp,
-            top = contentPadding.calculateTopPadding() + 16.dp,
-            bottom = contentPadding.calculateBottomPadding() + 24.dp,
+            start = ScreenGutter,
+            end = ScreenGutter,
+            top = contentPadding.calculateTopPadding() + spacing.sm,
+            bottom = contentPadding.calculateBottomPadding() + spacing.lg,
         ),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
+        item { HomeHeader(state.syncStatus, state.syncError, onSync, onNewSession) }
+
+        item { SummaryMetrics(state.stats) }
+
+        state.plannedSession?.let { plan ->
+            item { UpNextSection(plan, onStartPlanned) }
+        }
+
+        item { TemplatesSection(onOpenTemplates) }
+
         item {
-            HomeHeader(
-                syncStatus = state.syncStatus,
-                syncError = state.syncError,
-                onSync = onSync,
+            RecentSection(
+                sessions = state.sessions,
+                volumeBySession = state.volumeBySession,
+                onOpenDetail = onOpenDetail,
+                onSeeAll = onSeeAll,
             )
         }
-        state.plannedSession?.let { plan ->
-            item {
-                Spacer(Modifier.height(12.dp))
-                TodayCard(plan = plan, onStart = onStartPlanned)
-            }
-        }
-        item {
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                HomeAction("+ New session", onClick = onNewSession, modifier = Modifier.weight(1f))
-                HomeAction("Templates", onClick = onOpenTemplates, modifier = Modifier.weight(1f))
-            }
-        }
-        item {
-            Spacer(Modifier.height(4.dp))
-            StatsRow(stats = state.stats)
-        }
-        item {
-            Spacer(Modifier.height(12.dp))
-            SectionHeader(onSeeAll = onSeeAll)
-        }
-        if (state.sessions.isEmpty()) {
-            item {
-                Text(
-                    "No sessions yet. Start your first one.",
-                    color = TextSecondary,
-                    fontSize = 14.sp,
-                )
-            }
-        } else {
-            items(state.sessions.take(5), key = { it.id }) { session ->
-                SessionRow(
-                    session,
-                    volumeKg = state.volumeBySession[session.id] ?: 0.0,
-                    onClick = { onOpenDetail(session.id) },
-                )
-            }
-        }
+
+        item { WeeklyChallengeCard() }
     }
 }
 
 @Composable
-private fun HomeHeader(syncStatus: SyncStatusUi, syncError: String?, onSync: () -> Unit) {
+private fun HomeHeader(
+    syncStatus: SyncStatusUi,
+    syncError: String?,
+    onSync: () -> Unit,
+    onNewSession: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
-                Text(
-                    todayLabel(),
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
+            Text(
+                text = "Home",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
+                HeaderIconButton(
+                    icon = CadenceIcons.Sync,
+                    contentDescription = "Sync",
+                    tint = if (syncStatus == SyncStatusUi.Error) colors.error else colors.primary,
+                    enabled = syncStatus != SyncStatusUi.Syncing,
+                    onClick = onSync,
                 )
-                Text("Hey, Tanvi", color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SyncIndicator(syncStatus = syncStatus, onSync = onSync)
-                Spacer(Modifier.size(12.dp))
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Surface),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("T", color = Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
+                HeaderIconButton(
+                    icon = CadenceIcons.Add,
+                    contentDescription = "New session",
+                    tint = colors.primary,
+                    onClick = onNewSession,
+                )
             }
         }
         if (syncStatus == SyncStatusUi.Error && syncError != null) {
-            Spacer(Modifier.height(8.dp))
             Text(
-                "Sync failed — $syncError",
-                color = Danger,
-                fontSize = 12.sp,
+                text = "Sync failed — $syncError",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.error,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = MaterialTheme.spacing.sm),
             )
         }
     }
 }
 
-/** Sync affordance (PRD's "last synced" indicator): tap to sync, reflects current state. */
 @Composable
-private fun SyncIndicator(syncStatus: SyncStatusUi, onSync: () -> Unit) {
-    val label = when (syncStatus) {
-        SyncStatusUi.Idle -> "Sync"
-        SyncStatusUi.Syncing -> "Syncing…"
-        SyncStatusUi.Error -> "Retry"
-    }
-    Text(
-        text = label,
-        color = if (syncStatus == SyncStatusUi.Error) Danger else TextSecondary,
-        fontSize = 13.sp,
-        fontWeight = FontWeight.Medium,
+private fun HeaderIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    tint: Color,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(Surface)
-            .clickable(enabled = syncStatus != SyncStatusUi.Syncing, onClick = onSync)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-    )
-}
-
-/** The Figma "Today" card, backed by a real (seeded) planned session. */
-@Composable
-private fun TodayCard(plan: PlannedSession, onStart: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(Surface)
-            .padding(20.dp),
+            .size(44.dp)
+            .clip(CircleShape)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                "TODAY",
-                color = OnAccent,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Accent)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-            )
-            Text("~${plan.targetDurationMin} min", color = TextSecondary, fontSize = 13.sp)
-        }
-        Spacer(Modifier.height(16.dp))
-        Text(plan.name, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(4.dp))
-        Text(plan.focus, color = TextSecondary, fontSize = 14.sp)
-        Spacer(Modifier.height(16.dp))
-        Button(
-            onClick = onStart,
-            colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-        ) {
-            Text("Start session", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        }
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
     }
 }
 
 @Composable
-private fun HomeAction(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Text(
-        label,
-        color = Accent,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Medium,
-        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Surface)
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-    )
-}
-
-@Composable
-private fun StatsRow(stats: HomeStats) {
+private fun SummaryMetrics(stats: HomeStats) {
     val unit = LocalWeightUnit.current
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
         StatTile(value = stats.total.toString(), label = "Sessions", modifier = Modifier.weight(1f))
-        StatTile(value = formatVolume(stats.totalVolumeKg, unit), label = "Volume ${Units.label(unit)}", modifier = Modifier.weight(1f))
         StatTile(value = stats.dayStreak.toString(), label = "Day streak", modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
-            .padding(vertical = 16.dp, horizontal = 12.dp),
-    ) {
-        Text(value, color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(2.dp))
-        Text(label, color = TextSecondary, fontSize = 12.sp)
-    }
-}
-
-@Composable
-private fun SectionHeader(onSeeAll: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text("Recent", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        Text(
-            "See all",
-            color = Accent,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onSeeAll).padding(4.dp),
+        StatTile(
+            value = formatVolume(stats.totalVolumeKg, unit),
+            label = "Volume (${Units.label(unit)})",
+            modifier = Modifier.weight(1f),
         )
     }
 }
 
 @Composable
+private fun UpNextSection(plan: PlannedSession, onStart: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
+        SectionLabel("Up next")
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.medium)
+                .background(colors.surfaceContainerHighest)
+                .clickable(onClick = onStart)
+                .padding(MaterialTheme.spacing.lg),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+                ) {
+                    Text(
+                        text = plan.name,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.onSurface,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+                    ) {
+                        Text(
+                            text = plan.focus,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant,
+                        )
+                        MetaDot()
+                        Text(
+                            text = "${plan.targetDurationMin} min",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+                AccentPill(text = typeLabel(plan.type), icon = CadenceIcons.Bolt)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplatesSection(onOpenTemplates: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {
+        SectionLabel("Templates")
+        // NOTE: HomeViewModel does not expose quick-start templates yet; this is a single
+        // placeholder chip routing to the full Templates screen. Wiring real template chips here
+        // needs a ViewModel/data change (out of scope for the theme + Home slice).
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+        ) {
+            CadenceChip(
+                label = "Browse templates",
+                icon = CadenceIcons.Dumbbell,
+                onClick = onOpenTemplates,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecentSection(
+    sessions: List<Session>,
+    volumeBySession: Map<String, Double>,
+    onOpenDetail: (String) -> Unit,
+    onSeeAll: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SectionLabel("Recent")
+            Text(
+                text = "See all",
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.primary,
+                modifier = Modifier
+                    .clip(MaterialTheme.shapes.small)
+                    .clickable(onClick = onSeeAll)
+                    .padding(horizontal = MaterialTheme.spacing.xs, vertical = 2.dp),
+            )
+        }
+        if (sessions.isEmpty()) {
+            EmptyHint("No sessions yet. Start your first one.", Modifier.fillMaxWidth())
+        } else {
+            // Grouped card: rows sit on the container surface, separated by 1dp gaps that reveal the
+            // fainter backing color (matches the Figma "Overlay" grouping).
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(colors.outlineVariant.copy(alpha = 0.2f)),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
+            ) {
+                sessions.take(4).forEach { session ->
+                    SessionRow(
+                        session = session,
+                        volumeKg = volumeBySession[session.id] ?: 0.0,
+                        onClick = { onOpenDetail(session.id) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 internal fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
+            .background(colors.surfaceContainer)
             .clickable(onClick = onClick)
-            .padding(16.dp),
+            .padding(MaterialTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(SurfaceHi),
-            contentAlignment = Alignment.Center,
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
         ) {
-            Text(typeBadge(session.type), color = Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.size(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(session.name, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            Text(relativeDate(session.startedAt), color = TextSecondary, fontSize = 13.sp)
+            IconMedallion(icon = typeIcon(session.type))
+            Column {
+                Text(
+                    text = session.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = relativeDate(session.startedAt),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant,
+                )
+            }
         }
         if (volumeKg > 0.0) {
             val unit = LocalWeightUnit.current
             Text(
-                "${formatVolume(volumeKg, unit)} ${Units.label(unit)}",
-                color = TextSecondary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
+                text = "${formatVolume(volumeKg, unit)} ${Units.label(unit)}",
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.onSurface,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeeklyChallengeCard() {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(192.dp)
+            .clip(MaterialTheme.shapes.large),
+    ) {
+        Image(
+            painter = painterResource(R.drawable.hero_weekly_challenge),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, colors.background),
+                    ),
+                ),
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(MaterialTheme.spacing.md),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+        ) {
+            Text(
+                text = "Weekly Challenge",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = colors.primary,
+            )
+            Text(
+                text = "Full Body Capacity",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
             )
         }
     }
@@ -362,6 +435,15 @@ internal fun formatVolume(kg: Double, unit: WeightUnit): String {
     return if (v >= 1000) "${(v / 100) / 10.0}k" else v.toString()
 }
 
+/** Readable session-type label (AccentPill uppercases it). */
+internal fun typeLabel(type: String): String = when (type) {
+    SessionType.CONDITIONING -> "Conditioning"
+    SessionType.HYROX -> "Hyrox"
+    SessionType.MIXED -> "Mixed"
+    else -> "Strength"
+}
+
+/** Single-letter session-type badge (still used by TemplatesScreen). */
 internal fun typeBadge(type: String): String = when (type) {
     SessionType.CONDITIONING -> "C"
     SessionType.HYROX -> "H"
@@ -369,9 +451,13 @@ internal fun typeBadge(type: String): String = when (type) {
     else -> "S"
 }
 
-/** Header label like "MONDAY · 12 JUL", from the device clock. */
-private fun todayLabel(): String =
-    SimpleDateFormat("EEEE · d MMM", Locale.getDefault()).format(Date()).uppercase(Locale.getDefault())
+/** Session-type medallion icon. */
+internal fun typeIcon(type: String): ImageVector = when (type) {
+    SessionType.CONDITIONING -> CadenceIcons.Run
+    SessionType.HYROX -> CadenceIcons.Lightning
+    SessionType.MIXED -> CadenceIcons.Bolt
+    else -> CadenceIcons.Dumbbell
+}
 
 /** "Today" / "Yesterday" / "Sun, 12 Jul" — day-relative, computed in the Android UI layer. */
 internal fun relativeDate(epochMillis: Long): String {
@@ -395,7 +481,7 @@ private fun HomeContentPreview() {
         HomeContent(
             state = HomeUiState(
                 plannedSession = PlannedSession("1", "Upper Strength", SessionType.STRENGTH, 55, "Push focus"),
-                stats = HomeStats(total = 4, dayStreak = 9, totalVolumeKg = 12400.0),
+                stats = HomeStats(total = 20, dayStreak = 9, totalVolumeKg = 26700.0),
             ),
             onStartPlanned = {},
             onNewSession = {},
