@@ -6,6 +6,7 @@ import dev.cadence.data.local.ExerciseRef
 import dev.cadence.data.local.LoggedItemWithSets
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
+import dev.cadence.data.local.SetEntry
 import dev.cadence.data.local.VolumePoint
 import kotlinx.coroutines.flow.Flow
 
@@ -94,6 +95,13 @@ interface SessionRepository {
         timeSec: Int? = null,
         distanceM: Int? = null,
     )
+
+    /**
+     * Persists an edited [set] (typically actuals filled in against a ghost target) and touches the
+     * parent [sessionId] so the whole aggregate re-syncs — both in one transaction. The caller owns
+     * the copy: pass `set.copy(reps = …, loadKg = …)` with the new values.
+     */
+    suspend fun updateSet(sessionId: String, set: SetEntry)
 
     /**
      * Instantiates a template into a new, real session (D2's core flow). Deep-copies the whole tree:

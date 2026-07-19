@@ -1,10 +1,8 @@
 package dev.cadence
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,8 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,29 +26,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.cadence.data.local.SessionType
-import dev.cadence.presentation.NewSessionViewModel
+import dev.cadence.presentation.TemplatesViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
-internal data class TypeOption(val type: String, val badge: String, val title: String, val subtitle: String)
-
-internal val typeOptions = listOf(
-    TypeOption(SessionType.STRENGTH, "S", "Strength", "Sets · reps · load"),
-    TypeOption(SessionType.CONDITIONING, "C", "Conditioning", "Time · distance"),
-    TypeOption(SessionType.HYROX, "H", "Hyrox", "8 stations + runs"),
-    TypeOption(SessionType.MIXED, "M", "Mixed", "Strength + cardio"),
-)
-
+/**
+ * Create a new template: pick a focus (reusing the New Session type grid) and give it a name, then
+ * hand off to the builder to add exercises + target sets.
+ */
 @Composable
-fun NewSessionScreen(
+fun NewTemplateScreen(
     onBack: () -> Unit,
     onCreated: (String) -> Unit,
-    viewModel: NewSessionViewModel = koinViewModel(),
+    viewModel: TemplatesViewModel = koinViewModel(),
 ) {
+    var name by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf(SessionType.STRENGTH) }
     CadenceTheme {
         Scaffold(containerColor = Background) { padding ->
@@ -68,14 +63,29 @@ fun NewSessionScreen(
                     )
                     Spacer(Modifier.size(12.dp))
                     Column {
-                        Text("New session", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text("Pick a focus to start", color = TextSecondary, fontSize = 13.sp)
+                        Text("New template", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text("A plan you can start any day", color = TextSecondary, fontSize = 13.sp)
                     }
                 }
                 Spacer(Modifier.height(24.dp))
+                Text("NAME", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    placeholder = { Text("e.g. Upper A", color = TextSecondary) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Surface,
+                        unfocusedContainerColor = Surface,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                    ),
+                )
+                Spacer(Modifier.height(24.dp))
                 Text("SESSION TYPE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(12.dp))
-                // 2×2 grid of type cards.
                 typeOptions.chunked(2).forEach { rowItems ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                         rowItems.forEach { option ->
@@ -90,40 +100,26 @@ fun NewSessionScreen(
                     Spacer(Modifier.height(12.dp))
                 }
                 Spacer(Modifier.weight(1f))
+                val trimmed = name.trim()
                 Button(
-                    onClick = { viewModel.create(selected, onCreated) },
+                    onClick = {
+                        val finalName = trimmed.ifEmpty { defaultTemplateName(selected) }
+                        viewModel.createTemplate(finalName, selected, onCreated)
+                    },
                     colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                 ) {
-                    Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Create template", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
     }
 }
 
-@Composable
-internal fun TypeCard(option: TypeOption, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
-            .border(2.dp, if (selected) Accent else Color.Transparent, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(16.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(if (selected) Accent else SurfaceHi),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(option.badge, color = if (selected) OnAccent else Accent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(option.title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Text(option.subtitle, color = TextSecondary, fontSize = 12.sp)
-    }
+private fun defaultTemplateName(type: String): String = when (type) {
+    SessionType.CONDITIONING -> "Conditioning template"
+    SessionType.HYROX -> "Hyrox template"
+    SessionType.MIXED -> "Mixed template"
+    else -> "Strength template"
 }

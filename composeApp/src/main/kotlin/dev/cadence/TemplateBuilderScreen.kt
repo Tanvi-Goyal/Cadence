@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,27 +35,30 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.ExerciseMetric
+import dev.cadence.data.local.SetEntry
 import dev.cadence.domain.Units
 import dev.cadence.domain.WeightUnit
-import dev.cadence.data.local.SetEntry
 import dev.cadence.presentation.LoggedItemUi
-import dev.cadence.presentation.LogWorkoutViewModel
+import dev.cadence.presentation.TemplateBuilderViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+/**
+ * Builds a template: add exercises (via the shared picker) and **target** sets (the prescription).
+ * Structurally mirrors [LogWorkoutScreen] but every set here is a plan, so it writes `target*` and
+ * renders those values. Actuals are filled in later, once the template is started.
+ */
 @Composable
-fun LogWorkoutScreen(
-    sessionId: String,
+fun TemplateBuilderScreen(
+    templateId: String,
     pickedExerciseId: String?,
     onExerciseConsumed: () -> Unit,
     onBack: () -> Unit,
     onAddExercise: () -> Unit,
-    onFinish: () -> Unit,
-    viewModel: LogWorkoutViewModel = koinViewModel { parametersOf(sessionId) },
+    onDone: () -> Unit,
+    viewModel: TemplateBuilderViewModel = koinViewModel { parametersOf(templateId) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    // An exercise picked in the ExercisePicker is added here — in THIS screen's (alive) VM scope,
-    // so the write can't be cancelled by the picker being popped off the back stack.
     LaunchedEffect(pickedExerciseId) {
         if (pickedExerciseId != null) {
             viewModel.addExercise(pickedExerciseId)
@@ -66,18 +70,18 @@ fun LogWorkoutScreen(
             containerColor = Background,
             bottomBar = {
                 Button(
-                    onClick = onFinish,
+                    onClick = onDone,
                     colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(20.dp).height(56.dp),
                 ) {
-                    Text("Finish session", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Done", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 }
             },
         ) { padding ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize().background(Background),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                contentPadding = PaddingValues(
                     start = 20.dp,
                     end = 20.dp,
                     top = padding.calculateTopPadding() + 12.dp,
@@ -94,21 +98,22 @@ fun LogWorkoutScreen(
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                         )
                         Spacer(Modifier.size(12.dp))
-                        Text(
-                            state.sessionName.ifEmpty { "Session" },
-                            color = TextPrimary,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
+                        Column {
+                            Text(
+                                state.templateName.ifEmpty { "Template" },
+                                color = TextPrimary,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text("Prescription — targets to hit", color = TextSecondary, fontSize = 13.sp)
+                        }
                     }
                 }
                 items(state.items, key = { it.loggedItemId }) { item ->
-                    ExerciseCard(
+                    TargetExerciseCard(
                         item = item,
-                        onAddStrengthSet = { reps, kg -> viewModel.addStrengthSet(item.loggedItemId, reps, kg) },
-                        onAddCardioSet = { sec, m -> viewModel.addCardioSet(item.loggedItemId, sec, m) },
-                        onUpdateStrengthActual = { set, reps, kg -> viewModel.updateStrengthActual(set, reps, kg) },
-                        onUpdateCardioActual = { set, sec, m -> viewModel.updateCardioActual(set, sec, m) },
+                        onAddStrengthTarget = { reps, kg -> viewModel.addTargetStrengthSet(item.loggedItemId, reps, kg) },
+                        onAddCardioTarget = { sec, m -> viewModel.addTargetCardioSet(item.loggedItemId, sec, m) },
                     )
                 }
                 item {
@@ -130,12 +135,10 @@ fun LogWorkoutScreen(
 }
 
 @Composable
-private fun ExerciseCard(
+private fun TargetExerciseCard(
     item: LoggedItemUi,
-    onAddStrengthSet: (Int, Double) -> Unit,
-    onAddCardioSet: (Int, Int) -> Unit,
-    onUpdateStrengthActual: (SetEntry, Int, Double) -> Unit,
-    onUpdateCardioActual: (SetEntry, Int, Int) -> Unit,
+    onAddStrengthTarget: (Int, Double) -> Unit,
+    onAddCardioTarget: (Int, Int) -> Unit,
 ) {
     val isStrength = item.metric == ExerciseMetric.WEIGHT_REPS
     Column(
@@ -146,100 +149,30 @@ private fun ExerciseCard(
             .padding(16.dp),
     ) {
         Text(item.exerciseName, color = TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-        Text("${item.sets.size} sets", color = TextSecondary, fontSize = 12.sp)
+        Text("${item.sets.size} target sets", color = TextSecondary, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
-        item.sets.forEach { set ->
-            SetRow(
-                set = set,
-                isStrength = isStrength,
-                onUpdateStrengthActual = onUpdateStrengthActual,
-                onUpdateCardioActual = onUpdateCardioActual,
-            )
-        }
+        item.sets.forEach { set -> TargetRow(set, isStrength) }
         Spacer(Modifier.height(8.dp))
-        AddSetRow(isStrength = isStrength, onAddStrengthSet = onAddStrengthSet, onAddCardioSet = onAddCardioSet)
+        AddTargetRow(isStrength = isStrength, onAddStrengthTarget = onAddStrengthTarget, onAddCardioTarget = onAddCardioTarget)
     }
 }
 
-/**
- * One set. A set that already has an actual renders as text. A set with only a target (a ghost,
- * fresh from instantiating a template) renders as an editable row **prefilled with the target** — so
- * one tap on ✓ logs it as prescribed, and you only change what varied.
- */
 @Composable
-private fun SetRow(
-    set: SetEntry,
-    isStrength: Boolean,
-    onUpdateStrengthActual: (SetEntry, Int, Double) -> Unit,
-    onUpdateCardioActual: (SetEntry, Int, Int) -> Unit,
-) {
+private fun TargetRow(set: SetEntry, isStrength: Boolean) {
     val unit = LocalWeightUnit.current
-    val hasActual = if (isStrength) set.reps != null else set.timeSec != null
-    val hasTarget = if (isStrength) set.targetReps != null else set.targetTimeSec != null
-
-    if (hasActual || !hasTarget) {
-        val text = if (isStrength) {
-            "Set ${set.setNumber}:  ${set.reps ?: 0} reps × ${formatKg(set.loadKg, unit)} ${Units.label(unit)}"
-        } else {
-            "Set ${set.setNumber}:  ${set.timeSec ?: 0}s · ${set.distanceM ?: 0} m"
-        }
-        Text(text, color = TextPrimary, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
-        return
+    val text = if (isStrength) {
+        "Set ${set.setNumber}:  ${set.targetReps ?: 0} reps × ${formatTargetKg(set.targetLoadKg, unit)} ${Units.label(unit)}"
+    } else {
+        "Set ${set.setNumber}:  ${set.targetTimeSec ?: 0}s · ${set.targetDistanceM ?: 0} m"
     }
-
-    // Ghost target → editable, prefilled with the prescribed values (in display units).
-    val prefillFirst = if (isStrength) (set.targetReps?.toString() ?: "")
-    else (set.targetTimeSec?.toString() ?: "")
-    val prefillSecond = if (isStrength) formatKgPlain(set.targetLoadKg, unit)
-    else (set.targetDistanceM?.toString() ?: "")
-    // Keyed to the set id so each row owns stable input state and one row's edits don't disturb others.
-    var first by remember(set.id) { mutableStateOf(prefillFirst) }
-    var second by remember(set.id) { mutableStateOf(prefillSecond) }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Set ${set.setNumber}", color = TextSecondary, fontSize = 13.sp)
-        NumberField(
-            value = first,
-            onValueChange = { first = it },
-            placeholder = if (isStrength) "reps" else "sec",
-            modifier = Modifier.weight(1f),
-        )
-        NumberField(
-            value = second,
-            onValueChange = { second = it },
-            placeholder = if (isStrength) Units.label(unit) else "m",
-            modifier = Modifier.weight(1f),
-        )
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(Accent)
-                .clickable {
-                    if (isStrength) {
-                        val reps = first.toIntOrNull()
-                        val entered = second.toDoubleOrNull()
-                        if (reps != null && entered != null) {
-                            onUpdateStrengthActual(set, reps, Units.toKg(entered, unit))
-                        }
-                    } else {
-                        val sec = first.toIntOrNull()
-                        val m = second.toIntOrNull()
-                        if (sec != null && m != null) {
-                            onUpdateCardioActual(set, sec, m)
-                        }
-                    }
-                }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        ) {
-            Text("✓", color = OnAccent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-        }
-    }
+    Text(text, color = TextPrimary, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
 }
 
 @Composable
-private fun AddSetRow(
+private fun AddTargetRow(
     isStrength: Boolean,
-    onAddStrengthSet: (Int, Double) -> Unit,
-    onAddCardioSet: (Int, Int) -> Unit,
+    onAddStrengthTarget: (Int, Double) -> Unit,
+    onAddCardioTarget: (Int, Int) -> Unit,
 ) {
     val unit = LocalWeightUnit.current
     var first by remember { mutableStateOf("") }
@@ -266,14 +199,13 @@ private fun AddSetRow(
                         val reps = first.toIntOrNull()
                         val entered = second.toDoubleOrNull()
                         if (reps != null && entered != null) {
-                            // Input is in the display unit; store canonical kg.
-                            onAddStrengthSet(reps, Units.toKg(entered, unit)); first = ""; second = ""
+                            onAddStrengthTarget(reps, Units.toKg(entered, unit)); first = ""; second = ""
                         }
                     } else {
                         val sec = first.toIntOrNull()
                         val m = second.toIntOrNull()
                         if (sec != null && m != null) {
-                            onAddCardioSet(sec, m); first = ""; second = ""
+                            onAddCardioTarget(sec, m); first = ""; second = ""
                         }
                     }
                 }
@@ -284,12 +216,8 @@ private fun AddSetRow(
     }
 }
 
-private fun formatKg(kg: Double?, unit: WeightUnit): String {
+private fun formatTargetKg(kg: Double?, unit: WeightUnit): String {
     if (kg == null) return "0"
     val v = Units.toDisplay(kg, unit)
     return if (v % 1.0 == 0.0) v.toInt().toString() else ((v * 10).toInt() / 10.0).toString()
 }
-
-/** Like [formatKg] but blank for null — used to prefill the ghost-target weight field. */
-private fun formatKgPlain(kg: Double?, unit: WeightUnit): String =
-    if (kg == null) "" else formatKg(kg, unit)

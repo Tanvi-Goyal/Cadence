@@ -166,6 +166,15 @@ class SessionRepositoryImpl(
         }
     }
 
+    override suspend fun updateSet(sessionId: String, set: SetEntry) {
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                setEntries.update(set)
+                touchSession(sessionId)
+            }
+        }
+    }
+
     @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
     private suspend fun insertSession(
         name: String,
