@@ -81,4 +81,18 @@ class LogWorkoutViewModel(
             repository.addSet(sessionId, loggedItemId, timeSec = timeSec, distanceM = distanceM)
         }
     }
+
+    /** Fill in a set's actual performance against its (possibly ghost) target — strength. */
+    fun updateStrengthActual(set: SetEntry, reps: Int, loadKg: Double) {
+        viewModelScope.launch {
+            repository.updateSet(sessionId, set.copy(reps = reps, loadKg = loadKg))
+        }
+    }
+
+    /** Fill in a set's actual performance against its (possibly ghost) target — conditioning. */
+    fun updateCardioActual(set: SetEntry, timeSec: Int, distanceM: Int) {
+        viewModelScope.launch {
+            repository.updateSet(sessionId, set.copy(timeSec = timeSec, distanceM = distanceM))
+        }
+    }
 }

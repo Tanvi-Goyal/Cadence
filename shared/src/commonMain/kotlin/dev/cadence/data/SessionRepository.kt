@@ -6,6 +6,7 @@ import dev.cadence.data.local.ExerciseRef
 import dev.cadence.data.local.LoggedItemWithSets
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
+import dev.cadence.data.local.SetEntry
 import dev.cadence.data.local.VolumePoint
 import kotlinx.coroutines.flow.Flow
 
@@ -15,8 +16,11 @@ import kotlinx.coroutines.flow.Flow
  */
 interface SessionRepository {
 
-    /** The single source of truth for the UI: a reactive stream of non-deleted sessions. */
+    /** The single source of truth for the UI: a reactive stream of non-deleted, non-template sessions. */
     fun observeSessions(): Flow<List<Session>>
+
+    /** Reactive stream of the user's templates (D2) — for the template picker. */
+    fun observeTemplates(): Flow<List<Session>>
 
     /** The current planned/next session shown on the Home "Today" card (null if none). */
     fun observePlannedSession(): Flow<PlannedSession?>
@@ -56,6 +60,13 @@ interface SessionRepository {
     /** Creates a blank session, persisting it and enqueuing its sync mutation atomically. */
     suspend fun createSession(type: String): Session
 
+    /**
+     * Creates an empty template (a session with `isTemplate = true`), atomically with its outbox
+     * row. Build it up with [addExercise] + [addTargetSet], then spawn sessions via
+     * [instantiateTemplate].
+     */
+    suspend fun createTemplate(name: String, type: String): Session
+
     /** Starts a real session from a plan (carries its name/type), atomically with its outbox row. */
     suspend fun startPlannedSession(plan: PlannedSession): Session
 
@@ -71,6 +82,34 @@ interface SessionRepository {
         timeSec: Int? = null,
         distanceM: Int? = null,
     )
+
+    /**
+     * Appends a **prescription** set to a logged item — writes the `target*` columns, leaving
+     * actuals null. Used when building a template. Mirrors [addSet] and touches the parent session.
+     */
+    suspend fun addTargetSet(
+        sessionId: String,
+        loggedItemId: String,
+        reps: Int? = null,
+        loadKg: Double? = null,
+        timeSec: Int? = null,
+        distanceM: Int? = null,
+    )
+
+    /**
+     * Persists an edited [set] (typically actuals filled in against a ghost target) and touches the
+     * parent [sessionId] so the whole aggregate re-syncs — both in one transaction. The caller owns
+     * the copy: pass `set.copy(reps = …, loadKg = …)` with the new values.
+     */
+    suspend fun updateSet(sessionId: String, set: SetEntry)
+
+    /**
+     * Instantiates a template into a new, real session (D2's core flow). Deep-copies the whole tree:
+     * each set's targets are copied and its actuals left null (so the UI shows ghost values), the new
+     * session records [Session.templateId] provenance with `source = FROM_TEMPLATE`. Copy-on-
+     * instantiate — later edits to the template never touch sessions already spawned from it.
+     */
+    suspend fun instantiateTemplate(templateId: String): Session
 
     /** Inserts a sensible default plan + the exercise catalog if absent. */
     suspend fun ensureSeeded()

@@ -21,6 +21,8 @@ import dev.cadence.presentation.NewSessionViewModel
 import dev.cadence.presentation.PreferencesViewModel
 import dev.cadence.presentation.SessionDetailViewModel
 import dev.cadence.presentation.StatsViewModel
+import dev.cadence.presentation.TemplateBuilderViewModel
+import dev.cadence.presentation.TemplatesViewModel
 import dev.cadence.sync.SyncEngine
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
@@ -64,10 +66,12 @@ val viewModelModule = module {
     viewModelOf(::HistoryViewModel)
     viewModelOf(::StatsViewModel)
     viewModelOf(::PreferencesViewModel)
-    // LogWorkout + SessionDetail need a runtime sessionId → parameterized factories.
+    viewModelOf(::TemplatesViewModel)
+    // LogWorkout + SessionDetail + TemplateBuilder need a runtime id → parameterized factories.
     viewModel { params -> LogWorkoutViewModel(get(), params.get()) }
     viewModel { params -> SessionDetailViewModel(get(), params.get()) }
     viewModel { params -> ExerciseDetailViewModel(get(), get(), params.get()) }
+    viewModel { params -> TemplateBuilderViewModel(get(), params.get()) }
 }
 
 /**

@@ -52,6 +52,7 @@ import java.util.Locale
 fun HomeScreen(
     onOpenSession: (String) -> Unit,
     onNewSession: () -> Unit,
+    onOpenTemplates: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
     onTab: (String) -> Unit,
@@ -71,6 +72,7 @@ fun HomeScreen(
                 state = state,
                 onStartPlanned = viewModel::onStartPlannedSession,
                 onNewSession = onNewSession,
+                onOpenTemplates = onOpenTemplates,
                 onSync = viewModel::onSyncClick,
                 onOpenDetail = onOpenDetail,
                 onSeeAll = onSeeAll,
@@ -85,6 +87,7 @@ private fun HomeContent(
     state: HomeUiState,
     onStartPlanned: () -> Unit,
     onNewSession: () -> Unit,
+    onOpenTemplates: () -> Unit,
     onSync: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
@@ -115,18 +118,10 @@ private fun HomeContent(
         }
         item {
             Spacer(Modifier.height(8.dp))
-            Text(
-                "+ New session",
-                color = Accent,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onNewSession)
-                    .padding(vertical = 12.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                HomeAction("+ New session", onClick = onNewSession, modifier = Modifier.weight(1f))
+                HomeAction("Templates", onClick = onOpenTemplates, modifier = Modifier.weight(1f))
+            }
         }
         item {
             Spacer(Modifier.height(4.dp))
@@ -267,6 +262,22 @@ private fun TodayCard(plan: PlannedSession, onStart: () -> Unit) {
 }
 
 @Composable
+private fun HomeAction(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Text(
+        label,
+        color = Accent,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Medium,
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(Surface)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+    )
+}
+
+@Composable
 private fun StatsRow(stats: HomeStats) {
     val unit = LocalWeightUnit.current
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -388,6 +399,7 @@ private fun HomeContentPreview() {
             ),
             onStartPlanned = {},
             onNewSession = {},
+            onOpenTemplates = {},
             onSync = {},
             onOpenDetail = {},
             onSeeAll = {},

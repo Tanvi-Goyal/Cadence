@@ -14,6 +14,7 @@ import dev.cadence.data.local.LoggedItemWithSets
 import dev.cadence.data.local.OutboxEntry
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
+import dev.cadence.data.local.SessionSource
 import dev.cadence.data.local.SessionType
 import dev.cadence.data.local.SetEntry
 import dev.cadence.data.local.SyncStatus
@@ -47,6 +48,8 @@ class SessionRepositoryImpl(
     private val plans get() = database.plannedSessionDao()
 
     override fun observeSessions(): Flow<List<Session>> = sessions.observeAll()
+
+    override fun observeTemplates(): Flow<List<Session>> = sessions.observeTemplates()
 
     override fun observePlannedSession(): Flow<PlannedSession?> = plans.observeCurrent()
 
@@ -85,6 +88,9 @@ class SessionRepositoryImpl(
 
     override suspend fun createSession(type: String): Session =
         insertSession(name = displayName(type), type = type)
+
+    override suspend fun createTemplate(name: String, type: String): Session =
+        insertSession(name = name, type = type, isTemplate = true, source = SessionSource.MANUAL)
 
     override suspend fun startPlannedSession(plan: PlannedSession): Session =
         insertSession(name = plan.name, type = plan.type)
@@ -134,13 +140,58 @@ class SessionRepositoryImpl(
     }
 
     @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
-    private suspend fun insertSession(name: String, type: String): Session {
+    override suspend fun addTargetSet(
+        sessionId: String,
+        loggedItemId: String,
+        reps: Int?,
+        loadKg: Double?,
+        timeSec: Int?,
+        distanceM: Int?,
+    ) {
+        val nextNumber = setEntries.getForLoggedItem(loggedItemId).size + 1
+        val set = SetEntry(
+            id = Uuid.random().toString(),
+            loggedItemId = loggedItemId,
+            setNumber = nextNumber,
+            targetReps = reps,
+            targetLoadKg = loadKg,
+            targetTimeSec = timeSec,
+            targetDistanceM = distanceM,
+        )
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                setEntries.insert(set)
+                touchSession(sessionId)
+            }
+        }
+    }
+
+    override suspend fun updateSet(sessionId: String, set: SetEntry) {
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                setEntries.update(set)
+                touchSession(sessionId)
+            }
+        }
+    }
+
+    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
+    private suspend fun insertSession(
+        name: String,
+        type: String,
+        isTemplate: Boolean = false,
+        source: String = SessionSource.MANUAL,
+        templateId: String? = null,
+    ): Session {
         val now = Clock.System.now().toEpochMilliseconds()
         val session = Session(
             id = Uuid.random().toString(),
             startedAt = now,
             name = name,
             type = type,
+            isTemplate = isTemplate,
+            source = source,
+            templateId = templateId,
             updatedAt = now,
         )
         database.useWriterConnection { connection ->
@@ -150,6 +201,62 @@ class SessionRepositoryImpl(
             }
         }
         return session
+    }
+
+    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
+    override suspend fun instantiateTemplate(templateId: String): Session {
+        val template = sessions.getById(templateId)
+            ?: throw IllegalArgumentException("No template with id $templateId")
+        require(template.isTemplate) { "Session $templateId is not a template" }
+
+        val now = Clock.System.now().toEpochMilliseconds()
+        val newSession = Session(
+            id = Uuid.random().toString(),
+            startedAt = now,
+            name = template.name,
+            type = template.type,
+            notes = template.notes,
+            isTemplate = false,
+            source = SessionSource.FROM_TEMPLATE,
+            templateId = templateId, // provenance — this session was spawned from that template
+            updatedAt = now,
+        )
+
+        // Deep-copy the tree with FRESH ids, built outside the write transaction so the writer lock
+        // is held only for inserts. Each set's targets are carried over; actuals stay null → the UI
+        // shows the prescription as ghost values until the user logs what actually happened.
+        val itemsWithSets = loggedItems.getBySession(templateId).map { item ->
+            val newItem = LoggedItem(
+                id = Uuid.random().toString(),
+                sessionId = newSession.id,
+                exerciseId = item.exerciseId,
+                orderIndex = item.orderIndex,
+            )
+            val newSets = setEntries.getForLoggedItem(item.id).map { set ->
+                SetEntry(
+                    id = Uuid.random().toString(),
+                    loggedItemId = newItem.id,
+                    setNumber = set.setNumber,
+                    targetReps = set.targetReps,
+                    targetLoadKg = set.targetLoadKg,
+                    targetTimeSec = set.targetTimeSec,
+                    targetDistanceM = set.targetDistanceM,
+                )
+            }
+            newItem to newSets
+        }
+
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                sessions.insert(newSession)
+                itemsWithSets.forEach { (item, sets) ->
+                    loggedItems.insert(item)
+                    sets.forEach { setEntries.insert(it) }
+                }
+                enqueueOutbox(newSession.id, now)
+            }
+        }
+        return newSession
     }
 
     /** Marks a session dirty (new updatedAt + PENDING) and refreshes its single outbox row. */
