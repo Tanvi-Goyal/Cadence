@@ -40,6 +40,14 @@ data class SetEntry(
     val targetLoadKg: Double? = null,
     val targetTimeSec: Int? = null,
     val targetDistanceM: Int? = null,
+    // v8 additions (A3), appended to keep any positional constructors valid. [calories]/
+    // [targetCalories] serve erg + Hyrox capture; the envelope makes the set independently syncable.
+    // Values are placeholders until A4 wires the clock seam / A6 backfills legacy rows.
+    val calories: Int? = null,
+    val targetCalories: Int? = null,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val deletedAt: Long? = null,
 )
 
 /** Per-session training volume (Σ reps × loadKg over strength sets) — a plain query-result POJO. */

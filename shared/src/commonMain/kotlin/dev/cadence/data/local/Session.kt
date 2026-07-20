@@ -28,6 +28,11 @@ data class Session(
     val updatedAt: Long,
     val deleted: Boolean = false,
     val syncStatus: String = SyncStatus.PENDING,
+    // v8 sync-envelope additions (A3). The domain model uses these; the pre-v8 boolean [deleted]
+    // stays until A4 cuts reads over. `createdAt` defaults for interim construction and A6's
+    // migration backfills legacy rows; [deletedAt] (tombstone) supersedes [deleted].
+    val createdAt: Long = 0L,
+    val deletedAt: Long? = null,
 )
 
 /** Sync lifecycle of a row. Kept as string constants (not an enum) so it stores as plain TEXT. */

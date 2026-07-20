@@ -27,7 +27,10 @@ import kotlinx.serialization.json.Json
  */
 @Entity(
     tableName = "exercises",
-    indices = [Index("equipment"), Index("category"), Index("metric")],
+    indices = [
+        Index("equipment"), Index("category"), Index("metric"),
+        Index("modality"), Index("hyroxStation"),
+    ],
 )
 data class Exercise(
     @PrimaryKey val id: String,
@@ -43,6 +46,12 @@ data class Exercise(
     val instructions: String = "",
     val imageUrls: String = "",
     val keywords: String = "",
+    // v8 additions (A3): first-class modality, expanded metric set, and Hyrox-station tag (all
+    // `dev.cadence.model` enum names as TEXT). Nullable now; the A7 re-seed populates them and A4
+    // switches reads off the pre-v8 [metric] column.
+    val modality: String? = null,
+    val defaultMetric: String? = null,
+    val hyroxStation: String? = null,
 ) {
     // List views of the JSON columns. Getter-only (no backing field) so Room ignores them; this is
     // how the UI consumes the rich data. (Room 3's KMP KSP rejects `List<String>` columns + a
