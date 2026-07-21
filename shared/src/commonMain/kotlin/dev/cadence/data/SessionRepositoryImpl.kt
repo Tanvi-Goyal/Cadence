@@ -5,6 +5,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
+import dev.cadence.common.UuidGenerator
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.Exercise
 import dev.cadence.data.local.ExerciseAssetReader
@@ -23,8 +24,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 /**
  * Room-backed [SessionRepository]. Plain constructor injection ([AppDatabase]) — no DI-framework
@@ -35,10 +34,16 @@ import kotlin.uuid.Uuid
  * in one transaction — so the whole aggregate is pushed together and there's never a pile-up of
  * outbox rows for the same session.
  */
+@OptIn(ExperimentalTime::class)
 class SessionRepositoryImpl(
     private val database: AppDatabase,
     private val exerciseAssetReader: ExerciseAssetReader,
+    private val uuid: UuidGenerator,
+    private val clock: Clock,
 ) : SessionRepository {
+
+    /** Wall-clock millis via the injected [clock] — the single time source for all writes. */
+    private fun now(): Long = clock.now().toEpochMilliseconds()
 
     private val sessions get() = database.sessionDao()
     private val outbox get() = database.outboxDao()
@@ -95,11 +100,10 @@ class SessionRepositoryImpl(
     override suspend fun startPlannedSession(plan: PlannedSession): Session =
         insertSession(name = plan.name, type = plan.type)
 
-    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
     override suspend fun addExercise(sessionId: String, exerciseId: String) {
         val nextOrder = loggedItems.countForSession(sessionId)
         val item = LoggedItem(
-            id = Uuid.random().toString(),
+            id = uuid.newId(),
             sessionId = sessionId,
             exerciseId = exerciseId,
             orderIndex = nextOrder,
@@ -112,7 +116,6 @@ class SessionRepositoryImpl(
         }
     }
 
-    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
     override suspend fun addSet(
         sessionId: String,
         loggedItemId: String,
@@ -123,7 +126,7 @@ class SessionRepositoryImpl(
     ) {
         val nextNumber = setEntries.getForLoggedItem(loggedItemId).size + 1
         val set = SetEntry(
-            id = Uuid.random().toString(),
+            id = uuid.newId(),
             loggedItemId = loggedItemId,
             setNumber = nextNumber,
             reps = reps,
@@ -139,7 +142,6 @@ class SessionRepositoryImpl(
         }
     }
 
-    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
     override suspend fun addTargetSet(
         sessionId: String,
         loggedItemId: String,
@@ -150,7 +152,7 @@ class SessionRepositoryImpl(
     ) {
         val nextNumber = setEntries.getForLoggedItem(loggedItemId).size + 1
         val set = SetEntry(
-            id = Uuid.random().toString(),
+            id = uuid.newId(),
             loggedItemId = loggedItemId,
             setNumber = nextNumber,
             targetReps = reps,
@@ -175,7 +177,6 @@ class SessionRepositoryImpl(
         }
     }
 
-    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
     private suspend fun insertSession(
         name: String,
         type: String,
@@ -183,15 +184,16 @@ class SessionRepositoryImpl(
         source: String = SessionSource.MANUAL,
         templateId: String? = null,
     ): Session {
-        val now = Clock.System.now().toEpochMilliseconds()
+        val now = now()
         val session = Session(
-            id = Uuid.random().toString(),
+            id = uuid.newId(),
             startedAt = now,
             name = name,
             type = type,
             isTemplate = isTemplate,
             source = source,
             templateId = templateId,
+            createdAt = now,
             updatedAt = now,
         )
         database.useWriterConnection { connection ->
@@ -203,15 +205,14 @@ class SessionRepositoryImpl(
         return session
     }
 
-    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
     override suspend fun instantiateTemplate(templateId: String): Session {
         val template = sessions.getById(templateId)
             ?: throw IllegalArgumentException("No template with id $templateId")
         require(template.isTemplate) { "Session $templateId is not a template" }
 
-        val now = Clock.System.now().toEpochMilliseconds()
+        val now = now()
         val newSession = Session(
-            id = Uuid.random().toString(),
+            id = uuid.newId(),
             startedAt = now,
             name = template.name,
             type = template.type,
@@ -219,6 +220,7 @@ class SessionRepositoryImpl(
             isTemplate = false,
             source = SessionSource.FROM_TEMPLATE,
             templateId = templateId, // provenance — this session was spawned from that template
+            createdAt = now,
             updatedAt = now,
         )
 
@@ -227,14 +229,14 @@ class SessionRepositoryImpl(
         // shows the prescription as ghost values until the user logs what actually happened.
         val itemsWithSets = loggedItems.getBySession(templateId).map { item ->
             val newItem = LoggedItem(
-                id = Uuid.random().toString(),
+                id = uuid.newId(),
                 sessionId = newSession.id,
                 exerciseId = item.exerciseId,
                 orderIndex = item.orderIndex,
             )
             val newSets = setEntries.getForLoggedItem(item.id).map { set ->
                 SetEntry(
-                    id = Uuid.random().toString(),
+                    id = uuid.newId(),
                     loggedItemId = newItem.id,
                     setNumber = set.setNumber,
                     targetReps = set.targetReps,
@@ -260,9 +262,8 @@ class SessionRepositoryImpl(
     }
 
     /** Marks a session dirty (new updatedAt + PENDING) and refreshes its single outbox row. */
-    @OptIn(ExperimentalTime::class)
     private suspend fun touchSession(sessionId: String) {
-        val now = Clock.System.now().toEpochMilliseconds()
+        val now = now()
         val current = sessions.getById(sessionId) ?: return
         sessions.upsert(current.copy(updatedAt = now, syncStatus = SyncStatus.PENDING))
         enqueueOutbox(sessionId, now)
@@ -282,7 +283,6 @@ class SessionRepositoryImpl(
         )
     }
 
-    @OptIn(ExperimentalUuidApi::class)
     override suspend fun ensureSeeded() {
         if (exercises.count() == 0) {
             exercises.insertAll(ExerciseImporter.parse(exerciseAssetReader.readExercisesJson()))
@@ -290,7 +290,7 @@ class SessionRepositoryImpl(
         if (plans.getCurrent() == null) {
             plans.upsert(
                 PlannedSession(
-                    id = Uuid.random().toString(),
+                    id = uuid.newId(),
                     name = "Upper Strength",
                     type = SessionType.STRENGTH,
                     targetDurationMin = 55,
@@ -307,36 +307,36 @@ class SessionRepositoryImpl(
         else -> "Strength"
     }
 
-    @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
     override suspend fun seedBenchmarkSessions(target: Int) {
         ensureSeeded() // exercise catalog must exist for the volume join
         val existing = sessions.count()
         if (existing >= target) return
 
-        val now = Clock.System.now().toEpochMilliseconds()
+        val now = now()
         val dayMs = 86_400_000L
         val names = listOf("Upper Strength", "Lower Strength", "Push Day", "Pull Day", "Full Body")
         // One writer transaction for the whole batch — bulk insert is far faster than N transactions.
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 for (i in existing until target) {
-                    val sessionId = Uuid.random().toString()
+                    val sessionId = uuid.newId()
                     sessions.insert(
                         Session(
                             id = sessionId,
                             startedAt = now - i * dayMs,
                             name = names[i % names.size],
                             type = SessionType.STRENGTH,
+                            createdAt = now - i * dayMs,
                             updatedAt = now - i * dayMs,
                             syncStatus = SyncStatus.SYNCED,
                         ),
                     )
-                    val itemId = Uuid.random().toString()
+                    val itemId = uuid.newId()
                     loggedItems.insert(LoggedItem(itemId, sessionId, "bench-press", 0))
                     repeat(3) { s ->
                         setEntries.insert(
                             SetEntry(
-                                id = Uuid.random().toString(),
+                                id = uuid.newId(),
                                 loggedItemId = itemId,
                                 setNumber = s + 1,
                                 reps = 8 + s,

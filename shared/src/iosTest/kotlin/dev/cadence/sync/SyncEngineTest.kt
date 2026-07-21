@@ -7,6 +7,7 @@ import dev.cadence.contracts.PullResponse
 import dev.cadence.contracts.PushResponse
 import dev.cadence.contracts.SessionDto
 import dev.cadence.contracts.SetDto
+import dev.cadence.common.UuidV7Generator
 import dev.cadence.data.SessionRepositoryImpl
 import dev.cadence.data.emptyExerciseAssetReader
 import dev.cadence.data.local.AppDatabase
@@ -54,6 +55,12 @@ class SyncEngineTest {
         api = api,
     )
 
+    /** Repository under test, wired with the real UUIDv7 + system-clock seam. */
+    @OptIn(kotlin.time.ExperimentalTime::class)
+    private fun repo() = SessionRepositoryImpl(
+        database, emptyExerciseAssetReader, UuidV7Generator(kotlin.time.Clock.System), kotlin.time.Clock.System,
+    )
+
     @BeforeTest
     fun setup() {
         database = Room.inMemoryDatabaseBuilder<AppDatabase>()
@@ -66,7 +73,7 @@ class SyncEngineTest {
 
     @Test
     fun push_drains_outbox_and_marks_session_synced() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo()
         val created = repo.createSession(SessionType.STRENGTH) // enqueues an outbox row
         assertEquals(1, database.outboxDao().count())
 
@@ -109,7 +116,7 @@ class SyncEngineTest {
 
     @Test
     fun session_name_and_type_round_trip_through_push_and_pull() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo()
         val plan = dev.cadence.data.local.PlannedSession(
             id = "p1", name = "Leg Day", type = dev.cadence.data.local.SessionType.CONDITIONING,
             targetDurationMin = 40, focus = "Pull focus",
@@ -139,7 +146,7 @@ class SyncEngineTest {
 
     @Test
     fun logged_sets_ride_with_the_session_through_nested_push_and_pull() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo()
 
         // Log a session with one exercise + one set, then push.
         val session = repo.createSession(SessionType.STRENGTH)
@@ -184,7 +191,7 @@ class SyncEngineTest {
 
     @Test
     fun template_and_its_targets_ride_through_push_and_pull() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo()
 
         // A template with one exercise and one target-only (prescription) set.
         val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)

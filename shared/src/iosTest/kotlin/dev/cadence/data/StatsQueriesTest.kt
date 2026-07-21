@@ -2,7 +2,9 @@ package dev.cadence.data
 
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import dev.cadence.common.UuidV7Generator
 import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.ExerciseAssetReader
 import dev.cadence.data.local.SessionType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -27,9 +29,14 @@ class StatsQueriesTest {
     @AfterTest
     fun teardown() = database.close()
 
+    /** Repository wired with the real UUIDv7 + system-clock seam (mirrors production DI). */
+    @OptIn(kotlin.time.ExperimentalTime::class)
+    private fun repoWith(reader: ExerciseAssetReader) =
+        SessionRepositoryImpl(database, reader, UuidV7Generator(kotlin.time.Clock.System), kotlin.time.Clock.System)
+
     @Test
     fun volumeOverTime_sums_sets_per_session_for_the_exercise() = runTest {
-        val repo = SessionRepositoryImpl(database, benchPressAssetReader)
+        val repo = repoWith(benchPressAssetReader)
         repo.ensureSeeded() // exercisesWithHistory INNER JOINs the catalog, so seed it (as the app does)
         val session = repo.createSession(SessionType.STRENGTH)
         repo.addExercise(session.id, "bench-press")

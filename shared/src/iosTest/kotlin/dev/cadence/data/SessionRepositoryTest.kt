@@ -2,7 +2,9 @@ package dev.cadence.data
 
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import dev.cadence.common.UuidV7Generator
 import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.ExerciseAssetReader
 import dev.cadence.data.local.SessionSource
 import dev.cadence.data.local.SessionType
 import kotlinx.coroutines.flow.first
@@ -38,9 +40,14 @@ class SessionRepositoryTest {
         database.close()
     }
 
+    /** Repository wired with the real UUIDv7 + system-clock seam (mirrors production DI). */
+    @OptIn(kotlin.time.ExperimentalTime::class)
+    private fun repo(reader: ExerciseAssetReader) =
+        SessionRepositoryImpl(database, reader, UuidV7Generator(kotlin.time.Clock.System), kotlin.time.Clock.System)
+
     @Test
     fun createSession_persistsSessionAndEnqueuesOutbox() = runTest {
-        val repository = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repository = repo(emptyExerciseAssetReader)
 
         val created = repository.createSession(SessionType.STRENGTH)
 
@@ -58,7 +65,7 @@ class SessionRepositoryTest {
      */
     @Test
     fun instantiateTemplate_deepCopiesTargetsAndLeavesActualsNull() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo(emptyExerciseAssetReader)
 
         val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
         repo.addExercise(template.id, "bench-press")
@@ -104,7 +111,7 @@ class SessionRepositoryTest {
      */
     @Test
     fun editingTemplateAfterInstantiation_doesNotMutateSpawnedSession() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo(emptyExerciseAssetReader)
 
         val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
         repo.addExercise(template.id, "bench-press")
@@ -128,7 +135,7 @@ class SessionRepositoryTest {
      */
     @Test
     fun updateSet_persistsActualsAndTouchesSession() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo(emptyExerciseAssetReader)
 
         // Instantiate a template → the spawned session has a target-only (ghost) set.
         val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
