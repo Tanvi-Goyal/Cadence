@@ -38,6 +38,9 @@ interface ExerciseEntryDao {
     @Query("SELECT COUNT(*) FROM exercise_entries WHERE blockId = :blockId AND deletedAt IS NULL")
     suspend fun countForBlock(blockId: String): Int
 
+    @Query("SELECT * FROM exercise_entries WHERE id = :id")
+    suspend fun getById(id: String): ExerciseEntry?
+
     /** All entries in a session, joined through its blocks and ordered block-then-entry — reactive. */
     @Query(
         """

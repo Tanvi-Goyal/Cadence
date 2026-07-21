@@ -13,12 +13,14 @@ import dev.cadence.data.local.ExerciseAssetReader
 import dev.cadence.data.local.ExerciseEntry
 import dev.cadence.data.local.ExerciseImporter
 import dev.cadence.data.local.OutboxEntry
+import dev.cadence.data.local.PersonalRecord as PersonalRecordEntity
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
 import dev.cadence.data.local.SessionSource
 import dev.cadence.data.local.SessionType
 import dev.cadence.data.local.SetEntry as SetEntryEntity
 import dev.cadence.data.local.SyncStatus
+import dev.cadence.domain.detectPrs
 import dev.cadence.model.SessionDetail
 import dev.cadence.model.SetEntry
 import kotlinx.coroutines.flow.Flow
@@ -54,6 +56,37 @@ class SessionRepositoryImpl(
     private val setEntries get() = database.setEntryDao()
     private val exercises get() = database.exerciseDao()
     private val plans get() = database.plannedSessionDao()
+    private val personalRecords get() = database.personalRecordDao()
+
+    /**
+     * Recompute + upsert PBs for a just-written set, inside the caller's write transaction. Pure
+     * [detectPrs] decides the winners; here we assign ids/timestamps, reusing the existing row of a
+     * kind/bucket so a record updates in place rather than piling up. Template (target-only) sets
+     * yield no candidates, so this is a no-op for them.
+     */
+    private suspend fun detectAndStorePrs(set: SetEntry, now: Long) {
+        val entry = entries.getById(set.exerciseEntryId) ?: return
+        val exercise = exercises.getById(entry.exerciseId)?.toDomain() ?: return
+        val current = personalRecords.getForExercise(entry.exerciseId).map { it.toDomain() }
+        detectPrs(exercise, set, current).forEach { candidate ->
+            val existing = current.firstOrNull {
+                it.kind == candidate.kind && it.distanceBucketM == candidate.distanceBucketM
+            }
+            personalRecords.upsert(
+                PersonalRecordEntity(
+                    id = existing?.id ?: uuid.newId(),
+                    exerciseId = entry.exerciseId,
+                    kind = candidate.kind.name,
+                    value = candidate.value,
+                    distanceBucketM = candidate.distanceBucketM,
+                    achievedAt = now,
+                    sourceSetId = set.id,
+                    createdAt = existing?.createdAt?.toEpochMilliseconds() ?: now,
+                    updatedAt = now,
+                ),
+            )
+        }
+    }
 
     /** Every session currently has one deterministic implicit STRAIGHT block; entries hang off it. */
     private fun implicitBlock(sessionId: String, now: Long): Block = Block(
@@ -166,6 +199,7 @@ class SessionRepositoryImpl(
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 setEntries.insert(set)
+                detectAndStorePrs(set.toDomain(), now)
                 touchSession(sessionId)
             }
         }
@@ -201,9 +235,11 @@ class SessionRepositoryImpl(
     }
 
     override suspend fun updateSet(sessionId: String, set: SetEntry) {
+        val now = now()
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 setEntries.update(set.toEntity())
+                detectAndStorePrs(set, now)
                 touchSession(sessionId)
             }
         }

@@ -1,10 +1,12 @@
 package dev.cadence.di
 
-import dev.cadence.data.MuscleImageProvider
-import dev.cadence.data.PreferencesRepository
-import dev.cadence.data.PreferencesRepositoryImpl
 import dev.cadence.common.UuidGenerator
 import dev.cadence.common.UuidV7Generator
+import dev.cadence.data.MuscleImageProvider
+import dev.cadence.data.PersonalRecordRepository
+import dev.cadence.data.PersonalRecordRepositoryImpl
+import dev.cadence.data.PreferencesRepository
+import dev.cadence.data.PreferencesRepositoryImpl
 import dev.cadence.data.SessionRepository
 import dev.cadence.data.SessionRepositoryImpl
 import dev.cadence.data.local.AppDatabase
@@ -53,6 +55,7 @@ val dataModule = module {
     single { get<AppDatabase>().syncMetaDao() }
     single { SessionRepositoryImpl(get(), get(), get(), get()) } bind SessionRepository::class
     single { PreferencesRepositoryImpl(get()) } bind PreferencesRepository::class
+    single { PersonalRecordRepositoryImpl(get()) } bind PersonalRecordRepository::class
 }
 
 /** Sync graph: HTTP client (from the platform engine) → transport → engine. */
