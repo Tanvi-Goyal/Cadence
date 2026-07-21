@@ -5,8 +5,10 @@ import androidx.room3.useWriterConnection
 import dev.cadence.contracts.LoggedItemDto
 import dev.cadence.contracts.SessionDto
 import dev.cadence.contracts.SetDto
+import dev.cadence.data.implicitBlockId
 import dev.cadence.data.local.AppDatabase
-import dev.cadence.data.local.LoggedItem
+import dev.cadence.data.local.Block
+import dev.cadence.data.local.ExerciseEntry
 import dev.cadence.data.local.OutboxDao
 import dev.cadence.data.local.Session
 import dev.cadence.data.local.SessionDao
@@ -42,7 +44,8 @@ class SyncEngine(
     private val syncMetaDao: SyncMetaDao,
     private val api: SyncApi,
 ) {
-    private val loggedItemDao get() = database.loggedItemDao()
+    private val blockDao get() = database.blockDao()
+    private val entryDao get() = database.exerciseEntryDao()
     private val setEntryDao get() = database.setEntryDao()
 
     suspend fun sync(): SyncResult =
@@ -102,14 +105,19 @@ class SyncEngine(
         syncMetaDao.set(SyncMeta(SyncMetaKeys.PULL_CURSOR, response.nextCursor.toString()))
     }
 
-    /** Load a session and its children into the nested wire DTO. */
+    /**
+     * Load a session and its children into the (still-flat) wire DTO. The block layer is flattened
+     * away here — every entry across the session's blocks becomes a `LoggedItemDto` — because the
+     * wire contract has no blocks yet (A8 adds them). Interim, and lossy on multi-block sessions,
+     * but every session currently has a single implicit block, so nothing is lost today.
+     */
     private suspend fun buildSessionDto(sessionId: String): SessionDto? {
         val session = sessionDao.getById(sessionId) ?: return null
-        val items = loggedItemDao.getBySession(sessionId).map { item ->
+        val items = entryDao.getBySession(sessionId).map { entry ->
             LoggedItemDto(
-                exerciseId = item.exerciseId,
-                orderIndex = item.orderIndex,
-                sets = setEntryDao.getForLoggedItem(item.id).map { set ->
+                exerciseId = entry.exerciseId,
+                orderIndex = entry.orderIndex,
+                sets = setEntryDao.getForEntry(entry.id).map { set ->
                     SetDto(
                         setNumber = set.setNumber,
                         reps = set.reps,
@@ -156,15 +164,19 @@ class SyncEngine(
             deleted = dto.deleted,
             syncStatus = SyncStatus.SYNCED, // authoritative from server → already synced
         )
-        // Rebuild the child rows locally with fresh ids (children are replaced wholesale, so ids
-        // are purely local — the wire contract carries no child ids).
-        val itemsWithSets = dto.loggedItems.map { itemDto ->
-            val itemId = Uuid.random().toString()
-            val item = LoggedItem(itemId, dto.id, itemDto.exerciseId, itemDto.orderIndex)
+        // Rebuild the child rows locally with fresh ids under one implicit STRAIGHT block (children
+        // are replaced wholesale, so ids are purely local — the flat wire contract carries none yet).
+        val blockId = implicitBlockId(dto.id)
+        val entriesWithSets = dto.loggedItems.map { itemDto ->
+            val entryId = Uuid.random().toString()
+            val entry = ExerciseEntry(
+                id = entryId, blockId = blockId, exerciseId = itemDto.exerciseId,
+                orderIndex = itemDto.orderIndex, createdAt = dto.updatedAt, updatedAt = dto.updatedAt,
+            )
             val sets = itemDto.sets.map { setDto ->
                 SetEntry(
                     id = Uuid.random().toString(),
-                    loggedItemId = itemId,
+                    exerciseEntryId = entryId,
                     setNumber = setDto.setNumber,
                     reps = setDto.reps,
                     loadKg = setDto.loadKg,
@@ -175,18 +187,27 @@ class SyncEngine(
                     targetLoadKg = setDto.targetLoadKg,
                     targetTimeSec = setDto.targetTimeSec,
                     targetDistanceM = setDto.targetDistanceM,
+                    createdAt = dto.updatedAt,
+                    updatedAt = dto.updatedAt,
                 )
             }
-            item to sets
+            entry to sets
         }
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
-                val oldItemIds = loggedItemDao.getBySession(dto.id).map { it.id }
-                if (oldItemIds.isNotEmpty()) setEntryDao.deleteForLoggedItems(oldItemIds)
-                loggedItemDao.deleteBySession(dto.id)
+                val oldEntryIds = entryDao.getBySession(dto.id).map { it.id }
+                if (oldEntryIds.isNotEmpty()) setEntryDao.deleteForEntries(oldEntryIds)
+                entryDao.deleteBySession(dto.id)
+                blockDao.deleteBySession(dto.id)
                 sessionDao.upsert(session)
-                itemsWithSets.forEach { (item, sets) ->
-                    loggedItemDao.insert(item)
+                blockDao.insert(
+                    Block(
+                        id = blockId, sessionId = dto.id, type = "STRAIGHT", orderIndex = 0,
+                        rounds = 1, createdAt = dto.updatedAt, updatedAt = dto.updatedAt,
+                    ),
+                )
+                entriesWithSets.forEach { (entry, sets) ->
+                    entryDao.insert(entry)
                     sets.forEach { setEntryDao.insert(it) }
                 }
             }

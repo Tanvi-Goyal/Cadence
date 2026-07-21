@@ -7,10 +7,11 @@ import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
 import dev.cadence.common.UuidGenerator
 import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.Block
 import dev.cadence.data.local.Exercise
 import dev.cadence.data.local.ExerciseAssetReader
+import dev.cadence.data.local.ExerciseEntry
 import dev.cadence.data.local.ExerciseImporter
-import dev.cadence.data.local.LoggedItem
 import dev.cadence.data.local.OutboxEntry
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
@@ -48,10 +49,22 @@ class SessionRepositoryImpl(
 
     private val sessions get() = database.sessionDao()
     private val outbox get() = database.outboxDao()
-    private val loggedItems get() = database.loggedItemDao()
+    private val blocks get() = database.blockDao()
+    private val entries get() = database.exerciseEntryDao()
     private val setEntries get() = database.setEntryDao()
     private val exercises get() = database.exerciseDao()
     private val plans get() = database.plannedSessionDao()
+
+    /** Every session currently has one deterministic implicit STRAIGHT block; entries hang off it. */
+    private fun implicitBlock(sessionId: String, now: Long): Block = Block(
+        id = implicitBlockId(sessionId),
+        sessionId = sessionId,
+        type = "STRAIGHT", // dev.cadence.model.BlockType.STRAIGHT
+        orderIndex = 0,
+        rounds = 1,
+        createdAt = now,
+        updatedAt = now,
+    )
 
     override fun observeSessions(): Flow<List<Session>> = sessions.observeAll()
 
@@ -62,10 +75,13 @@ class SessionRepositoryImpl(
     override fun observeSessionDetail(sessionId: String): Flow<SessionDetail?> =
         combine(
             sessions.observeById(sessionId),
-            loggedItems.observeForSession(sessionId),
+            blocks.observeForSession(sessionId),
+            entries.observeBySession(sessionId),
             setEntries.observeForSession(sessionId),
-        ) { session, items, sets ->
-            session?.let { buildSessionDetail(it, items, sets, resolveExercises(items)) }
+        ) { session, sessionBlocks, sessionEntries, sets ->
+            session?.let {
+                buildSessionDetail(it, sessionBlocks, sessionEntries, sets, resolveExercises(sessionEntries))
+            }
         }
 
     /**
@@ -73,7 +89,7 @@ class SessionRepositoryImpl(
      * ~870-row catalog), as domain models. Re-runs per emission — cheap for a handful of exercises;
      * revisit with a cache if a session ever references many.
      */
-    private suspend fun resolveExercises(items: List<LoggedItem>): Map<String, dev.cadence.model.Exercise> =
+    private suspend fun resolveExercises(items: List<ExerciseEntry>): Map<String, dev.cadence.model.Exercise> =
         exercises.getByIds(items.map { it.exerciseId }.distinct()).associate { it.id to it.toDomain() }
 
     override fun observeVolumesBySession(): Flow<Map<String, Double>> =
@@ -106,16 +122,21 @@ class SessionRepositoryImpl(
         insertSession(name = plan.name, type = plan.type)
 
     override suspend fun addExercise(sessionId: String, exerciseId: String) {
-        val nextOrder = loggedItems.countForSession(sessionId)
-        val item = LoggedItem(
+        val now = now()
+        val blockId = implicitBlockId(sessionId)
+        val nextOrder = entries.countForBlock(blockId)
+        val entry = ExerciseEntry(
             id = uuid.newId(),
-            sessionId = sessionId,
+            blockId = blockId,
             exerciseId = exerciseId,
             orderIndex = nextOrder,
+            createdAt = now,
+            updatedAt = now,
         )
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
-                loggedItems.insert(item)
+                blocks.insert(implicitBlock(sessionId, now)) // insert-if-absent (IGNORE on conflict)
+                entries.insert(entry)
                 touchSession(sessionId)
             }
         }
@@ -129,15 +150,18 @@ class SessionRepositoryImpl(
         timeSec: Int?,
         distanceM: Int?,
     ) {
-        val nextNumber = setEntries.getForLoggedItem(loggedItemId).size + 1
+        val now = now()
+        val nextNumber = setEntries.getForEntry(loggedItemId).size + 1
         val set = SetEntryEntity(
             id = uuid.newId(),
-            loggedItemId = loggedItemId,
+            exerciseEntryId = loggedItemId,
             setNumber = nextNumber,
             reps = reps,
             loadKg = loadKg,
             timeSec = timeSec,
             distanceM = distanceM,
+            createdAt = now,
+            updatedAt = now,
         )
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
@@ -155,15 +179,18 @@ class SessionRepositoryImpl(
         timeSec: Int?,
         distanceM: Int?,
     ) {
-        val nextNumber = setEntries.getForLoggedItem(loggedItemId).size + 1
+        val now = now()
+        val nextNumber = setEntries.getForEntry(loggedItemId).size + 1
         val set = SetEntryEntity(
             id = uuid.newId(),
-            loggedItemId = loggedItemId,
+            exerciseEntryId = loggedItemId,
             setNumber = nextNumber,
             targetReps = reps,
             targetLoadKg = loadKg,
             targetTimeSec = timeSec,
             targetDistanceM = distanceM,
+            createdAt = now,
+            updatedAt = now,
         )
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
@@ -230,34 +257,45 @@ class SessionRepositoryImpl(
         )
 
         // Deep-copy the tree with FRESH ids, built outside the write transaction so the writer lock
-        // is held only for inserts. Each set's targets are carried over; actuals stay null → the UI
-        // shows the prescription as ghost values until the user logs what actually happened.
-        val itemsWithSets = loggedItems.getBySession(templateId).map { item ->
-            val newItem = LoggedItem(
-                id = uuid.newId(),
-                sessionId = newSession.id,
-                exerciseId = item.exerciseId,
-                orderIndex = item.orderIndex,
+        // is held only for inserts. The template's entries (currently one block) are flattened into
+        // the new session's implicit block. Each set's targets carry over; actuals stay null → the
+        // UI shows the prescription as ghost values until the user logs what actually happened.
+        val newBlockId = implicitBlockId(newSession.id)
+        val entriesWithSets = entries.getBySession(templateId).mapIndexed { index, entry ->
+            val newEntryId = uuid.newId()
+            val newEntry = ExerciseEntry(
+                id = newEntryId,
+                blockId = newBlockId,
+                exerciseId = entry.exerciseId,
+                orderIndex = index,
+                targetSets = entry.targetSets,
+                restMs = entry.restMs,
+                createdAt = now,
+                updatedAt = now,
             )
-            val newSets = setEntries.getForLoggedItem(item.id).map { set ->
+            val newSets = setEntries.getForEntry(entry.id).map { set ->
                 SetEntryEntity(
                     id = uuid.newId(),
-                    loggedItemId = newItem.id,
+                    exerciseEntryId = newEntryId,
                     setNumber = set.setNumber,
                     targetReps = set.targetReps,
                     targetLoadKg = set.targetLoadKg,
                     targetTimeSec = set.targetTimeSec,
                     targetDistanceM = set.targetDistanceM,
+                    targetCalories = set.targetCalories,
+                    createdAt = now,
+                    updatedAt = now,
                 )
             }
-            newItem to newSets
+            newEntry to newSets
         }
 
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 sessions.insert(newSession)
-                itemsWithSets.forEach { (item, sets) ->
-                    loggedItems.insert(item)
+                blocks.insert(implicitBlock(newSession.id, now))
+                entriesWithSets.forEach { (entry, sets) ->
+                    entries.insert(entry)
                     sets.forEach { setEntries.insert(it) }
                 }
                 enqueueOutbox(newSession.id, now)
@@ -336,16 +374,25 @@ class SessionRepositoryImpl(
                             syncStatus = SyncStatus.SYNCED,
                         ),
                     )
-                    val itemId = uuid.newId()
-                    loggedItems.insert(LoggedItem(itemId, sessionId, "bench-press", 0))
+                    val ts = now - i * dayMs
+                    blocks.insert(implicitBlock(sessionId, ts))
+                    val entryId = uuid.newId()
+                    entries.insert(
+                        ExerciseEntry(
+                            id = entryId, blockId = implicitBlockId(sessionId), exerciseId = "bench-press",
+                            orderIndex = 0, createdAt = ts, updatedAt = ts,
+                        ),
+                    )
                     repeat(3) { s ->
                         setEntries.insert(
                             SetEntryEntity(
                                 id = uuid.newId(),
-                                loggedItemId = itemId,
+                                exerciseEntryId = entryId,
                                 setNumber = s + 1,
                                 reps = 8 + s,
                                 loadKg = (40 + (i % 60)).toDouble(),
+                                createdAt = ts,
+                                updatedAt = ts,
                             ),
                         )
                     }

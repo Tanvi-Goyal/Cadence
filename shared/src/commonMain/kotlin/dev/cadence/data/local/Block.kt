@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.Index
 import androidx.room3.Insert
+import androidx.room3.OnConflictStrategy
 import androidx.room3.PrimaryKey
 import androidx.room3.Query
 import kotlinx.coroutines.flow.Flow
@@ -35,7 +36,8 @@ data class Block(
 
 @Dao
 interface BlockDao {
-    @Insert
+    /** IGNORE on conflict: the deterministic implicit block is inserted-if-absent by `addExercise`. */
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(block: Block)
 
     @Query("SELECT * FROM blocks WHERE sessionId = :sessionId AND deletedAt IS NULL ORDER BY orderIndex")

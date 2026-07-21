@@ -151,7 +151,7 @@ class SyncEngineTest {
         // Log a session with one exercise + one set, then push.
         val session = repo.createSession(SessionType.STRENGTH)
         repo.addExercise(session.id, "bench-press")
-        val itemId = database.loggedItemDao().getBySession(session.id).first().id
+        val itemId = database.exerciseEntryDao().getBySession(session.id).first().id
         repo.addSet(session.id, itemId, reps = 10, loadKg = 60.0)
 
         val api = FakeSyncApi()
@@ -181,10 +181,10 @@ class SyncEngineTest {
             ),
         ).sync()
 
-        val remoteItems = database.loggedItemDao().getBySession("remote1")
+        val remoteItems = database.exerciseEntryDao().getBySession("remote1")
         assertEquals(1, remoteItems.size)
         assertEquals("back-squat", remoteItems.first().exerciseId)
-        val remoteSets = database.setEntryDao().getForLoggedItem(remoteItems.first().id)
+        val remoteSets = database.setEntryDao().getForEntry(remoteItems.first().id)
         assertEquals(1, remoteSets.size)
         assertEquals(100.0, remoteSets.first().loadKg)
     }
@@ -196,7 +196,7 @@ class SyncEngineTest {
         // A template with one exercise and one target-only (prescription) set.
         val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
         repo.addExercise(template.id, "bench-press")
-        val itemId = database.loggedItemDao().getBySession(template.id).first().id
+        val itemId = database.exerciseEntryDao().getBySession(template.id).first().id
         repo.addTargetSet(template.id, itemId, reps = 5, loadKg = 100.0)
 
         val api = FakeSyncApi()
@@ -232,8 +232,8 @@ class SyncEngineTest {
 
         val pulled = database.sessionDao().getById("remoteT")
         assertTrue(pulled!!.isTemplate)
-        val pulledItem = database.loggedItemDao().getBySession("remoteT").first()
-        val pulledSet = database.setEntryDao().getForLoggedItem(pulledItem.id).first()
+        val pulledItem = database.exerciseEntryDao().getBySession("remoteT").first()
+        val pulledSet = database.setEntryDao().getForEntry(pulledItem.id).first()
         assertEquals(3, pulledSet.targetReps)
         assertEquals(140.0, pulledSet.targetLoadKg)
         assertNull(pulledSet.reps)

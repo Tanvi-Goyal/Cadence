@@ -40,7 +40,7 @@ class StatsQueriesTest {
         repo.ensureSeeded() // exercisesWithHistory INNER JOINs the catalog, so seed it (as the app does)
         val session = repo.createSession(SessionType.STRENGTH)
         repo.addExercise(session.id, "bench-press")
-        val itemId = database.loggedItemDao().getBySession(session.id).first().id
+        val itemId = database.exerciseEntryDao().getBySession(session.id).first().id
         repo.addSet(session.id, itemId, reps = 10, loadKg = 60.0) // 600
         repo.addSet(session.id, itemId, reps = 5, loadKg = 100.0)  // 500
 

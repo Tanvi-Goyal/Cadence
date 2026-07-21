@@ -2,8 +2,9 @@
 
 package dev.cadence.data
 
+import dev.cadence.data.local.Block as BlockEntity
 import dev.cadence.data.local.Exercise as ExerciseEntity
-import dev.cadence.data.local.LoggedItem
+import dev.cadence.data.local.ExerciseEntry as ExerciseEntryEntity
 import dev.cadence.data.local.Session as SessionEntity
 import dev.cadence.data.local.SetEntry as SetEntryEntity
 import dev.cadence.model.Block
@@ -28,11 +29,8 @@ import kotlin.time.Instant
  * string-const enums, JSON list columns) become pure domain types (Instant, real enums, real lists)
  * and back. Keeping this seam in one file is what lets the domain/UI stay ignorant of Room.
  *
- * Interim note (A4b): the DB is still the pre-v8 3-level tree (session → logged_item → set), so
- * [buildSessionDetail] synthesizes a single implicit STRAIGHT [Block] per session. A4c replaces the
- * synthesis with real persisted blocks; the block id it mints here (`block-<sessionId>`) matches the
- * A6 migration's convention so nothing downstream shifts. Likewise `Exercise.modality`/`defaultMetric`
- * are null until A7's re-seed, so the legacy fallbacks below derive them from the old columns.
+ * Interim note (through A6): `Exercise.modality`/`defaultMetric` are null until A7's re-seed, so the
+ * legacy fallbacks derive them from the old `metric`/`category` columns.
  */
 
 private inline fun <reified T : Enum<T>> safeEnum(name: String): T? =
@@ -50,6 +48,9 @@ private fun legacyMetric(metric: String): MetricType =
 
 private fun ms(value: Long): Instant = Instant.fromEpochMilliseconds(value)
 
+/** The deterministic id of a session's (currently sole, implicit) STRAIGHT block. */
+internal fun implicitBlockId(sessionId: String): String = "block-$sessionId"
+
 internal fun SessionEntity.toDomain(): Session = Session(
     id = id,
     startedAt = ms(startedAt),
@@ -64,9 +65,30 @@ internal fun SessionEntity.toDomain(): Session = Session(
     deletedAt = deletedAt?.let(::ms),
 )
 
+internal fun BlockEntity.toDomain(): Block = Block(
+    id = id,
+    sessionId = sessionId,
+    type = safeEnum<BlockType>(type) ?: BlockType.STRAIGHT,
+    orderIndex = orderIndex,
+    rounds = rounds,
+    restBetweenRoundsMs = restBetweenRoundsMs,
+    label = label,
+    createdAt = ms(createdAt), updatedAt = ms(updatedAt), deletedAt = deletedAt?.let(::ms),
+)
+
+internal fun ExerciseEntryEntity.toDomain(): ExerciseEntry = ExerciseEntry(
+    id = id,
+    blockId = blockId,
+    exerciseId = exerciseId,
+    orderIndex = orderIndex,
+    targetSets = targetSets,
+    restMs = restMs,
+    createdAt = ms(createdAt), updatedAt = ms(updatedAt), deletedAt = deletedAt?.let(::ms),
+)
+
 internal fun SetEntryEntity.toDomain(): SetEntry = SetEntry(
     id = id,
-    exerciseEntryId = loggedItemId,
+    exerciseEntryId = exerciseEntryId,
     setNumber = setNumber,
     reps = reps, loadKg = loadKg, timeSec = timeSec, distanceM = distanceM,
     calories = calories, rpe = rpe,
@@ -75,10 +97,10 @@ internal fun SetEntryEntity.toDomain(): SetEntry = SetEntry(
     createdAt = ms(createdAt), updatedAt = ms(updatedAt), deletedAt = deletedAt?.let(::ms),
 )
 
-/** Domain → entity for persistence (used by `updateSet`). Maps `exerciseEntryId` → `loggedItemId`. */
+/** Domain → entity for persistence (used by `updateSet`). */
 internal fun SetEntry.toEntity(): SetEntryEntity = SetEntryEntity(
     id = id,
-    loggedItemId = exerciseEntryId,
+    exerciseEntryId = exerciseEntryId,
     setNumber = setNumber,
     reps = reps, loadKg = loadKg, timeSec = timeSec, distanceM = distanceM, rpe = rpe,
     targetReps = targetReps, targetLoadKg = targetLoadKg, targetTimeSec = targetTimeSec,
@@ -106,9 +128,6 @@ internal fun ExerciseEntity.toDomain(): Exercise = Exercise(
     imageUrls = imageUrlsList,
 )
 
-/** The deterministic id of a session's implicit block — same convention the A6 migration will use. */
-internal fun implicitBlockId(sessionId: String): String = "block-$sessionId"
-
 private fun fallbackExercise(id: String): Exercise = Exercise(
     id = id, name = id, modality = Modality.STRENGTH, defaultMetric = MetricType.WEIGHT_REPS,
     hyroxStation = null, category = null, force = null, level = null, mechanic = null,
@@ -117,43 +136,28 @@ private fun fallbackExercise(id: String): Exercise = Exercise(
 )
 
 /**
- * Assemble the hydrated [SessionDetail] the UI renders. Until A4c persists real blocks, all entries
- * live in one synthesized STRAIGHT block. [exercises] must already resolve every `exerciseId` the
- * session references (see `SessionRepositoryImpl.observeSessionDetail`).
+ * Assemble the hydrated [SessionDetail] the UI renders, from the real block graph:
+ * blocks → their exercise entries (each with resolved catalog [Exercise] + derived capture fields)
+ * → their sets. [exercises] must resolve every `exerciseId` the session references.
  */
 internal fun buildSessionDetail(
     session: SessionEntity,
-    items: List<LoggedItem>,
+    blocks: List<BlockEntity>,
+    entries: List<ExerciseEntryEntity>,
     sets: List<SetEntryEntity>,
     exercises: Map<String, Exercise>,
 ): SessionDetail {
-    val setsByItem = sets.groupBy { it.loggedItemId }
-    val blockId = implicitBlockId(session.id)
-    val createdAt = ms(if (session.createdAt != 0L) session.createdAt else session.startedAt)
-    val updatedAt = ms(session.updatedAt)
-
-    val entries = items.sortedBy { it.orderIndex }.map { item ->
-        ExerciseEntryDetail(
-            entry = ExerciseEntry(
-                id = item.id,
-                blockId = blockId,
-                exerciseId = item.exerciseId,
-                orderIndex = item.orderIndex,
-                targetSets = null,
-                restMs = null,
-                createdAt = createdAt,
-                updatedAt = updatedAt,
-                deletedAt = null,
-            ),
-            exercise = exercises[item.exerciseId] ?: fallbackExercise(item.exerciseId),
-            sets = setsByItem[item.id].orEmpty().sortedBy { it.setNumber }.map { it.toDomain() },
-        )
+    val setsByEntry = sets.groupBy { it.exerciseEntryId }
+    val entriesByBlock = entries.groupBy { it.blockId }
+    val blockDetails = blocks.sortedBy { it.orderIndex }.map { block ->
+        val entryDetails = entriesByBlock[block.id].orEmpty().sortedBy { it.orderIndex }.map { entry ->
+            ExerciseEntryDetail(
+                entry = entry.toDomain(),
+                exercise = exercises[entry.exerciseId] ?: fallbackExercise(entry.exerciseId),
+                sets = setsByEntry[entry.id].orEmpty().sortedBy { it.setNumber }.map { it.toDomain() },
+            )
+        }
+        BlockDetail(block.toDomain(), entryDetails)
     }
-
-    val block = Block(
-        id = blockId, sessionId = session.id, type = BlockType.STRAIGHT, orderIndex = 0,
-        rounds = 1, restBetweenRoundsMs = null, label = null,
-        createdAt = createdAt, updatedAt = updatedAt, deletedAt = null,
-    )
-    return SessionDetail(session = session.toDomain(), blocks = listOf(BlockDetail(block, entries)))
+    return SessionDetail(session = session.toDomain(), blocks = blockDetails)
 }

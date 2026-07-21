@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 8,
-    "identityHash": "2f03d0b2f83592b421557c3c8e3e8028",
+    "identityHash": "d05e8e08403e2fa0c795ea56233dbab7",
     "entities": [
       {
         "tableName": "sessions",
@@ -360,8 +360,8 @@
         ]
       },
       {
-        "tableName": "logged_items",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sessionId` TEXT NOT NULL, `exerciseId` TEXT NOT NULL, `orderIndex` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "tableName": "exercise_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `blockId` TEXT NOT NULL, `exerciseId` TEXT NOT NULL, `orderIndex` INTEGER NOT NULL, `targetSets` INTEGER, `restMs` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -370,8 +370,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "sessionId",
-            "columnName": "sessionId",
+            "fieldPath": "blockId",
+            "columnName": "blockId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -386,6 +386,33 @@
             "columnName": "orderIndex",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "targetSets",
+            "columnName": "targetSets",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "restMs",
+            "columnName": "restMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {
@@ -396,19 +423,28 @@
         },
         "indices": [
           {
-            "name": "index_logged_items_sessionId",
+            "name": "index_exercise_entries_blockId",
             "unique": false,
             "columnNames": [
-              "sessionId"
+              "blockId"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_logged_items_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_exercise_entries_blockId` ON `${TABLE_NAME}` (`blockId`)"
+          },
+          {
+            "name": "index_exercise_entries_exerciseId",
+            "unique": false,
+            "columnNames": [
+              "exerciseId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_exercise_entries_exerciseId` ON `${TABLE_NAME}` (`exerciseId`)"
           }
         ]
       },
       {
         "tableName": "set_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `loggedItemId` TEXT NOT NULL, `setNumber` INTEGER NOT NULL, `reps` INTEGER, `loadKg` REAL, `timeSec` INTEGER, `distanceM` INTEGER, `rpe` INTEGER, `targetReps` INTEGER, `targetLoadKg` REAL, `targetTimeSec` INTEGER, `targetDistanceM` INTEGER, `calories` INTEGER, `targetCalories` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `exerciseEntryId` TEXT NOT NULL, `setNumber` INTEGER NOT NULL, `reps` INTEGER, `loadKg` REAL, `timeSec` INTEGER, `distanceM` INTEGER, `rpe` INTEGER, `targetReps` INTEGER, `targetLoadKg` REAL, `targetTimeSec` INTEGER, `targetDistanceM` INTEGER, `calories` INTEGER, `targetCalories` INTEGER, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -417,8 +453,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "loggedItemId",
-            "columnName": "loggedItemId",
+            "fieldPath": "exerciseEntryId",
+            "columnName": "exerciseEntryId",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -509,13 +545,13 @@
         },
         "indices": [
           {
-            "name": "index_set_entries_loggedItemId",
+            "name": "index_set_entries_exerciseEntryId",
             "unique": false,
             "columnNames": [
-              "loggedItemId"
+              "exerciseEntryId"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_set_entries_loggedItemId` ON `${TABLE_NAME}` (`loggedItemId`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_set_entries_exerciseEntryId` ON `${TABLE_NAME}` (`exerciseEntryId`)"
           }
         ]
       },
@@ -723,7 +759,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2f03d0b2f83592b421557c3c8e3e8028')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd05e8e08403e2fa0c795ea56233dbab7')"
     ]
   }
 }
