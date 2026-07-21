@@ -149,7 +149,8 @@ class SessionRepositoryTest {
         val updatedAtBefore = database.sessionDao().getById(session.id)!!.updatedAt
 
         // Fill in what varied: 5 reps at 102.5 kg.
-        repo.updateSet(session.id, ghost.copy(reps = 5, loadKg = 102.5))
+        // updateSet takes a domain SetEntry now; map the entity ghost across the boundary.
+        repo.updateSet(session.id, ghost.toDomain().copy(reps = 5, loadKg = 102.5))
 
         val saved = database.setEntryDao().getForLoggedItem(itemId).first()
         assertEquals(5, saved.reps, "actual reps persisted")

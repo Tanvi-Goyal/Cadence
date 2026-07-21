@@ -3,11 +3,11 @@ package dev.cadence.data
 import androidx.paging.PagingData
 import dev.cadence.data.local.Exercise
 import dev.cadence.data.local.ExerciseRef
-import dev.cadence.data.local.LoggedItemWithSets
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
-import dev.cadence.data.local.SetEntry
 import dev.cadence.data.local.VolumePoint
+import dev.cadence.model.SessionDetail
+import dev.cadence.model.SetEntry
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -25,11 +25,12 @@ interface SessionRepository {
     /** The current planned/next session shown on the Home "Today" card (null if none). */
     fun observePlannedSession(): Flow<PlannedSession?>
 
-    /** One session, reactive — for the Log Workout header. */
-    fun observeSession(sessionId: String): Flow<Session?>
-
-    /** A session's logged exercises with their sets, reactive — what Log Workout renders. */
-    fun observeLoggedItems(sessionId: String): Flow<List<LoggedItemWithSets>>
+    /**
+     * A fully hydrated session (its blocks → exercise entries → sets, with each entry's catalog
+     * exercise + derived capture fields resolved), reactive — what Log Workout / Session Detail /
+     * the template builder render. Emits null while the session id doesn't resolve.
+     */
+    fun observeSessionDetail(sessionId: String): Flow<SessionDetail?>
 
     /** Strength volume (Σ reps×loadKg) keyed by session id, reactive — for Home stats/rows. */
     fun observeVolumesBySession(): Flow<Map<String, Double>>

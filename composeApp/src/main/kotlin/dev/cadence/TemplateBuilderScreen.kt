@@ -35,7 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.ExerciseMetric
-import dev.cadence.data.local.SetEntry
+import dev.cadence.model.SetEntry
 import dev.cadence.domain.Units
 import dev.cadence.domain.WeightUnit
 import dev.cadence.presentation.LoggedItemUi

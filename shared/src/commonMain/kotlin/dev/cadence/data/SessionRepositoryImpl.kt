@@ -11,14 +11,15 @@ import dev.cadence.data.local.Exercise
 import dev.cadence.data.local.ExerciseAssetReader
 import dev.cadence.data.local.ExerciseImporter
 import dev.cadence.data.local.LoggedItem
-import dev.cadence.data.local.LoggedItemWithSets
 import dev.cadence.data.local.OutboxEntry
 import dev.cadence.data.local.PlannedSession
 import dev.cadence.data.local.Session
 import dev.cadence.data.local.SessionSource
 import dev.cadence.data.local.SessionType
-import dev.cadence.data.local.SetEntry
+import dev.cadence.data.local.SetEntry as SetEntryEntity
 import dev.cadence.data.local.SyncStatus
+import dev.cadence.model.SessionDetail
+import dev.cadence.model.SetEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -58,18 +59,22 @@ class SessionRepositoryImpl(
 
     override fun observePlannedSession(): Flow<PlannedSession?> = plans.observeCurrent()
 
-    override fun observeSession(sessionId: String): Flow<Session?> = sessions.observeById(sessionId)
-
-    override fun observeLoggedItems(sessionId: String): Flow<List<LoggedItemWithSets>> =
+    override fun observeSessionDetail(sessionId: String): Flow<SessionDetail?> =
         combine(
+            sessions.observeById(sessionId),
             loggedItems.observeForSession(sessionId),
             setEntries.observeForSession(sessionId),
-        ) { items, sets ->
-            val bySet = sets.groupBy { it.loggedItemId }
-            items.map { item ->
-                LoggedItemWithSets(item, bySet[item.id].orEmpty().sortedBy { it.setNumber })
-            }
+        ) { session, items, sets ->
+            session?.let { buildSessionDetail(it, items, sets, resolveExercises(items)) }
         }
+
+    /**
+     * Resolve just the catalog rows a session references (an indexed `IN` lookup, not the full
+     * ~870-row catalog), as domain models. Re-runs per emission — cheap for a handful of exercises;
+     * revisit with a cache if a session ever references many.
+     */
+    private suspend fun resolveExercises(items: List<LoggedItem>): Map<String, dev.cadence.model.Exercise> =
+        exercises.getByIds(items.map { it.exerciseId }.distinct()).associate { it.id to it.toDomain() }
 
     override fun observeVolumesBySession(): Flow<Map<String, Double>> =
         setEntries.observeSessionVolumes().map { list -> list.associate { it.sessionId to it.volume } }
@@ -125,7 +130,7 @@ class SessionRepositoryImpl(
         distanceM: Int?,
     ) {
         val nextNumber = setEntries.getForLoggedItem(loggedItemId).size + 1
-        val set = SetEntry(
+        val set = SetEntryEntity(
             id = uuid.newId(),
             loggedItemId = loggedItemId,
             setNumber = nextNumber,
@@ -151,7 +156,7 @@ class SessionRepositoryImpl(
         distanceM: Int?,
     ) {
         val nextNumber = setEntries.getForLoggedItem(loggedItemId).size + 1
-        val set = SetEntry(
+        val set = SetEntryEntity(
             id = uuid.newId(),
             loggedItemId = loggedItemId,
             setNumber = nextNumber,
@@ -171,7 +176,7 @@ class SessionRepositoryImpl(
     override suspend fun updateSet(sessionId: String, set: SetEntry) {
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
-                setEntries.update(set)
+                setEntries.update(set.toEntity())
                 touchSession(sessionId)
             }
         }
@@ -235,7 +240,7 @@ class SessionRepositoryImpl(
                 orderIndex = item.orderIndex,
             )
             val newSets = setEntries.getForLoggedItem(item.id).map { set ->
-                SetEntry(
+                SetEntryEntity(
                     id = uuid.newId(),
                     loggedItemId = newItem.id,
                     setNumber = set.setNumber,
@@ -335,7 +340,7 @@ class SessionRepositoryImpl(
                     loggedItems.insert(LoggedItem(itemId, sessionId, "bench-press", 0))
                     repeat(3) { s ->
                         setEntries.insert(
-                            SetEntry(
+                            SetEntryEntity(
                                 id = uuid.newId(),
                                 loggedItemId = itemId,
                                 setNumber = s + 1,

@@ -86,6 +86,10 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercises WHERE id = :id")
     suspend fun getById(id: String): Exercise?
 
+    /** Resolve a specific set of catalog rows — used to hydrate a session's exercises efficiently. */
+    @Query("SELECT * FROM exercises WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<Exercise>
+
     @Query("SELECT * FROM exercises ORDER BY name")
     suspend fun getAll(): List<Exercise>
 
