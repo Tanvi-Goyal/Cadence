@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /** The four top-level tabs. `route` doubles as the nav destination. */
-internal enum class Tab(val route: String, val label: String) {
+enum class Tab(val route: String, val label: String) {
     Home("home", "Home"),
     History("history", "History"),
     Stats("stats", "Stats"),
@@ -40,7 +40,7 @@ private fun Tab.icon(): ImageVector = when (this) {
  * inactive tabs are muted icon + label. [current] highlights the active tab.
  */
 @Composable
-internal fun CadenceBottomBar(current: String, onTab: (String) -> Unit) {
+fun CadenceBottomBar(current: String, onTab: (String) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(Modifier.background(colors.surfaceContainerLow)) {
         HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant.copy(alpha = 0.3f))
