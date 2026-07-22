@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  * painterResource(R.drawable.ic_*). Icons are authored in white and tinted at the call site via
  * Icon(tint = ...). Built lazily so unused icons cost nothing.
  */
-internal object CadenceIcons {
+object CadenceIcons {
 
     private fun icon(name: String, w: Float, h: Float, pathData: String): ImageVector =
         ImageVector.Builder(

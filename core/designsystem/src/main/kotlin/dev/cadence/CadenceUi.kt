@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.sp
 
 /** Uppercase, tracked, muted section heading (design.md "Functional Labels"). e.g. "UP NEXT". */
 @Composable
-internal fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelLarge,
@@ -45,7 +45,7 @@ internal fun SectionLabel(text: String, modifier: Modifier = Modifier) {
 
 /** Compact metric tile: big value over a muted label, on a low tonal surface. */
 @Composable
-internal fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
+fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .clip(MaterialTheme.shapes.medium)
@@ -70,7 +70,7 @@ internal fun StatTile(value: String, label: String, modifier: Modifier = Modifie
 
 /** Small pill on the primary color for a status/type tag, e.g. the "STRENGTH" chip. */
 @Composable
-internal fun AccentPill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
+fun AccentPill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
     Row(
         modifier = modifier
             .clip(CircleShape)
@@ -98,7 +98,7 @@ internal fun AccentPill(text: String, modifier: Modifier = Modifier, icon: Image
 
 /** Outlined pill button used for horizontally-scrolling quick actions (template chips). */
 @Composable
-internal fun CadenceChip(
+fun CadenceChip(
     label: String,
     icon: ImageVector,
     onClick: () -> Unit,
@@ -134,7 +134,7 @@ internal fun CadenceChip(
 
 /** A circular icon medallion (leading element on list rows). */
 @Composable
-internal fun IconMedallion(
+fun IconMedallion(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     background: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.secondaryContainer,
@@ -153,7 +153,7 @@ internal fun IconMedallion(
 
 /** 4dp separator dot used between inline metadata (e.g. "Push focus · 55 min"). */
 @Composable
-internal fun MetaDot(modifier: Modifier = Modifier) {
+fun MetaDot(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(4.dp)
@@ -164,7 +164,7 @@ internal fun MetaDot(modifier: Modifier = Modifier) {
 
 /** Centered helper for empty states. */
 @Composable
-internal fun EmptyHint(text: String, modifier: Modifier = Modifier) {
+fun EmptyHint(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,

@@ -19,26 +19,26 @@ import dev.cadence.domain.WeightUnit
  */
 
 /** Theme + unit preferences, provided ONCE at the app root (see [MainActivity]). */
-internal val LocalThemeMode = staticCompositionLocalOf { ThemeMode.SYSTEM }
-internal val LocalWeightUnit = staticCompositionLocalOf { WeightUnit.KG }
+val LocalThemeMode = staticCompositionLocalOf { ThemeMode.SYSTEM }
+val LocalWeightUnit = staticCompositionLocalOf { WeightUnit.KG }
 
 /*
  * Legacy color accessors. Existing screens paint with these names; they now delegate to the M3
  * color roles so every screen adopts Kinetic Precision without edits. New/redesigned screens should
  * prefer MaterialTheme.colorScheme directly — these remain as a thin compatibility layer.
  */
-internal val Background: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.background
-internal val Surface: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainer
-internal val SurfaceHi: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainerHigh
-internal val Accent: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
-internal val OnAccent: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onPrimary
-internal val TextPrimary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurface
-internal val TextSecondary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant
+val Background: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.background
+val Surface: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainer
+val SurfaceHi: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainerHigh
+val Accent: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.primary
+val OnAccent: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onPrimary
+val TextPrimary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurface
+val TextSecondary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant
 internal val Danger: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.error
 
 /** Applies the Kinetic Precision M3 theme (color scheme + typography + shapes + spacing). */
 @Composable
-internal fun CadenceTheme(content: @Composable () -> Unit) {
+fun CadenceTheme(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalSpacing provides Spacing()) {
         MaterialTheme(
             colorScheme = KineticColorScheme,

@@ -28,6 +28,7 @@ composeCompiler {
 }
 dependencies {
     implementation(projects.shared)
+    implementation(projects.core.designsystem)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.runtime)

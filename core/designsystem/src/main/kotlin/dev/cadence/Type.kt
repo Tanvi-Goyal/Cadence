@@ -6,6 +6,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import dev.cadence.designsystem.R
 
 /*
  * Inter type scale — values are taken verbatim from docs/design.md, which maps 1:1 onto the

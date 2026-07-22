@@ -14,7 +14,7 @@ import androidx.compose.ui.text.input.KeyboardType
  * in the muted [TextSecondary] so an unfilled actual reads as a suggestion, not data.
  */
 @Composable
-internal fun NumberField(
+fun NumberField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,

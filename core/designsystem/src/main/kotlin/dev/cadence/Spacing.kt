@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.dp
  * grouping). Provided via [LocalSpacing] in [CadenceTheme] and read as `MaterialTheme.spacing.md`
  * so screens use tokens instead of raw dp literals.
  */
-internal data class Spacing(
+data class Spacing(
     val none: Dp = 0.dp,
     val xs: Dp = 4.dp,
     val sm: Dp = 8.dp,
@@ -27,5 +27,5 @@ internal data class Spacing(
 internal val LocalSpacing = staticCompositionLocalOf { Spacing() }
 
 /** Convenience accessor: `MaterialTheme.spacing.md` inside any composable. */
-internal val MaterialTheme.spacing: Spacing
+val MaterialTheme.spacing: Spacing
     @Composable @ReadOnlyComposable get() = LocalSpacing.current
