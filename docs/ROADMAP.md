@@ -33,13 +33,19 @@ Already built (both platforms): full logging loop (reps/load/time/distance/RPE),
 Each phase ships a runnable vertical slice. 🎓 = learning-critical (own plan-mode pass before `shared/` edits).
 
 ### Phase 1 — Production core logging (Weeks 1–3) · *delta on existing code*
-1. 🎓 **Data model v2 migration:** `Session ─< Block ─< ExerciseEntry ─< SetEntry`; `Block.type ∈ {STRAIGHT, SUPERSET, CIRCUIT, INTERVAL, RUN}`; **modality first-class** (`STRENGTH | CONDITIONING | RUN | MOBILITY`) on Exercise, rolled up per Block/Session. Real versioned migration + tests; kill destructive fallback; fold legacy `logged_items` into implicit STRAIGHT blocks.
+
+> **Data-layer track status** (`data-layer-rethink`): items 1, 6, and the seed part of 7 are **done**,
+> plus the PB-detection *engine* (5) and the versioned-migration part of 8. Still open: live-logging
+> polish (rest timer, plate calc, swipe — item 3), interval/run logging (4), the PR toast/list UI (5),
+> crash reporting + analytics (7), and CI (8). See the `A1–A10` slices below.
+
+1. ✅ 🎓 **Data model v2 migration:** `Session ─< Block ─< ExerciseEntry ─< SetEntry`; `Block.type ∈ {STRAIGHT, SUPERSET, CIRCUIT, INTERVAL, RUN}`; **modality first-class** (`STRENGTH | CONDITIONING | RUN | MOBILITY`) on Exercise, rolled up per Block/Session. Real versioned migration (v7→v8, fixture-tested) + tests; killed destructive fallback; folded legacy `logged_items` into implicit STRAIGHT blocks; UUIDv7 + `deletedAt` tombstones.
 2. **Template-first capture:** `is_template` flag; start-from-template pre-fills; duplicate-last-session as cheap v1.
 3. **Live logging:** rest timer + notification (🎓 expect/actual), plate calculator, previous-performance ghost values, swipe-to-complete. Sweaty-thumb rule (≤3 taps one-handed).
 4. **Interval/run logging:** manual splits, auto pace.
-5. **PR detection:** per exercise × rep-range, per distance; toast + PR list.
-6. **Tag all 8 Hyrox stations** as first-class exercises (`hyrox_station` + modality + default metric).
-7. Remove demo seed data; add crash reporting + privacy-first local analytics event log.
+5. **PR detection:** per exercise × rep-range, per distance; toast + PR list. *(engine + persistence done — pure `detectPrs` (Epley e1RM / max-weight / max-reps / best-time-per-bucket / max-calories) runs on set completion; toast + PR list UI still to wire.)*
+6. ✅ **Tag all 8 Hyrox stations** as first-class exercises (`hyroxStation` + modality + default metric); catalog re-seeded with modality/metric across ~870 rows.
+7. Remove demo seed data ✅; add crash reporting + privacy-first local analytics event log.
 8. Cross-cutting: CI (assemble + `commonTest` on PR), versioned migrations, CHANGELOG.
 
 *Non-goals:* auth, backend, social, AI, nutrition, watch.
@@ -76,7 +82,7 @@ Warm-up generator · exercise videos · coach mode (HyFit B2B) · official Hyrox
 
 ## Verification (per phase)
 `./gradlew :shared:testAndroidHostTest :server:test`, `:composeApp:assembleDebug`, `:shared:iosSimulatorArm64Test` (iOS keeps compiling), run on device.
-- **P1:** legacy sessions survive v6→v7 migration (fixture-DB test); full HyFit session logged offline.
+- **P1:** legacy sessions survive v7→v8 migration (fixture-DB test — `MigrationTest`, iosTest); full HyFit session logged offline.
 - **P2:** kill server mid-sync → zero data loss; wipe + reinstall + sign in → full restore ("new phone"); two devices → LWW converges; redeploy mid-sync → no dupes.
 - **P3:** full Hyrox sim in-app ≥2 weeks pre-race; pacing card renders + prints.
 - CI gates from P1; Macrobenchmark cold-start + jank gate from P3; server p99 per route.

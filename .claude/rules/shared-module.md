@@ -4,7 +4,8 @@ paths:
 ---
 # :shared module rules (loaded only when touching shared/)
 - Room-KMP DB is the single source of truth; expose data to UI as Flow/StateFlow only.
-- Every synced entity: client-UUID id, updatedAt, deleted (soft delete), syncStatus.
+- Every synced entity: client UUIDv7 id, createdAt, updatedAt (LWW key), deletedAt
+  (soft-delete tombstone; null = live). `syncStatus` is local-only (never on the wire).
   Data write + outbox enqueue happen in ONE transaction.
 - commonMain is platform-agnostic. Anything needing Context / NSFileManager / OS
   scheduling goes in androidMain/iosMain via expect/actual — justify each new seam.

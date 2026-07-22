@@ -60,8 +60,10 @@ interview. So:
 ## Architecture rules (non-negotiable)
 - The UI never reads the network. It observes the DB via Flow. Network only
   feeds the DB (pull) and drains the outbox (push).
-- Every synced entity carries: `id` (client UUID), `updatedAt`, `deleted`
-  (soft delete), `syncStatus`. Local write + outbox enqueue in ONE transaction.
+- Every synced entity carries: `id` (client-generated UUIDv7), `createdAt`,
+  `updatedAt` (LWW key), `deletedAt` (soft-delete tombstone; null = live).
+  `syncStatus` is a LOCAL-only column (never crosses the wire). Local write +
+  outbox enqueue in ONE transaction.
 - `commonMain` = domain + data + sync + ViewModels. Platform code
   (androidMain/iosMain) is only for OS-governed capabilities: DB driver, health
   APIs, background scheduling, notifications, secure storage. Justify each new seam.
