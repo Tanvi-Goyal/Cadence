@@ -2,9 +2,9 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.data.SessionRepository
-import dev.cadence.data.local.ExerciseRef
-import dev.cadence.data.local.VolumePoint
+import dev.cadence.domain.SessionRepository
+import dev.cadence.model.ExerciseRef
+import dev.cadence.model.VolumePoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

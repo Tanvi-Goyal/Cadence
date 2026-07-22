@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.room)
     alias(libs.plugins.koinCompiler)
     alias(libs.plugins.kotlinSerialization)
 }
@@ -39,7 +38,22 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            // `api` so consumers (composeApp today, the iOS umbrella later) see these leaf modules
+            // transitively — the moved packages (`dev.cadence.model`/`common`) keep their names, so
+            // no import in :shared or :composeApp changes.
+            api(projects.core.model)
+            api(projects.core.common)
+            // `api`: repo interfaces + domain value types (UserPreferences/WeightUnit/ThemeMode) are
+            // referenced by the ViewModels here and by composeApp's theme/profile UI.
+            api(projects.core.domain)
+            // `api` (not implementation) is transitional: composeApp still references some entity
+            // types (ExerciseMetric/Session/Exercise/VolumePoint/PlannedSession) — a UI→database leak
+            // cleaned up when features are extracted (B11) and those types move to :core:model.
+            api(projects.core.database)
+            implementation(projects.core.network)
             implementation(projects.contracts)
+            // Room RUNTIME stays: the repository + sync engine + iosTest still call useWriterConnection /
+            // Room.inMemoryDatabaseBuilder. Only the Room *plugin*/KSP/schemas moved to :core:database.
             implementation(libs.room.runtime)
             implementation(libs.room.paging)
             implementation(libs.androidx.paging.common)
@@ -65,31 +79,5 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
-        // Room's MigrationTestHelper drives the v7→v8 fixture test. It lives in iosTest: the Android
-        // actual of MigrationTestHelper is instrumentation-only (no JVM host-test path), whereas the
-        // Native actual is driver-based — same reason the other Room tests run on the iOS simulator.
-        iosTest.dependencies {
-            implementation(libs.room.testing)
-        }
     }
-}
-
-// Room-KMP (3.0, androidx.room3): schema export location shared across all KSP targets.
-room3 {
-    schemaDirectory("$projectDir/schemas")
-}
-
-// The migration fixture test (MigrationTest, iosTest) reads the exported schema JSON from disk at
-// runtime. Pass the absolute path into the simulated test process — env vars only cross into the iOS
-// simulator when prefixed with `SIMCTL_CHILD_`, so the test reads `CADENCE_SCHEMA_DIR`.
-tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
-    environment("SIMCTL_CHILD_CADENCE_SCHEMA_DIR", "$projectDir/schemas")
-}
-
-// Room's compiler is a KSP processor declared PER target — commonMain @Entity/@Dao/@Database
-// annotations get their actual code generated separately for android, iosArm64, iosSimulatorArm64.
-dependencies {
-    add("kspAndroid", libs.room.compiler)
-    add("kspIosArm64", libs.room.compiler)
-    add("kspIosSimulatorArm64", libs.room.compiler)
 }

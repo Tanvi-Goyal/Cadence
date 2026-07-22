@@ -118,8 +118,8 @@ class SyncEngineTest {
     @Test
     fun session_name_and_type_round_trip_through_push_and_pull() = runTest {
         val repo = repo()
-        val plan = dev.cadence.data.local.PlannedSession(
-            id = "p1", name = "Leg Day", type = dev.cadence.data.local.SessionType.CONDITIONING,
+        val plan = dev.cadence.model.PlannedSession(
+            id = "p1", name = "Leg Day", type = dev.cadence.model.SessionType.CONDITIONING,
             targetDurationMin = 40, focus = "Pull focus",
         )
         val created = repo.startPlannedSession(plan)

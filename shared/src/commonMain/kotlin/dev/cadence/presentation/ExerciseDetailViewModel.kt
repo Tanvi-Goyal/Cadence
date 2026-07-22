@@ -4,8 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.cadence.data.MuscleDiagram
 import dev.cadence.data.MuscleImageProvider
-import dev.cadence.data.SessionRepository
-import dev.cadence.data.local.Exercise
+import dev.cadence.domain.SessionRepository
+import dev.cadence.model.Exercise
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +31,7 @@ class ExerciseDetailViewModel(
         viewModelScope.launch {
             val ex = repository.exerciseById(exerciseId)
             _exercise.value = ex
-            ex?.primaryMusclesList?.firstOrNull()?.let { muscle ->
+            ex?.primaryMuscles?.firstOrNull()?.let { muscle ->
                 _muscleDiagram.value = muscleImages.diagram(muscle)
             }
         }

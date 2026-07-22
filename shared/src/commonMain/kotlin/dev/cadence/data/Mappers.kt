@@ -6,6 +6,7 @@ import dev.cadence.data.local.Block as BlockEntity
 import dev.cadence.data.local.Exercise as ExerciseEntity
 import dev.cadence.data.local.ExerciseEntry as ExerciseEntryEntity
 import dev.cadence.data.local.PersonalRecord as PersonalRecordEntity
+import dev.cadence.data.local.PlannedSession as PlannedSessionEntity
 import dev.cadence.data.local.Session as SessionEntity
 import dev.cadence.data.local.SetEntry as SetEntryEntity
 import dev.cadence.model.Block
@@ -18,6 +19,7 @@ import dev.cadence.model.HyroxStation
 import dev.cadence.model.MetricType
 import dev.cadence.model.Modality
 import dev.cadence.model.PersonalRecord
+import dev.cadence.model.PlannedSession
 import dev.cadence.model.PrKind
 import dev.cadence.model.Session
 import dev.cadence.model.SessionDetail
@@ -112,6 +114,14 @@ internal fun SetEntry.toEntity(): SetEntryEntity = SetEntryEntity(
     createdAt = createdAt.toEpochMilliseconds(),
     updatedAt = updatedAt.toEpochMilliseconds(),
     deletedAt = deletedAt?.toEpochMilliseconds(),
+)
+
+internal fun PlannedSessionEntity.toDomain(): PlannedSession = PlannedSession(
+    id = id,
+    name = name,
+    type = safeEnum<SessionType>(type) ?: SessionType.STRENGTH,
+    targetDurationMin = targetDurationMin,
+    focus = focus,
 )
 
 internal fun PersonalRecordEntity.toDomain(): PersonalRecord = PersonalRecord(

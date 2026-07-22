@@ -2,7 +2,7 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.data.PreferencesRepository
+import dev.cadence.domain.PreferencesRepository
 import dev.cadence.domain.ThemeMode
 import dev.cadence.domain.UserPreferences
 import dev.cadence.domain.WeightUnit

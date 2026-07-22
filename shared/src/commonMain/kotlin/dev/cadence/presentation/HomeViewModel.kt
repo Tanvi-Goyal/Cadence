@@ -2,9 +2,9 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.data.SessionRepository
-import dev.cadence.data.local.PlannedSession
-import dev.cadence.data.local.Session
+import dev.cadence.domain.SessionRepository
+import dev.cadence.model.PlannedSession
+import dev.cadence.model.Session
 import dev.cadence.sync.SyncEngine
 import dev.cadence.sync.SyncResult
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -123,7 +123,7 @@ class HomeViewModel(
         // Streak: consecutive UTC epoch-days with >=1 session, ending today (or yesterday if today
         // has none yet, so an active streak doesn't "break" until a full day is missed). UTC-bucketed
         // for a dependency-free v1 — precise local-timezone bucketing is a noted refinement.
-        val trainedDays = sessions.map { it.startedAt / dayMs }.toSet()
+        val trainedDays = sessions.map { it.startedAt.toEpochMilliseconds() / dayMs }.toSet()
         val today = now / dayMs
         var cursor = if (trainedDays.contains(today)) today else today - 1
         var streak = 0

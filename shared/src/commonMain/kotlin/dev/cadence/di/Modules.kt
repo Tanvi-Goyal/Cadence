@@ -3,11 +3,11 @@ package dev.cadence.di
 import dev.cadence.common.UuidGenerator
 import dev.cadence.common.UuidV7Generator
 import dev.cadence.data.MuscleImageProvider
-import dev.cadence.data.PersonalRecordRepository
+import dev.cadence.domain.PersonalRecordRepository
 import dev.cadence.data.PersonalRecordRepositoryImpl
-import dev.cadence.data.PreferencesRepository
+import dev.cadence.domain.PreferencesRepository
 import dev.cadence.data.PreferencesRepositoryImpl
-import dev.cadence.data.SessionRepository
+import dev.cadence.domain.SessionRepository
 import dev.cadence.data.SessionRepositoryImpl
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.buildDatabase

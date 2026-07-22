@@ -2,7 +2,7 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.data.SessionRepository
+import dev.cadence.domain.SessionRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -27,7 +27,7 @@ class TemplatesViewModel(
 
     val uiState: StateFlow<List<TemplateUi>> =
         repository.observeTemplates()
-            .map { templates -> templates.map { TemplateUi(it.id, it.name, it.type) } }
+            .map { templates -> templates.map { TemplateUi(it.id, it.name, it.type.name) } }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),

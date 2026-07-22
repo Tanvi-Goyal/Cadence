@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-import dev.cadence.data.local.Exercise
+import dev.cadence.model.Exercise
 import dev.cadence.presentation.ExerciseDetailViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -84,7 +84,7 @@ fun ExerciseDetailScreen(
                     }
                 }
                 if (ex != null) {
-                    ex.imageUrlsList.firstOrNull()?.let { url ->
+                    ex.imageUrls.firstOrNull()?.let { url ->
                         item {
                             AsyncImage(
                                 model = url,
@@ -119,9 +119,9 @@ fun ExerciseDetailScreen(
                             }
                         }
                     }
-                    if (ex.instructionsList.isNotEmpty()) {
+                    if (ex.instructions.isNotEmpty()) {
                         item { Text("Instructions", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
-                        itemsIndexedSteps(ex.instructionsList)
+                        itemsIndexedSteps(ex.instructions)
                     }
                 }
             }
@@ -150,8 +150,8 @@ private fun TagRow(ex: Exercise) {
 @Composable
 private fun MuscleChips(ex: Exercise) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(ex.primaryMusclesList) { m -> Pill(m.replaceFirstChar { it.uppercase() }, filled = true) }
-        items(ex.secondaryMusclesList) { m -> Pill(m.replaceFirstChar { it.uppercase() }, filled = false) }
+        items(ex.primaryMuscles) { m -> Pill(m.replaceFirstChar { it.uppercase() }, filled = true) }
+        items(ex.secondaryMuscles) { m -> Pill(m.replaceFirstChar { it.uppercase() }, filled = false) }
     }
 }
 

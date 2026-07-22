@@ -29,7 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.cadence.data.local.VolumePoint
+import dev.cadence.model.VolumePoint
 import dev.cadence.presentation.StatsUiState
 import dev.cadence.presentation.StatsViewModel
 import org.koin.compose.viewmodel.koinViewModel

@@ -2,7 +2,7 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.data.SessionRepository
+import dev.cadence.domain.SessionRepository
 import dev.cadence.model.SessionDetail
 import dev.cadence.model.SetEntry
 import kotlinx.coroutines.flow.SharingStarted

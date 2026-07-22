@@ -3,19 +3,20 @@ package dev.cadence.data
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.map
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
 import dev.cadence.common.UuidGenerator
+import dev.cadence.domain.SessionRepository
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.Block
-import dev.cadence.data.local.Exercise
+import dev.cadence.data.local.Exercise as ExerciseEntity
 import dev.cadence.data.local.ExerciseAssetReader
 import dev.cadence.data.local.ExerciseEntry
 import dev.cadence.data.local.ExerciseImporter
 import dev.cadence.data.local.OutboxEntry
 import dev.cadence.data.local.PersonalRecord as PersonalRecordEntity
-import dev.cadence.data.local.PlannedSession
-import dev.cadence.data.local.Session
+import dev.cadence.data.local.Session as SessionEntity
 import dev.cadence.data.local.SessionSource
 import dev.cadence.data.local.SessionType
 import dev.cadence.data.local.SetEntry as SetEntryEntity
@@ -23,6 +24,9 @@ import dev.cadence.data.local.SyncMeta
 import dev.cadence.data.local.SyncMetaKeys
 import dev.cadence.data.local.SyncStatus
 import dev.cadence.domain.detectPrs
+import dev.cadence.model.Exercise
+import dev.cadence.model.PlannedSession
+import dev.cadence.model.Session
 import dev.cadence.model.SessionDetail
 import dev.cadence.model.SetEntry
 import kotlinx.coroutines.flow.Flow
@@ -107,11 +111,14 @@ class SessionRepositoryImpl(
         updatedAt = now,
     )
 
-    override fun observeSessions(): Flow<List<Session>> = sessions.observeAll()
+    override fun observeSessions(): Flow<List<Session>> =
+        sessions.observeAll().map { rows -> rows.map { it.toDomain() } }
 
-    override fun observeTemplates(): Flow<List<Session>> = sessions.observeTemplates()
+    override fun observeTemplates(): Flow<List<Session>> =
+        sessions.observeTemplates().map { rows -> rows.map { it.toDomain() } }
 
-    override fun observePlannedSession(): Flow<PlannedSession?> = plans.observeCurrent()
+    override fun observePlannedSession(): Flow<PlannedSession?> =
+        plans.observeCurrent().map { it?.toDomain() }
 
     override fun observeSessionDetail(sessionId: String): Flow<SessionDetail?> =
         combine(
@@ -130,7 +137,7 @@ class SessionRepositoryImpl(
      * ~870-row catalog), as domain models. Re-runs per emission — cheap for a handful of exercises;
      * revisit with a cache if a session ever references many.
      */
-    private suspend fun resolveExercises(items: List<ExerciseEntry>): Map<String, dev.cadence.model.Exercise> =
+    private suspend fun resolveExercises(items: List<ExerciseEntry>): Map<String, Exercise> =
         exercises.getByIds(items.map { it.exerciseId }.distinct()).associate { it.id to it.toDomain() }
 
     override fun observeVolumesBySession(): Flow<Map<String, Double>> =
@@ -146,21 +153,22 @@ class SessionRepositoryImpl(
         equipment: String?,
         muscle: String?,
     ): Flow<PagingData<Exercise>> =
-        Pager(PagingConfig(pageSize = 30)) { exercises.search(query, equipment, muscle) }.flow
+        Pager(PagingConfig(pageSize = 30)) { exercises.search(query, equipment, muscle) }
+            .flow.map { page -> page.map { it.toDomain() } }
 
     override suspend fun exercisesById(): Map<String, Exercise> =
-        exercises.getAll().associateBy { it.id }
+        exercises.getAll().associate { it.id to it.toDomain() }
 
-    override suspend fun exerciseById(id: String): Exercise? = exercises.getById(id)
+    override suspend fun exerciseById(id: String): Exercise? = exercises.getById(id)?.toDomain()
 
     override suspend fun createSession(type: String): Session =
-        insertSession(name = displayName(type), type = type)
+        insertSession(name = displayName(type), type = type).toDomain()
 
     override suspend fun createTemplate(name: String, type: String): Session =
-        insertSession(name = name, type = type, isTemplate = true, source = SessionSource.MANUAL)
+        insertSession(name = name, type = type, isTemplate = true, source = SessionSource.MANUAL).toDomain()
 
     override suspend fun startPlannedSession(plan: PlannedSession): Session =
-        insertSession(name = plan.name, type = plan.type)
+        insertSession(name = plan.name, type = plan.type.name).toDomain()
 
     override suspend fun addExercise(sessionId: String, exerciseId: String) {
         val now = now()
@@ -259,9 +267,9 @@ class SessionRepositoryImpl(
         isTemplate: Boolean = false,
         source: String = SessionSource.MANUAL,
         templateId: String? = null,
-    ): Session {
+    ): SessionEntity {
         val now = now()
-        val session = Session(
+        val session = SessionEntity(
             id = uuid.newId(),
             startedAt = now,
             name = name,
@@ -287,7 +295,7 @@ class SessionRepositoryImpl(
         require(template.isTemplate) { "Session $templateId is not a template" }
 
         val now = now()
-        val newSession = Session(
+        val newSession = SessionEntity(
             id = uuid.newId(),
             startedAt = now,
             name = template.name,
@@ -345,7 +353,7 @@ class SessionRepositoryImpl(
                 enqueueOutbox(newSession.id, now)
             }
         }
-        return newSession
+        return newSession.toDomain()
     }
 
     /** Marks a session dirty (new updatedAt + PENDING) and refreshes its single outbox row. */
@@ -405,7 +413,7 @@ class SessionRepositoryImpl(
                 for (i in existing until target) {
                     val sessionId = uuid.newId()
                     sessions.insert(
-                        Session(
+                        SessionEntity(
                             id = sessionId,
                             startedAt = now - i * dayMs,
                             name = names[i % names.size],

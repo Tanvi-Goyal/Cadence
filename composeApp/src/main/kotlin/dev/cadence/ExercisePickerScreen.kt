@@ -93,7 +93,7 @@ fun ExercisePickerScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             AsyncImage(
-                                model = exercise.imageUrlsList.firstOrNull(),
+                                model = exercise.imageUrls.firstOrNull(),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.size(48.dp)
@@ -104,7 +104,7 @@ fun ExercisePickerScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(exercise.name, color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                                 Text(
-                                    subtitle(exercise.primaryMusclesList.firstOrNull(), exercise.equipment),
+                                    subtitle(exercise.primaryMuscles.firstOrNull(), exercise.equipment),
                                     color = TextSecondary,
                                     fontSize = 12.sp,
                                 )

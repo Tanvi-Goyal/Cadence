@@ -37,8 +37,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.cadence.data.local.PlannedSession
-import dev.cadence.data.local.Session
+import dev.cadence.model.PlannedSession
+import dev.cadence.model.Session
 import dev.cadence.data.local.SessionType
 import dev.cadence.domain.Units
 import dev.cadence.domain.WeightUnit
@@ -263,7 +263,7 @@ private fun UpNextSection(plan: PlannedSession, onStart: () -> Unit) {
                         )
                     }
                 }
-                AccentPill(text = typeLabel(plan.type), icon = CadenceIcons.Bolt)
+                AccentPill(text = typeLabel(plan.type.name), icon = CadenceIcons.Bolt)
             }
         }
     }
@@ -338,6 +338,7 @@ private fun RecentSection(
     }
 }
 
+@OptIn(kotlin.time.ExperimentalTime::class)
 @Composable
 internal fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -355,7 +356,7 @@ internal fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit)
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
         ) {
-            IconMedallion(icon = typeIcon(session.type))
+            IconMedallion(icon = typeIcon(session.type.name))
             Column {
                 Text(
                     text = session.name,
@@ -366,7 +367,7 @@ internal fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit)
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = relativeDate(session.startedAt),
+                    text = relativeDate(session.startedAt.toEpochMilliseconds()),
                     style = MaterialTheme.typography.labelMedium,
                     color = colors.onSurfaceVariant,
                 )
@@ -480,7 +481,7 @@ private fun HomeContentPreview() {
     CadenceTheme {
         HomeContent(
             state = HomeUiState(
-                plannedSession = PlannedSession("1", "Upper Strength", SessionType.STRENGTH, 55, "Push focus"),
+                plannedSession = PlannedSession("1", "Upper Strength", dev.cadence.model.SessionType.STRENGTH, 55, "Push focus"),
                 stats = HomeStats(total = 20, dayStreak = 9, totalVolumeKg = 26700.0),
             ),
             onStartPlanned = {},

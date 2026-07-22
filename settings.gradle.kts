@@ -2,6 +2,7 @@ rootProject.name = "Cadence"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             mavenContent {
@@ -33,3 +34,8 @@ include(":shared")
 include(":contracts")
 include(":server")
 include(":benchmark")
+include(":core:model")
+include(":core:common")
+include(":core:database")
+include(":core:network")
+include(":core:domain")

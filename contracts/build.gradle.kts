@@ -1,13 +1,14 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidMultiplatformLibrary)
+    id("cadence.kmp.library")
     alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
-    // jvm() is what lets the JVM :server consume these DTOs; :shared consumes the android/ios variants.
+    // jvm() lets the JVM :server consume these DTOs; :shared consumes the android/ios variants.
+    // The KMP + AGP-KMP-library plugins, iOS targets, and -Xexpect-actual-classes come from the
+    // `cadence.kmp.library` convention plugin.
     jvm()
 
     androidLibrary {
@@ -19,9 +20,6 @@ kotlin {
             jvmTarget = JvmTarget.JVM_11
         }
     }
-
-    iosArm64()
-    iosSimulatorArm64()
 
     sourceSets {
         commonMain.dependencies {

@@ -5,7 +5,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import dev.cadence.common.UuidV7Generator
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.ExerciseAssetReader
-import dev.cadence.data.local.SessionSource
+import dev.cadence.model.SessionSource
 import dev.cadence.data.local.SessionType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
