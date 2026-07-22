@@ -2,7 +2,8 @@ package dev.cadence.sync
 
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import dev.cadence.contracts.LoggedItemDto
+import dev.cadence.contracts.BlockDto
+import dev.cadence.contracts.ExerciseEntryDto
 import dev.cadence.contracts.PullResponse
 import dev.cadence.contracts.PushResponse
 import dev.cadence.contracts.SessionDto
@@ -106,7 +107,7 @@ class SyncEngineTest {
         database.sessionDao().upsert(local)
         assertEquals(1, database.sessionDao().observeAll().first().size)
 
-        engineWith(FakeSyncApi(pullChanges = listOf(dto("s1", updatedAt = 300, deleted = true)), nextCursor = 1)).sync()
+        engineWith(FakeSyncApi(pullChanges = listOf(dto("s1", updatedAt = 300, deletedAt = 300)), nextCursor = 1)).sync()
 
         assertTrue(
             database.sessionDao().observeAll().first().isEmpty(),
@@ -151,28 +152,34 @@ class SyncEngineTest {
         // Log a session with one exercise + one set, then push.
         val session = repo.createSession(SessionType.STRENGTH)
         repo.addExercise(session.id, "bench-press")
-        val itemId = database.exerciseEntryDao().getBySession(session.id).first().id
-        repo.addSet(session.id, itemId, reps = 10, loadKg = 60.0)
+        val entryId = database.exerciseEntryDao().getBySession(session.id).first().id
+        repo.addSet(session.id, entryId, reps = 10, loadKg = 60.0)
 
         val api = FakeSyncApi()
         engineWith(api).sync()
 
-        // The aggregate DTO carries the exercise and its set.
-        val pushed = api.pushed.first { it.id == session.id }
-        assertEquals("bench-press", pushed.loggedItems.first().exerciseId)
-        assertEquals(10, pushed.loggedItems.first().sets.first().reps)
-        assertEquals(60.0, pushed.loggedItems.first().sets.first().loadKg)
+        // The aggregate DTO carries the block → entry → set tree, entry keeps its real id.
+        val pushedEntry = api.pushed.first { it.id == session.id }.blocks.first().entries.first()
+        assertEquals(entryId, pushedEntry.id, "entry id is preserved on the wire, not regenerated")
+        assertEquals("bench-press", pushedEntry.exerciseId)
+        assertEquals(10, pushedEntry.sets.first().reps)
+        assertEquals(60.0, pushedEntry.sets.first().loadKg)
 
-        // Pulling a nested remote session materializes its items + sets locally.
+        // Pulling a nested remote session materializes its tree with the SAME ids from the wire.
         engineWith(
             FakeSyncApi(
                 pullChanges = listOf(
                     SessionDto(
                         id = "remote1", startedAt = 1, updatedAt = 900,
-                        loggedItems = listOf(
-                            LoggedItemDto(
-                                exerciseId = "back-squat", orderIndex = 0,
-                                sets = listOf(SetDto(setNumber = 1, reps = 5, loadKg = 100.0)),
+                        blocks = listOf(
+                            BlockDto(
+                                id = "rb1",
+                                entries = listOf(
+                                    ExerciseEntryDto(
+                                        id = "re1", exerciseId = "back-squat", orderIndex = 0,
+                                        sets = listOf(SetDto(id = "rs1", setNumber = 1, reps = 5, loadKg = 100.0)),
+                                    ),
+                                ),
                             ),
                         ),
                     ),
@@ -181,11 +188,13 @@ class SyncEngineTest {
             ),
         ).sync()
 
-        val remoteItems = database.exerciseEntryDao().getBySession("remote1")
-        assertEquals(1, remoteItems.size)
-        assertEquals("back-squat", remoteItems.first().exerciseId)
-        val remoteSets = database.setEntryDao().getForEntry(remoteItems.first().id)
+        val remoteEntries = database.exerciseEntryDao().getBySession("remote1")
+        assertEquals(1, remoteEntries.size)
+        assertEquals("re1", remoteEntries.first().id, "child id comes from the wire, not minted locally")
+        assertEquals("back-squat", remoteEntries.first().exerciseId)
+        val remoteSets = database.setEntryDao().getForEntry("re1")
         assertEquals(1, remoteSets.size)
+        assertEquals("rs1", remoteSets.first().id)
         assertEquals(100.0, remoteSets.first().loadKg)
     }
 
@@ -206,7 +215,7 @@ class SyncEngineTest {
         val pushed = api.pushed.first { it.id == template.id }
         assertTrue(pushed.isTemplate, "template flag crosses the wire")
         assertEquals("MANUAL", pushed.source)
-        val pushedSet = pushed.loggedItems.first().sets.first()
+        val pushedSet = pushed.blocks.first().entries.first().sets.first()
         assertEquals(5, pushedSet.targetReps)
         assertEquals(100.0, pushedSet.targetLoadKg)
         assertNull(pushedSet.reps, "a template set has no actuals")
@@ -218,10 +227,15 @@ class SyncEngineTest {
                     SessionDto(
                         id = "remoteT", startedAt = 1, name = "Remote Tmpl", updatedAt = 700,
                         isTemplate = true, source = "MANUAL",
-                        loggedItems = listOf(
-                            LoggedItemDto(
-                                exerciseId = "back-squat", orderIndex = 0,
-                                sets = listOf(SetDto(setNumber = 1, targetReps = 3, targetLoadKg = 140.0)),
+                        blocks = listOf(
+                            BlockDto(
+                                id = "tb1",
+                                entries = listOf(
+                                    ExerciseEntryDto(
+                                        id = "te1", exerciseId = "back-squat", orderIndex = 0,
+                                        sets = listOf(SetDto(id = "ts1", setNumber = 1, targetReps = 3, targetLoadKg = 140.0)),
+                                    ),
+                                ),
                             ),
                         ),
                     ),
@@ -239,6 +253,6 @@ class SyncEngineTest {
         assertNull(pulledSet.reps)
     }
 
-    private fun dto(id: String, updatedAt: Long, deleted: Boolean = false) =
-        SessionDto(id = id, startedAt = 1, notes = null, updatedAt = updatedAt, deleted = deleted)
+    private fun dto(id: String, updatedAt: Long, deletedAt: Long? = null) =
+        SessionDto(id = id, startedAt = 1, notes = null, updatedAt = updatedAt, deletedAt = deletedAt)
 }
