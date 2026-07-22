@@ -9,6 +9,7 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.PrimaryKey
 import androidx.room3.Query
+import androidx.room3.Upsert
 import androidx.room3.paging.PagingSourceDaoReturnTypeConverter
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
@@ -82,6 +83,10 @@ interface ExerciseDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(exercises: List<Exercise>)
+
+    /** Insert-or-update — used by the versioned re-seed to refresh reference rows in place. */
+    @Upsert
+    suspend fun upsertAll(exercises: List<Exercise>)
 
     @Query("SELECT * FROM exercises WHERE id = :id")
     suspend fun getById(id: String): Exercise?

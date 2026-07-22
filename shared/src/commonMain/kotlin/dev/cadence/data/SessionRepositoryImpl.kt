@@ -19,6 +19,8 @@ import dev.cadence.data.local.Session
 import dev.cadence.data.local.SessionSource
 import dev.cadence.data.local.SessionType
 import dev.cadence.data.local.SetEntry as SetEntryEntity
+import dev.cadence.data.local.SyncMeta
+import dev.cadence.data.local.SyncMetaKeys
 import dev.cadence.data.local.SyncStatus
 import dev.cadence.domain.detectPrs
 import dev.cadence.model.SessionDetail
@@ -49,6 +51,11 @@ class SessionRepositoryImpl(
     /** Wall-clock millis via the injected [clock] — the single time source for all writes. */
     private fun now(): Long = clock.now().toEpochMilliseconds()
 
+    private companion object {
+        /** Bump when [ExerciseImporter] output changes so existing installs re-seed (A7 = v2). */
+        const val CATALOG_SEED_VERSION = 2
+    }
+
     private val sessions get() = database.sessionDao()
     private val outbox get() = database.outboxDao()
     private val blocks get() = database.blockDao()
@@ -57,6 +64,7 @@ class SessionRepositoryImpl(
     private val exercises get() = database.exerciseDao()
     private val plans get() = database.plannedSessionDao()
     private val personalRecords get() = database.personalRecordDao()
+    private val syncMeta get() = database.syncMetaDao()
 
     /**
      * Recompute + upsert PBs for a just-written set, inside the caller's write transaction. Pure
@@ -363,8 +371,14 @@ class SessionRepositoryImpl(
     }
 
     override suspend fun ensureSeeded() {
-        if (exercises.count() == 0) {
-            exercises.insertAll(ExerciseImporter.parse(exerciseAssetReader.readExercisesJson()))
+        // Versioned re-seed: fresh installs import; existing installs whose catalog predates the
+        // current seed (e.g. before modality/Hyrox landed) upsert to refresh + add the new rows.
+        val seeded = syncMeta.get(SyncMetaKeys.SEED_VERSION)?.toIntOrNull() ?: 0
+        if (seeded < CATALOG_SEED_VERSION) {
+            val catalog = ExerciseImporter.parse(exerciseAssetReader.readExercisesJson()) +
+                ExerciseImporter.supplementalSeed()
+            exercises.upsertAll(catalog)
+            syncMeta.set(SyncMeta(SyncMetaKeys.SEED_VERSION, CATALOG_SEED_VERSION.toString()))
         }
         if (plans.getCurrent() == null) {
             plans.upsert(
