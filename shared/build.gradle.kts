@@ -53,6 +53,7 @@ kotlin {
             // cleaned up when features are extracted (B11) and those types move to :core:model.
             api(projects.core.database)
             implementation(projects.core.network)
+            implementation(projects.core.sync) // SyncEngine, consumed by HomeViewModel + bound in Koin
             implementation(projects.contracts)
             // Room RUNTIME stays: the repository + sync engine + iosTest still call useWriterConnection /
             // Room.inMemoryDatabaseBuilder. Only the Room *plugin*/KSP/schemas moved to :core:database.
