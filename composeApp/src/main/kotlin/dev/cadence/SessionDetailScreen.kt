@@ -28,7 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.data.local.ExerciseMetric
 import dev.cadence.domain.Units
 import dev.cadence.domain.WeightUnit
-import dev.cadence.data.local.SetEntry
+import dev.cadence.model.SetEntry
 import dev.cadence.presentation.LoggedItemUi
 import dev.cadence.presentation.SessionDetailViewModel
 import org.koin.compose.viewmodel.koinViewModel

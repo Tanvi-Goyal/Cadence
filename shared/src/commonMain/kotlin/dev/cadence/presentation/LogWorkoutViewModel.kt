@@ -3,13 +3,11 @@ package dev.cadence.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.cadence.data.SessionRepository
-import dev.cadence.data.local.Exercise
-import dev.cadence.data.local.ExerciseMetric
-import dev.cadence.data.local.SetEntry
-import kotlinx.coroutines.flow.MutableStateFlow
+import dev.cadence.model.SessionDetail
+import dev.cadence.model.SetEntry
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -21,44 +19,42 @@ data class LoggedItemUi(
     val sets: List<SetEntry>,
 )
 
+/**
+ * Flatten a hydrated [SessionDetail] into the per-exercise cards the logging/detail/builder screens
+ * render. `metric` is the domain [MetricType] name, so the existing `== ExerciseMetric.WEIGHT_REPS`
+ * check in the UI still selects the strength layout. (Blocks are flattened for now; the block-aware
+ * UI arrives with the real block model.)
+ */
+internal fun SessionDetail?.toLoggedItemUis(): List<LoggedItemUi> =
+    this?.blocks?.flatMap { it.entries }?.map { entry ->
+        LoggedItemUi(
+            loggedItemId = entry.entry.id,
+            exerciseName = entry.exercise.name,
+            metric = entry.exercise.defaultMetric.name,
+            sets = entry.sets,
+        )
+    }.orEmpty()
+
 data class LogWorkoutUiState(
     val sessionName: String = "",
     val items: List<LoggedItemUi> = emptyList(),
 )
 
 /**
- * Drives the Log Workout screen for one [sessionId]. Reads the session + its logged items/sets
- * from the DB (never the network); writes go through the repository, which bumps the parent
- * session so the whole aggregate re-syncs.
+ * Drives the Log Workout screen for one [sessionId]. Reads the hydrated session from the DB (never
+ * the network); writes go through the repository, which bumps the parent session so the whole
+ * aggregate re-syncs.
  */
 class LogWorkoutViewModel(
     private val repository: SessionRepository,
     private val sessionId: String,
 ) : ViewModel() {
 
-    private val exercisesById = MutableStateFlow<Map<String, Exercise>>(emptyMap())
-
-    init {
-        viewModelScope.launch { exercisesById.value = repository.exercisesById() }
-    }
-
     val uiState: StateFlow<LogWorkoutUiState> =
-        combine(
-            repository.observeSession(sessionId),
-            repository.observeLoggedItems(sessionId),
-            exercisesById,
-        ) { session, items, catalog ->
+        repository.observeSessionDetail(sessionId).map { detail ->
             LogWorkoutUiState(
-                sessionName = session?.name.orEmpty(),
-                items = items.map { withSets ->
-                    val exercise = catalog[withSets.item.exerciseId]
-                    LoggedItemUi(
-                        loggedItemId = withSets.item.id,
-                        exerciseName = exercise?.name ?: withSets.item.exerciseId,
-                        metric = exercise?.metric ?: ExerciseMetric.WEIGHT_REPS,
-                        sets = withSets.sets,
-                    )
-                },
+                sessionName = detail?.session?.name.orEmpty(),
+                items = detail.toLoggedItemUis(),
             )
         }.stateIn(
             scope = viewModelScope,

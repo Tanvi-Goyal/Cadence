@@ -29,4 +29,7 @@ interface SyncMetaDao {
 /** Well-known keys for [SyncMeta]. */
 object SyncMetaKeys {
     const val PULL_CURSOR = "pull_cursor"
+
+    /** Version of the seeded reference catalog on this device; bump to re-import (see repository). */
+    const val SEED_VERSION = "seed_version"
 }

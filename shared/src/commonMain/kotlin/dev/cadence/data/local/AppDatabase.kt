@@ -15,9 +15,10 @@ import androidx.room3.RoomDatabaseConstructor
 @Database(
     entities = [
         Session::class, OutboxEntry::class, SyncMeta::class, PlannedSession::class,
-        Exercise::class, LoggedItem::class, SetEntry::class, PreferencesEntity::class,
+        Exercise::class, ExerciseEntry::class, SetEntry::class, PreferencesEntity::class,
+        Block::class, PersonalRecord::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -27,10 +28,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun syncMetaDao(): SyncMetaDao
     abstract fun plannedSessionDao(): PlannedSessionDao
     abstract fun exerciseDao(): ExerciseDao
-    abstract fun loggedItemDao(): LoggedItemDao
+    abstract fun exerciseEntryDao(): ExerciseEntryDao
     abstract fun setEntryDao(): SetEntryDao
     abstract fun statsDao(): StatsDao
     abstract fun preferencesDao(): PreferencesDao
+    abstract fun blockDao(): BlockDao
+    abstract fun personalRecordDao(): PersonalRecordDao
 }
 
 // KSP generates the actual implementation per target.

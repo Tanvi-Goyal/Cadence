@@ -1,6 +1,10 @@
 package dev.cadence.di
 
+import dev.cadence.common.UuidGenerator
+import dev.cadence.common.UuidV7Generator
 import dev.cadence.data.MuscleImageProvider
+import dev.cadence.data.PersonalRecordRepository
+import dev.cadence.data.PersonalRecordRepositoryImpl
 import dev.cadence.data.PreferencesRepository
 import dev.cadence.data.PreferencesRepositoryImpl
 import dev.cadence.data.SessionRepository
@@ -40,13 +44,18 @@ import org.koin.dsl.module
 expect val platformModule: Module
 
 /** Shared data graph: DB → DAOs → repository. Plain constructor wiring, no class annotations. */
+@OptIn(kotlin.time.ExperimentalTime::class)
 val dataModule = module {
+    // Identity + time seams (A1): injectable so repositories/use-cases are deterministic under test.
+    single<kotlin.time.Clock> { kotlin.time.Clock.System }
+    single<UuidGenerator> { UuidV7Generator(get()) }
     single { buildDatabase(get()) }
     single { get<AppDatabase>().sessionDao() }
     single { get<AppDatabase>().outboxDao() }
     single { get<AppDatabase>().syncMetaDao() }
-    single { SessionRepositoryImpl(get(), get()) } bind SessionRepository::class
+    single { SessionRepositoryImpl(get(), get(), get(), get()) } bind SessionRepository::class
     single { PreferencesRepositoryImpl(get()) } bind PreferencesRepository::class
+    single { PersonalRecordRepositoryImpl(get()) } bind PersonalRecordRepository::class
 }
 
 /** Sync graph: HTTP client (from the platform engine) → transport → engine. */

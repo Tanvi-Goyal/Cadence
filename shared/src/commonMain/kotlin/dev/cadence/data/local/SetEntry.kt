@@ -10,24 +10,17 @@ import androidx.room3.Update
 import kotlinx.coroutines.flow.Flow
 
 /**
- * One set in the session tree — the single unit of work (D1: one wide, typed row).
- *
- * Every set carries BOTH a prescription and a performance (D2, template-first capture):
- * - **Actuals** ([reps]/[loadKg]/[timeSec]/[distanceM]) — what was performed. Unified across
- *   modalities: strength uses [reps]/[loadKg], conditioning uses [timeSec]/[distanceM]; the rest
- *   are null. Which pair is meaningful is decided by the parent exercise's [Exercise.metric].
- * - **Targets** ([targetReps]/[targetLoadKg]/[targetTimeSec]/[targetDistanceM]) — the prescription.
- *   In a template row (parent session `isTemplate = true`) only the targets are populated; actuals
- *   are null. Instantiating a template deep-copies targets → targets and leaves actuals null, which
- *   is what gives the UI "ghost values" (target shown greyed until the actual is entered).
- *
- * Note the actuals are deliberately left un-prefixed (not `actualReps`) to keep existing read
- * queries, DTOs, and UI untouched; the `target*` prefix marks the prescription.
+ * One set — the single unit of work — under an [ExerciseEntry] (v8: keyed by [exerciseEntryId],
+ * was `loggedItemId`). Holds BOTH a prescription and a performance so one polymorphic row serves all
+ * modalities:
+ * - **Actuals** ([reps]/[loadKg]/[timeSec]/[distanceM]/[calories]) — what was performed.
+ * - **Targets** ([targetReps]/…/[targetCalories]) — the prescription; in a template only targets
+ *   are set. Which pair is meaningful is decided by the parent exercise's metric.
  */
-@Entity(tableName = "set_entries", indices = [Index("loggedItemId")])
+@Entity(tableName = "set_entries", indices = [Index("exerciseEntryId")])
 data class SetEntry(
     @PrimaryKey val id: String,
-    val loggedItemId: String,
+    val exerciseEntryId: String,
     val setNumber: Int,
     // Performance (actuals):
     val reps: Int? = null,
@@ -35,11 +28,17 @@ data class SetEntry(
     val timeSec: Int? = null,
     val distanceM: Int? = null,
     val rpe: Int? = null,
-    // Prescription (targets) — populated in template rows, copied on instantiation:
+    // Prescription (targets):
     val targetReps: Int? = null,
     val targetLoadKg: Double? = null,
     val targetTimeSec: Int? = null,
     val targetDistanceM: Int? = null,
+    // v8 additions:
+    val calories: Int? = null,
+    val targetCalories: Int? = null,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
+    val deletedAt: Long? = null,
 )
 
 /** Per-session training volume (Σ reps × loadKg over strength sets) — a plain query-result POJO. */
@@ -56,35 +55,36 @@ interface SetEntryDao {
     @Update
     suspend fun update(set: SetEntry)
 
-    @Query("SELECT * FROM set_entries WHERE loggedItemId = :loggedItemId ORDER BY setNumber")
-    suspend fun getForLoggedItem(loggedItemId: String): List<SetEntry>
+    @Query("SELECT * FROM set_entries WHERE exerciseEntryId = :exerciseEntryId AND deletedAt IS NULL ORDER BY setNumber")
+    suspend fun getForEntry(exerciseEntryId: String): List<SetEntry>
 
-    /** All sets belonging to a session (joined via logged_items) — observed by Log Workout. */
+    /** All sets in a session (joined via exercise_entries → blocks) — observed by Log Workout. */
     @Query(
         """
         SELECT s.* FROM set_entries s
-        INNER JOIN logged_items li ON s.loggedItemId = li.id
-        WHERE li.sessionId = :sessionId
+        INNER JOIN exercise_entries e ON s.exerciseEntryId = e.id
+        INNER JOIN blocks b ON e.blockId = b.id
+        WHERE b.sessionId = :sessionId AND s.deletedAt IS NULL
         ORDER BY s.setNumber
         """,
     )
     fun observeForSession(sessionId: String): Flow<List<SetEntry>>
 
-    @Query("DELETE FROM set_entries WHERE loggedItemId IN (:loggedItemIds)")
-    suspend fun deleteForLoggedItems(loggedItemIds: List<String>)
+    @Query("DELETE FROM set_entries WHERE exerciseEntryId IN (:entryIds)")
+    suspend fun deleteForEntries(entryIds: List<String>)
 
     /**
-     * Strength volume per session, for Home's Volume stat + per-row metric. Reactive.
-     * No template filter needed: template sets carry only targets, so their [reps]/[loadKg] actuals
-     * are null and the `IS NOT NULL` guards below exclude them by construction.
+     * Strength volume per session, for Home's Volume stat. Reactive. Template sets carry only
+     * targets (null actuals), so the `IS NOT NULL` guards exclude them by construction.
      */
     @Query(
         """
-        SELECT li.sessionId AS sessionId, COALESCE(SUM(s.reps * s.loadKg), 0) AS volume
+        SELECT b.sessionId AS sessionId, COALESCE(SUM(s.reps * s.loadKg), 0) AS volume
         FROM set_entries s
-        INNER JOIN logged_items li ON s.loggedItemId = li.id
-        WHERE s.reps IS NOT NULL AND s.loadKg IS NOT NULL
-        GROUP BY li.sessionId
+        INNER JOIN exercise_entries e ON s.exerciseEntryId = e.id
+        INNER JOIN blocks b ON e.blockId = b.id
+        WHERE s.reps IS NOT NULL AND s.loadKg IS NOT NULL AND s.deletedAt IS NULL
+        GROUP BY b.sessionId
         """,
     )
     fun observeSessionVolumes(): Flow<List<SessionVolume>>

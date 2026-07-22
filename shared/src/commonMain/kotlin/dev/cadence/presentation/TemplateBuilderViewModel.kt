@@ -3,12 +3,9 @@ package dev.cadence.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.cadence.data.SessionRepository
-import dev.cadence.data.local.Exercise
-import dev.cadence.data.local.ExerciseMetric
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -19,38 +16,19 @@ data class TemplateBuilderUiState(
 
 /**
  * Drives the template builder for one template [templateId]. Structurally a sibling of
- * [LogWorkoutViewModel] — same DB reads (session + logged items/sets + exercise catalog) — but its
- * writes populate the **prescription** (`target*`) via [SessionRepository.addTargetSet], because a
- * template captures the plan, not a performance.
+ * [LogWorkoutViewModel] — same hydrated read — but its writes populate the **prescription**
+ * (`target*`) via [SessionRepository.addTargetSet], because a template captures the plan.
  */
 class TemplateBuilderViewModel(
     private val repository: SessionRepository,
     private val templateId: String,
 ) : ViewModel() {
 
-    private val exercisesById = MutableStateFlow<Map<String, Exercise>>(emptyMap())
-
-    init {
-        viewModelScope.launch { exercisesById.value = repository.exercisesById() }
-    }
-
     val uiState: StateFlow<TemplateBuilderUiState> =
-        combine(
-            repository.observeSession(templateId),
-            repository.observeLoggedItems(templateId),
-            exercisesById,
-        ) { template, items, catalog ->
+        repository.observeSessionDetail(templateId).map { detail ->
             TemplateBuilderUiState(
-                templateName = template?.name.orEmpty(),
-                items = items.map { withSets ->
-                    val exercise = catalog[withSets.item.exerciseId]
-                    LoggedItemUi(
-                        loggedItemId = withSets.item.id,
-                        exerciseName = exercise?.name ?: withSets.item.exerciseId,
-                        metric = exercise?.metric ?: ExerciseMetric.WEIGHT_REPS,
-                        sets = withSets.sets,
-                    )
-                },
+                templateName = detail?.session?.name.orEmpty(),
+                items = detail.toLoggedItemUis(),
             )
         }.stateIn(
             scope = viewModelScope,

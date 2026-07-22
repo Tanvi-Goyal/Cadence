@@ -19,8 +19,8 @@ import kotlin.test.assertTrue
 
 class SyncRoutesTest {
 
-    private fun session(id: String, updatedAt: Long, deleted: Boolean = false) =
-        SessionDto(id = id, startedAt = 1L, notes = null, updatedAt = updatedAt, deleted = deleted)
+    private fun session(id: String, updatedAt: Long, deletedAt: Long? = null) =
+        SessionDto(id = id, startedAt = 1L, notes = null, updatedAt = updatedAt, deletedAt = deletedAt)
 
     @Test
     fun push_then_pull_roundtrips_and_advances_cursor() = testApplication {
@@ -57,11 +57,11 @@ class SyncRoutesTest {
         // Newer version lands first, then a stale (older updatedAt) version for the same id arrives.
         client.post("/sync/push") {
             contentType(ContentType.Application.Json)
-            setBody(PushRequest(listOf(session("a", updatedAt = 20, deleted = false))))
+            setBody(PushRequest(listOf(session("a", updatedAt = 20))))
         }
         val stale: PushResponse = client.post("/sync/push") {
             contentType(ContentType.Application.Json)
-            setBody(PushRequest(listOf(session("a", updatedAt = 5, deleted = true))))
+            setBody(PushRequest(listOf(session("a", updatedAt = 5, deletedAt = 5))))
         }.body()
 
         assertEquals(0, stale.accepted, "the older write must be rejected by LWW")
@@ -72,7 +72,7 @@ class SyncRoutesTest {
         }.body()
         assertEquals(1, pull.changes.size)
         assertEquals(20, pull.changes.first().updatedAt, "the newer version must survive")
-        assertEquals(false, pull.changes.first().deleted)
+        assertEquals(null, pull.changes.first().deletedAt)
     }
 
     @Test
@@ -86,7 +86,7 @@ class SyncRoutesTest {
         }
         client.post("/sync/push") {
             contentType(ContentType.Application.Json)
-            setBody(PushRequest(listOf(session("a", updatedAt = 30, deleted = true))))
+            setBody(PushRequest(listOf(session("a", updatedAt = 30, deletedAt = 30))))
         }
 
         val pull: PullResponse = client.post("/sync/pull") {
@@ -94,7 +94,7 @@ class SyncRoutesTest {
             setBody(PullRequest(cursor = null))
         }.body()
         assertEquals(1, pull.changes.size)
-        assertTrue(pull.changes.first().deleted, "the deletion must be visible to other devices")
+        assertTrue(pull.changes.first().deletedAt != null, "the deletion must be visible to other devices")
     }
 
     private fun io.ktor.server.testing.ApplicationTestBuilder.createJsonClient() =

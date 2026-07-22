@@ -9,6 +9,7 @@ import androidx.room3.Insert
 import androidx.room3.OnConflictStrategy
 import androidx.room3.PrimaryKey
 import androidx.room3.Query
+import androidx.room3.Upsert
 import androidx.room3.paging.PagingSourceDaoReturnTypeConverter
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
@@ -27,7 +28,10 @@ import kotlinx.serialization.json.Json
  */
 @Entity(
     tableName = "exercises",
-    indices = [Index("equipment"), Index("category"), Index("metric")],
+    indices = [
+        Index("equipment"), Index("category"), Index("metric"),
+        Index("modality"), Index("hyroxStation"),
+    ],
 )
 data class Exercise(
     @PrimaryKey val id: String,
@@ -43,6 +47,12 @@ data class Exercise(
     val instructions: String = "",
     val imageUrls: String = "",
     val keywords: String = "",
+    // v8 additions (A3): first-class modality, expanded metric set, and Hyrox-station tag (all
+    // `dev.cadence.model` enum names as TEXT). Nullable now; the A7 re-seed populates them and A4
+    // switches reads off the pre-v8 [metric] column.
+    val modality: String? = null,
+    val defaultMetric: String? = null,
+    val hyroxStation: String? = null,
 ) {
     // List views of the JSON columns. Getter-only (no backing field) so Room ignores them; this is
     // how the UI consumes the rich data. (Room 3's KMP KSP rejects `List<String>` columns + a
@@ -74,8 +84,16 @@ interface ExerciseDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(exercises: List<Exercise>)
 
+    /** Insert-or-update — used by the versioned re-seed to refresh reference rows in place. */
+    @Upsert
+    suspend fun upsertAll(exercises: List<Exercise>)
+
     @Query("SELECT * FROM exercises WHERE id = :id")
     suspend fun getById(id: String): Exercise?
+
+    /** Resolve a specific set of catalog rows — used to hydrate a session's exercises efficiently. */
+    @Query("SELECT * FROM exercises WHERE id IN (:ids)")
+    suspend fun getByIds(ids: List<String>): List<Exercise>
 
     @Query("SELECT * FROM exercises ORDER BY name")
     suspend fun getAll(): List<Exercise>

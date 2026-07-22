@@ -2,7 +2,9 @@ package dev.cadence.data
 
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import dev.cadence.common.UuidV7Generator
 import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.ExerciseAssetReader
 import dev.cadence.data.local.SessionSource
 import dev.cadence.data.local.SessionType
 import kotlinx.coroutines.flow.first
@@ -38,9 +40,14 @@ class SessionRepositoryTest {
         database.close()
     }
 
+    /** Repository wired with the real UUIDv7 + system-clock seam (mirrors production DI). */
+    @OptIn(kotlin.time.ExperimentalTime::class)
+    private fun repo(reader: ExerciseAssetReader) =
+        SessionRepositoryImpl(database, reader, UuidV7Generator(kotlin.time.Clock.System), kotlin.time.Clock.System)
+
     @Test
     fun createSession_persistsSessionAndEnqueuesOutbox() = runTest {
-        val repository = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repository = repo(emptyExerciseAssetReader)
 
         val created = repository.createSession(SessionType.STRENGTH)
 
@@ -58,11 +65,11 @@ class SessionRepositoryTest {
      */
     @Test
     fun instantiateTemplate_deepCopiesTargetsAndLeavesActualsNull() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo(emptyExerciseAssetReader)
 
         val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
         repo.addExercise(template.id, "bench-press")
-        val templateItemId = database.loggedItemDao().getBySession(template.id).first().id
+        val templateItemId = database.exerciseEntryDao().getBySession(template.id).first().id
         repo.addTargetSet(template.id, templateItemId, reps = 5, loadKg = 100.0)
 
         assertTrue(
@@ -85,12 +92,12 @@ class SessionRepositoryTest {
             "the spawned session enqueues its own outbox row",
         )
 
-        val items = database.loggedItemDao().getBySession(session.id)
+        val items = database.exerciseEntryDao().getBySession(session.id)
         assertEquals(1, items.size)
         assertNotEquals(templateItemId, items.first().id, "copied logged item gets a fresh id")
         assertEquals("bench-press", items.first().exerciseId)
 
-        val sets = database.setEntryDao().getForLoggedItem(items.first().id)
+        val sets = database.setEntryDao().getForEntry(items.first().id)
         assertEquals(1, sets.size)
         assertEquals(5, sets.first().targetReps, "prescription reps copied")
         assertEquals(100.0, sets.first().targetLoadKg, "prescription load copied")
@@ -104,11 +111,11 @@ class SessionRepositoryTest {
      */
     @Test
     fun editingTemplateAfterInstantiation_doesNotMutateSpawnedSession() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo(emptyExerciseAssetReader)
 
         val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
         repo.addExercise(template.id, "bench-press")
-        val templateItemId = database.loggedItemDao().getBySession(template.id).first().id
+        val templateItemId = database.exerciseEntryDao().getBySession(template.id).first().id
         repo.addTargetSet(template.id, templateItemId, reps = 5, loadKg = 100.0)
 
         val session = repo.instantiateTemplate(template.id)
@@ -116,8 +123,8 @@ class SessionRepositoryTest {
         // Mutate the template AFTER spawning.
         repo.addTargetSet(template.id, templateItemId, reps = 3, loadKg = 110.0)
 
-        val spawnedItemId = database.loggedItemDao().getBySession(session.id).first().id
-        val spawnedSets = database.setEntryDao().getForLoggedItem(spawnedItemId)
+        val spawnedItemId = database.exerciseEntryDao().getBySession(session.id).first().id
+        val spawnedSets = database.setEntryDao().getForEntry(spawnedItemId)
         assertEquals(1, spawnedSets.size, "spawned session must not see sets added to the template later")
         assertEquals(5, spawnedSets.first().targetReps)
     }
@@ -128,23 +135,24 @@ class SessionRepositoryTest {
      */
     @Test
     fun updateSet_persistsActualsAndTouchesSession() = runTest {
-        val repo = SessionRepositoryImpl(database, emptyExerciseAssetReader)
+        val repo = repo(emptyExerciseAssetReader)
 
         // Instantiate a template → the spawned session has a target-only (ghost) set.
         val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
         repo.addExercise(template.id, "bench-press")
-        val templateItemId = database.loggedItemDao().getBySession(template.id).first().id
+        val templateItemId = database.exerciseEntryDao().getBySession(template.id).first().id
         repo.addTargetSet(template.id, templateItemId, reps = 5, loadKg = 100.0)
         val session = repo.instantiateTemplate(template.id)
 
-        val itemId = database.loggedItemDao().getBySession(session.id).first().id
-        val ghost = database.setEntryDao().getForLoggedItem(itemId).first()
+        val itemId = database.exerciseEntryDao().getBySession(session.id).first().id
+        val ghost = database.setEntryDao().getForEntry(itemId).first()
         val updatedAtBefore = database.sessionDao().getById(session.id)!!.updatedAt
 
         // Fill in what varied: 5 reps at 102.5 kg.
-        repo.updateSet(session.id, ghost.copy(reps = 5, loadKg = 102.5))
+        // updateSet takes a domain SetEntry now; map the entity ghost across the boundary.
+        repo.updateSet(session.id, ghost.toDomain().copy(reps = 5, loadKg = 102.5))
 
-        val saved = database.setEntryDao().getForLoggedItem(itemId).first()
+        val saved = database.setEntryDao().getForEntry(itemId).first()
         assertEquals(5, saved.reps, "actual reps persisted")
         assertEquals(102.5, saved.loadKg, "actual load persisted")
         assertEquals(5, saved.targetReps, "prescription must survive the edit")

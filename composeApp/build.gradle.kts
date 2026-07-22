@@ -57,6 +57,12 @@ dependencies {
 
     // The :benchmark module produces the baseline profile this app consumes.
     baselineProfile(projects.benchmark)
+
+    // Compose UI (instrumented) tests — the capture-flow test. Wired now; executed on a device / in
+    // CI (LLD §9 "wired now, gated in CI from Phase 3"), not in the host/sim gate loop. Running on a
+    // device additionally needs `androidx.compose.ui:ui-test-manifest` (JB doesn't publish one).
+    androidTestImplementation(libs.androidx.testExt.junit)
+    androidTestImplementation(libs.compose.uiTestJunit4)
 }
 
 android {
@@ -69,6 +75,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     packaging {
         resources {
