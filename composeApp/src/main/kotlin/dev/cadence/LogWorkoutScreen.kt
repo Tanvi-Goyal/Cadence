@@ -130,7 +130,7 @@ fun LogWorkoutScreen(
 }
 
 @Composable
-private fun ExerciseCard(
+internal fun ExerciseCard(
     item: LoggedItemUi,
     onAddStrengthSet: (Int, Double) -> Unit,
     onAddCardioSet: (Int, Int) -> Unit,

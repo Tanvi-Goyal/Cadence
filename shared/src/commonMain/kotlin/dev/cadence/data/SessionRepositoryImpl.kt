@@ -380,17 +380,8 @@ class SessionRepositoryImpl(
             exercises.upsertAll(catalog)
             syncMeta.set(SyncMeta(SyncMetaKeys.SEED_VERSION, CATALOG_SEED_VERSION.toString()))
         }
-        if (plans.getCurrent() == null) {
-            plans.upsert(
-                PlannedSession(
-                    id = uuid.newId(),
-                    name = "Upper Strength",
-                    type = SessionType.STRENGTH,
-                    targetDurationMin = 55,
-                    focus = "Push focus",
-                ),
-            )
-        }
+        // No demo/sample data is seeded (ROADMAP P1.7): the "Up Next" card stays empty until a real
+        // planned-session/program feature populates it. Only the reference exercise catalog is seeded.
     }
 
     private fun displayName(type: String): String = when (type) {
