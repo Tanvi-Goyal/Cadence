@@ -32,7 +32,7 @@ interface StatsDao {
         INNER JOIN exercise_entries ee ON ee.exerciseId = e.id
         INNER JOIN blocks b ON ee.blockId = b.id
         INNER JOIN sessions s ON b.sessionId = s.id
-        WHERE s.isTemplate = 0 AND s.deleted = 0
+        WHERE s.isTemplate = 0 AND s.deletedAt IS NULL
         ORDER BY e.name
         """,
     )
@@ -48,7 +48,7 @@ interface StatsDao {
         INNER JOIN sessions s ON b.sessionId = s.id
         WHERE ee.exerciseId = :exerciseId
           AND se.reps IS NOT NULL AND se.loadKg IS NOT NULL
-          AND s.deleted = 0 AND s.isTemplate = 0
+          AND s.deletedAt IS NULL AND s.isTemplate = 0
         GROUP BY s.id
         ORDER BY s.startedAt ASC
         """,

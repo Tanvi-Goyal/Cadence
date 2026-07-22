@@ -15,8 +15,7 @@ import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 fun buildDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase =
     builder
         .setDriver(BundledSQLiteDriver())
-        // Dev-only: the SyncMeta table bumped the schema to v2. Destructive migration wipes local
-        // data on a schema change rather than shipping a real migration — acceptable pre-release,
-        // and safe because the server is the durable copy once sync is on. Replace before any real users.
-        .fallbackToDestructiveMigration(dropAllTables = true)
+        // Real versioned migration (no more destructive fallback): existing installs upgrade v7 → v8
+        // without data loss. See [MIGRATION_7_8]. Future schema changes add the next migration here.
+        .addMigrations(MIGRATION_7_8)
         .build()

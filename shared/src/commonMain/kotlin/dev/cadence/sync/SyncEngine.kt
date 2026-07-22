@@ -143,7 +143,7 @@ class SyncEngine(
             source = session.source,
             templateId = session.templateId,
             updatedAt = session.updatedAt,
-            deleted = session.deleted,
+            deleted = session.deletedAt != null, // wire is still a boolean flag until A8
             loggedItems = items,
         )
     }
@@ -161,7 +161,8 @@ class SyncEngine(
             source = dto.source,
             templateId = dto.templateId,
             updatedAt = dto.updatedAt,
-            deleted = dto.deleted,
+            // Wire carries a boolean; store it as a tombstone timestamp (server clock = updatedAt).
+            deletedAt = if (dto.deleted) dto.updatedAt else null,
             syncStatus = SyncStatus.SYNCED, // authoritative from server → already synced
         )
         // Rebuild the child rows locally with fresh ids under one implicit STRAIGHT block (children

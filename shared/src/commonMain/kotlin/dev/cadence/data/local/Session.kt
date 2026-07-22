@@ -26,11 +26,10 @@ data class Session(
     val source: String = SessionSource.MANUAL,
     val templateId: String? = null,
     val updatedAt: Long,
-    val deleted: Boolean = false,
     val syncStatus: String = SyncStatus.PENDING,
-    // v8 sync-envelope additions (A3). The domain model uses these; the pre-v8 boolean [deleted]
-    // stays until A4 cuts reads over. `createdAt` defaults for interim construction and A6's
-    // migration backfills legacy rows; [deletedAt] (tombstone) supersedes [deleted].
+    // Sync envelope. [deletedAt] is the tombstone (null = live) — it replaced the pre-v8 boolean
+    // `deleted` in v8. `createdAt` defaults only for interim in-code construction; every write path
+    // stamps it, and the v7→v8 migration backfills legacy rows from `startedAt`.
     val createdAt: Long = 0L,
     val deletedAt: Long? = null,
 )

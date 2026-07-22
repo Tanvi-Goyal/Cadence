@@ -65,12 +65,25 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
+        // Room's MigrationTestHelper drives the v7→v8 fixture test. It lives in iosTest: the Android
+        // actual of MigrationTestHelper is instrumentation-only (no JVM host-test path), whereas the
+        // Native actual is driver-based — same reason the other Room tests run on the iOS simulator.
+        iosTest.dependencies {
+            implementation(libs.room.testing)
+        }
     }
 }
 
 // Room-KMP (3.0, androidx.room3): schema export location shared across all KSP targets.
 room3 {
     schemaDirectory("$projectDir/schemas")
+}
+
+// The migration fixture test (MigrationTest, iosTest) reads the exported schema JSON from disk at
+// runtime. Pass the absolute path into the simulated test process — env vars only cross into the iOS
+// simulator when prefixed with `SIMCTL_CHILD_`, so the test reads `CADENCE_SCHEMA_DIR`.
+tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+    environment("SIMCTL_CHILD_CADENCE_SCHEMA_DIR", "$projectDir/schemas")
 }
 
 // Room's compiler is a KSP processor declared PER target — commonMain @Entity/@Dao/@Database
