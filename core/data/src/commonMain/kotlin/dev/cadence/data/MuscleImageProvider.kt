@@ -1,11 +1,9 @@
 package dev.cadence.data
 
 import dev.cadence.data.remote.WgerApi
+import dev.cadence.model.MuscleDiagram
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-
-/** A muscle diagram = the body silhouette ([baseUrl]) with the target muscle highlighted ([overlayUrl]). */
-data class MuscleDiagram(val baseUrl: String, val overlayUrl: String)
 
 /**
  * Resolves a free-exercise-db muscle name to a wger [MuscleDiagram] (base body SVG + highlighted-

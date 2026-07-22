@@ -1,7 +1,7 @@
 package dev.cadence.di
 
 import dev.cadence.FlowSubscription
-import dev.cadence.data.MuscleDiagram
+import dev.cadence.model.MuscleDiagram
 import dev.cadence.data.MuscleImageProvider
 import dev.cadence.domain.SessionRepository
 import dev.cadence.model.Exercise

@@ -46,6 +46,8 @@ kotlin {
             // `api`: repo interfaces + domain value types (UserPreferences/WeightUnit/ThemeMode) are
             // referenced by the ViewModels here and by composeApp's theme/profile UI.
             api(projects.core.domain)
+            // The repository impls + MuscleImageProvider (bound in DI here); package unchanged.
+            implementation(projects.core.data)
             // `api` (not implementation) is transitional: composeApp still references some entity
             // types (ExerciseMetric/Session/Exercise/VolumePoint/PlannedSession) — a UI→database leak
             // cleaned up when features are extracted (B11) and those types move to :core:model.

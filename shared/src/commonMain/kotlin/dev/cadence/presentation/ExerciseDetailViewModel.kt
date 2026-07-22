@@ -2,7 +2,7 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.data.MuscleDiagram
+import dev.cadence.model.MuscleDiagram
 import dev.cadence.data.MuscleImageProvider
 import dev.cadence.domain.SessionRepository
 import dev.cadence.model.Exercise
