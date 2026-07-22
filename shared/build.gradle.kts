@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.koinCompiler)
     alias(libs.plugins.kotlinSerialization)
 }
 
@@ -72,11 +71,7 @@ kotlin {
             api(libs.koin.core.viewmodel)
         }
         androidMain.dependencies {
-            implementation(libs.koin.android)
-            implementation(libs.ktor.client.okhttp)
-        }
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
+            // Koin + Ktor engine bindings moved to :core:database / :core:network platform seams (B7).
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

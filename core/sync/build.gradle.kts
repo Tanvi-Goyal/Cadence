@@ -22,6 +22,9 @@ kotlin {
             implementation(projects.contracts)     // wire DTOs
             implementation(libs.room.runtime)        // useWriterConnection / immediateTransaction
             implementation(libs.kotlinx.coroutines.core)
+            // syncModule (DI): the SyncEngine binding.
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
         }
         iosTest.dependencies {
             implementation(libs.kotlin.test)

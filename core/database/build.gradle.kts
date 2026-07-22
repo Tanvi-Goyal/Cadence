@@ -27,6 +27,12 @@ kotlin {
             implementation(libs.androidx.sqlite.bundled)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            // databaseModule + databasePlatformModule (DI).
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
+        }
+        androidMain.dependencies {
+            implementation(libs.koin.android) // databasePlatformModule uses androidContext()
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

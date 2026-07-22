@@ -24,6 +24,15 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.serialization.kotlinxJson)
+            // networkModule + networkPlatformModule (DI).
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
+        }
+        androidMain.dependencies {
+            implementation(libs.ktor.client.okhttp) // networkPlatformModule engine
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin) // networkPlatformModule engine
         }
     }
 }

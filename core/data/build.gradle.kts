@@ -25,6 +25,9 @@ kotlin {
             implementation(libs.room.runtime)        // useWriterConnection / immediateTransaction
             implementation(libs.androidx.paging.common) // Pager / PagingData.map
             implementation(libs.kotlinx.coroutines.core)
+            // dataModule (DI): repo impls bound to domain interfaces + MuscleImageProvider.
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
         }
         iosTest.dependencies {
             implementation(libs.kotlin.test)

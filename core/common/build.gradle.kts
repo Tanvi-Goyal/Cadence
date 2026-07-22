@@ -19,6 +19,9 @@ kotlin {
         commonMain.dependencies {
             // FlowObserver (iosMain) bridges Kotlin Flow → Swift; UuidV7Generator uses kotlin.time.
             implementation(libs.kotlinx.coroutines.core)
+            // commonModule (DI): Clock + UuidGenerator bindings.
+            implementation(project.dependencies.platform(libs.koin.bom))
+            implementation(libs.koin.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
