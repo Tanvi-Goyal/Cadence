@@ -15,7 +15,7 @@ struct HistoryView: View {
                         Text(row.session.name)
                             .font(.headline)
                         HStack {
-                            Text(Format.relativeDate(row.session.startedAt))
+                            Text(Format.relativeDate(row.session.startedAt.toEpochMilliseconds()))
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                             Spacer()
