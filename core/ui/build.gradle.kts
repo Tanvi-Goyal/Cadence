@@ -33,6 +33,8 @@ kotlin {
 
 dependencies {
     implementation(projects.core.designsystem) // CadenceIcons + MaterialTheme.spacing
+    implementation(projects.core.model)         // Session / SessionType for shared session UI
+    implementation(projects.core.domain)        // Units / WeightUnit formatting
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)

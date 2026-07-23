@@ -1,6 +1,8 @@
 package dev.cadence.sync.di
 
+import dev.cadence.domain.Syncer
 import dev.cadence.sync.SyncEngine
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /**
@@ -9,5 +11,5 @@ import org.koin.dsl.module
  * aggregated graph.
  */
 val syncModule = module {
-    single { SyncEngine(get(), get(), get(), get(), get()) }
+    single { SyncEngine(get(), get(), get(), get(), get()) } bind Syncer::class
 }

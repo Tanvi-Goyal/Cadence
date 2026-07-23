@@ -18,12 +18,8 @@ import dev.cadence.data.local.SyncMetaDao
 import dev.cadence.data.local.SyncMetaKeys
 import dev.cadence.data.local.SyncStatus
 import dev.cadence.data.remote.SyncApi
-
-/** Outcome of a sync pass, surfaced to the ViewModel for the UI's sync indicator. */
-sealed interface SyncResult {
-    data object Success : SyncResult
-    data class Failure(val error: Throwable) : SyncResult
-}
+import dev.cadence.domain.SyncOutcome
+import dev.cadence.domain.Syncer
 
 /**
  * The offline-first sync engine. It NEVER touches the UI and the UI never touches it — the UI only
@@ -41,20 +37,20 @@ class SyncEngine(
     private val outboxDao: OutboxDao,
     private val syncMetaDao: SyncMetaDao,
     private val api: SyncApi,
-) {
+) : Syncer {
     private val blockDao get() = database.blockDao()
     private val entryDao get() = database.exerciseEntryDao()
     private val setEntryDao get() = database.setEntryDao()
 
-    suspend fun sync(): SyncResult =
+    override suspend fun sync(): SyncOutcome =
         try {
             push()
             pull()
-            SyncResult.Success
+            SyncOutcome.Success
         } catch (error: Exception) {
             // Outbox rows and cursor are only advanced on success, so a failure just means the
             // next sync retries from where we left off. No partial/torn state.
-            SyncResult.Failure(error)
+            SyncOutcome.Failure(error)
         }
 
     /**

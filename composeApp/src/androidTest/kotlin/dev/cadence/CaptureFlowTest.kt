@@ -4,7 +4,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import dev.cadence.model.SetEntry
-import dev.cadence.presentation.LoggedItemUi
+import dev.cadence.domain.LoggedItemUi
 import org.junit.Rule
 import org.junit.Test
 import kotlin.time.ExperimentalTime

@@ -1,9 +1,10 @@
 package dev.cadence.data.di
 
-import dev.cadence.data.MuscleImageProvider
+import dev.cadence.data.MuscleImageProviderImpl
 import dev.cadence.data.PersonalRecordRepositoryImpl
 import dev.cadence.data.PreferencesRepositoryImpl
 import dev.cadence.data.SessionRepositoryImpl
+import dev.cadence.domain.MuscleImageProvider
 import dev.cadence.domain.PersonalRecordRepository
 import dev.cadence.domain.PreferencesRepository
 import dev.cadence.domain.SessionRepository
@@ -19,5 +20,5 @@ val dataModule = module {
     single { SessionRepositoryImpl(get(), get(), get(), get()) } bind SessionRepository::class
     single { PreferencesRepositoryImpl(get()) } bind PreferencesRepository::class
     single { PersonalRecordRepositoryImpl(get()) } bind PersonalRecordRepository::class
-    single { MuscleImageProvider(get()) }
+    single { MuscleImageProviderImpl(get()) } bind MuscleImageProvider::class
 }

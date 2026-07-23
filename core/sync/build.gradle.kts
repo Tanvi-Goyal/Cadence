@@ -17,6 +17,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            implementation(projects.core.domain)   // Syncer interface + SyncOutcome
             implementation(projects.core.database) // AppDatabase, DAOs, entities, SyncMeta
             implementation(projects.core.network)  // SyncApi transport
             implementation(projects.contracts)     // wire DTOs

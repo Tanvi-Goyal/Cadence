@@ -54,6 +54,14 @@ kotlin {
             implementation(projects.core.network)
             implementation(projects.core.sync) // SyncEngine, consumed by HomeViewModel + bound in Koin
             implementation(projects.contracts)
+            // Feature modules — `api` so their ViewModels stay exported in Shared.framework for Swift (B11).
+            api(projects.feature.profile)
+            api(projects.feature.stats)
+            api(projects.feature.history)
+            api(projects.feature.exercises)
+            api(projects.feature.logging)
+            api(projects.feature.templates)
+            api(projects.feature.home)
             // Room RUNTIME stays: the repository + sync engine + iosTest still call useWriterConnection /
             // Room.inMemoryDatabaseBuilder. Only the Room *plugin*/KSP/schemas moved to :core:database.
             implementation(libs.room.runtime)

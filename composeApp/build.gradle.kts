@@ -31,6 +31,13 @@ dependencies {
     implementation(projects.core.designsystem)
     implementation(projects.core.ui)
     implementation(projects.core.navigation)
+    implementation(projects.feature.profile)
+    implementation(projects.feature.stats)
+    implementation(projects.feature.history)
+    implementation(projects.feature.exercises)
+    implementation(projects.feature.logging)
+    implementation(projects.feature.templates)
+    implementation(projects.feature.home)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.runtime)

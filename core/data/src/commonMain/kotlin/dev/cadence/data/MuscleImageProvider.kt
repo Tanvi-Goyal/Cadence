@@ -1,6 +1,7 @@
 package dev.cadence.data
 
 import dev.cadence.data.remote.WgerApi
+import dev.cadence.domain.MuscleImageProvider
 import dev.cadence.model.MuscleDiagram
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -11,14 +12,14 @@ import kotlinx.coroutines.sync.withLock
  * with the front/back base silhouette. The `/muscle/` list is fetched once and memoized; overlay URLs
  * are content-hashed on wger (fetched live, not hardcoded). Muscles with no wger equivalent → null.
  */
-class MuscleImageProvider(private val wgerApi: WgerApi) {
+class MuscleImageProviderImpl(private val wgerApi: WgerApi) : MuscleImageProvider {
 
     private data class Overlay(val url: String, val isFront: Boolean)
 
     private val mutex = Mutex()
     private var byWgerId: Map<Int, Overlay>? = null
 
-    suspend fun diagram(muscleName: String): MuscleDiagram? {
+    override suspend fun diagram(muscleName: String): MuscleDiagram? {
         val wgerId = OUR_TO_WGER[muscleName.lowercase()] ?: return null
         val overlay = loadOnce()[wgerId] ?: return null
         val base = if (overlay.isFront) BASE_FRONT else BASE_BACK
