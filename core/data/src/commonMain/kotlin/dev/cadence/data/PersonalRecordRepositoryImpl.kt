@@ -12,5 +12,9 @@ class PersonalRecordRepositoryImpl(
 ) : PersonalRecordRepository {
 
     override fun observeForExercise(exerciseId: String): Flow<List<PersonalRecord>> =
-        database.personalRecordDao().observeForExercise(exerciseId).map { rows -> rows.map { it.toDomain() } }
+        database.personalRecordDao()
+            .observeForExercise(exerciseId)
+            .map { rows ->
+                rows.map { it.toDomain() }
+            }
 }

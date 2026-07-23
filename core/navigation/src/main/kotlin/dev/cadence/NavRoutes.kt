@@ -56,7 +56,8 @@ data class TemplateBuilder(val templateId: String)
  * a typed arg so the detail screen knows which back-stack entry to return the chosen exercise to.
  */
 @Serializable
-enum class PickerTarget { LOG, BUILDER }
+enum class PickerTarget { LOG, BUILDER
+}
 
 /**
  * `savedStateHandle` key the exercise detail screen writes the chosen exercise id into, for the

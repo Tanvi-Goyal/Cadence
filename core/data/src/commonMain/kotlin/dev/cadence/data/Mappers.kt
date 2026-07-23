@@ -78,7 +78,9 @@ internal fun BlockEntity.toDomain(): Block = Block(
     rounds = rounds,
     restBetweenRoundsMs = restBetweenRoundsMs,
     label = label,
-    createdAt = ms(createdAt), updatedAt = ms(updatedAt), deletedAt = deletedAt?.let(::ms),
+    createdAt = ms(createdAt),
+    updatedAt = ms(updatedAt),
+    deletedAt = deletedAt?.let(::ms),
 )
 
 internal fun ExerciseEntryEntity.toDomain(): ExerciseEntry = ExerciseEntry(
@@ -88,18 +90,29 @@ internal fun ExerciseEntryEntity.toDomain(): ExerciseEntry = ExerciseEntry(
     orderIndex = orderIndex,
     targetSets = targetSets,
     restMs = restMs,
-    createdAt = ms(createdAt), updatedAt = ms(updatedAt), deletedAt = deletedAt?.let(::ms),
+    createdAt = ms(createdAt),
+    updatedAt = ms(updatedAt),
+    deletedAt = deletedAt?.let(::ms),
 )
 
 internal fun SetEntryEntity.toDomain(): SetEntry = SetEntry(
     id = id,
     exerciseEntryId = exerciseEntryId,
     setNumber = setNumber,
-    reps = reps, loadKg = loadKg, timeSec = timeSec, distanceM = distanceM,
-    calories = calories, rpe = rpe,
-    targetReps = targetReps, targetLoadKg = targetLoadKg, targetTimeSec = targetTimeSec,
-    targetDistanceM = targetDistanceM, targetCalories = targetCalories,
-    createdAt = ms(createdAt), updatedAt = ms(updatedAt), deletedAt = deletedAt?.let(::ms),
+    reps = reps,
+    loadKg = loadKg,
+    timeSec = timeSec,
+    distanceM = distanceM,
+    calories = calories,
+    rpe = rpe,
+    targetReps = targetReps,
+    targetLoadKg = targetLoadKg,
+    targetTimeSec = targetTimeSec,
+    targetDistanceM = targetDistanceM,
+    targetCalories = targetCalories,
+    createdAt = ms(createdAt),
+    updatedAt = ms(updatedAt),
+    deletedAt = deletedAt?.let(::ms),
 )
 
 /** Domain → entity for persistence (used by `updateSet`). */
@@ -107,10 +120,17 @@ internal fun SetEntry.toEntity(): SetEntryEntity = SetEntryEntity(
     id = id,
     exerciseEntryId = exerciseEntryId,
     setNumber = setNumber,
-    reps = reps, loadKg = loadKg, timeSec = timeSec, distanceM = distanceM, rpe = rpe,
-    targetReps = targetReps, targetLoadKg = targetLoadKg, targetTimeSec = targetTimeSec,
+    reps = reps,
+    loadKg = loadKg,
+    timeSec = timeSec,
+    distanceM = distanceM,
+    rpe = rpe,
+    targetReps = targetReps,
+    targetLoadKg = targetLoadKg,
+    targetTimeSec = targetTimeSec,
     targetDistanceM = targetDistanceM,
-    calories = calories, targetCalories = targetCalories,
+    calories = calories,
+    targetCalories = targetCalories,
     createdAt = createdAt.toEpochMilliseconds(),
     updatedAt = updatedAt.toEpochMilliseconds(),
     deletedAt = deletedAt?.toEpochMilliseconds(),
@@ -132,7 +152,9 @@ internal fun PersonalRecordEntity.toDomain(): PersonalRecord = PersonalRecord(
     distanceBucketM = distanceBucketM,
     achievedAt = ms(achievedAt),
     sourceSetId = sourceSetId,
-    createdAt = ms(createdAt), updatedAt = ms(updatedAt), deletedAt = deletedAt?.let(::ms),
+    createdAt = ms(createdAt),
+    updatedAt = ms(updatedAt),
+    deletedAt = deletedAt?.let(::ms),
 )
 
 internal fun ExerciseEntity.toDomain(): Exercise = Exercise(
@@ -174,13 +196,15 @@ internal fun buildSessionDetail(
     val setsByEntry = sets.groupBy { it.exerciseEntryId }
     val entriesByBlock = entries.groupBy { it.blockId }
     val blockDetails = blocks.sortedBy { it.orderIndex }.map { block ->
-        val entryDetails = entriesByBlock[block.id].orEmpty().sortedBy { it.orderIndex }.map { entry ->
-            ExerciseEntryDetail(
-                entry = entry.toDomain(),
-                exercise = exercises[entry.exerciseId] ?: fallbackExercise(entry.exerciseId),
-                sets = setsByEntry[entry.id].orEmpty().sortedBy { it.setNumber }.map { it.toDomain() },
-            )
-        }
+        val entryDetails =
+            entriesByBlock[block.id].orEmpty().sortedBy { it.orderIndex }.map { entry ->
+                ExerciseEntryDetail(
+                    entry = entry.toDomain(),
+                    exercise = exercises[entry.exerciseId] ?: fallbackExercise(entry.exerciseId),
+                    sets = setsByEntry[entry.id].orEmpty().sortedBy { it.setNumber }
+                        .map { it.toDomain() },
+                )
+            }
         BlockDetail(block.toDomain(), entryDetails)
     }
     return SessionDetail(session = session.toDomain(), blocks = blockDetails)

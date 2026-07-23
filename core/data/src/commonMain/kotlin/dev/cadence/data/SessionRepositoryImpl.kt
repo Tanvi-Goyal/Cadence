@@ -128,7 +128,11 @@ class SessionRepositoryImpl(
             setEntries.observeForSession(sessionId),
         ) { session, sessionBlocks, sessionEntries, sets ->
             session?.let {
-                buildSessionDetail(it, sessionBlocks, sessionEntries, sets, resolveExercises(sessionEntries))
+                buildSessionDetail(it,
+                    sessionBlocks,
+                    sessionEntries,
+                    sets,
+                    resolveExercises(sessionEntries))
             }
         }
 

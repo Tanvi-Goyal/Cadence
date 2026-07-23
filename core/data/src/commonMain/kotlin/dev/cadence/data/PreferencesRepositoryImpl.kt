@@ -31,8 +31,10 @@ class PreferencesRepositoryImpl(
 }
 
 private fun PreferencesEntity.toDomain() = UserPreferences(
-    weightUnit = runCatching { WeightUnit.valueOf(weightUnit) }.getOrDefault(WeightUnit.KG),
-    themeMode = runCatching { ThemeMode.valueOf(themeMode) }.getOrDefault(ThemeMode.SYSTEM),
+    weightUnit = runCatching { WeightUnit.valueOf(weightUnit) }
+        .getOrDefault(WeightUnit.KG),
+    themeMode = runCatching { ThemeMode.valueOf(themeMode) }
+        .getOrDefault(ThemeMode.SYSTEM),
 )
 
 private fun UserPreferences.toEntity() = PreferencesEntity(

@@ -16,7 +16,10 @@ import androidx.navigation.compose.rememberNavController
 @Composable
 fun CadenceNavHost() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Home) {
+    NavHost(
+        navController = nav,
+        startDestination = Home
+    ) {
 
         // ---- Bottom-nav tabs (typed routes; no args) ----
         homeScreen(
@@ -49,7 +52,14 @@ fun CadenceNavHost() {
             onFinish = { nav.popBackStack(Home, inclusive = false) },
         )
         exercisePickerScreen(
-            onOpenDetail = { exerciseId, target -> nav.navigate(ExerciseDetail(exerciseId, target)) },
+            onOpenDetail = { exerciseId, target ->
+                nav.navigate(
+                    ExerciseDetail(
+                        exerciseId,
+                        target
+                    )
+                )
+            },
             onBack = { nav.popBackStack() },
         )
         exerciseDetailScreen(

@@ -26,6 +26,7 @@ val LocalWeightUnit = staticCompositionLocalOf { WeightUnit.KG }
  * Legacy color accessors. Existing screens paint with these names; they now delegate to the M3
  * color roles so every screen adopts Kinetic Precision without edits. New/redesigned screens should
  * prefer MaterialTheme.colorScheme directly — these remain as a thin compatibility layer.
+ * // todo:: to be deleted after all screens are migrated to M3 color roles
  */
 val Background: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.background
 val Surface: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.surfaceContainer
