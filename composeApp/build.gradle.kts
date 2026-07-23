@@ -30,6 +30,7 @@ dependencies {
     implementation(projects.shared)
     implementation(projects.core.designsystem)
     implementation(projects.core.ui)
+    implementation(projects.core.navigation)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.runtime)
