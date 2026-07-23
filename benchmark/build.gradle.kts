@@ -28,7 +28,7 @@ android {
     }
 
     // The app under test. Its `benchmark` build type is the profileable target we measure.
-    targetProjectPath = ":composeApp"
+    targetProjectPath = ":app"
     experimentalProperties["android.experimental.self-instrumenting"] = true
 }
 
