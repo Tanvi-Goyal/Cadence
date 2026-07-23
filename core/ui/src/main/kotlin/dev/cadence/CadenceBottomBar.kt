@@ -20,12 +20,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-/** The four top-level tabs. `route` doubles as the nav destination. */
-enum class Tab(val route: String, val label: String) {
-    Home("home", "Home"),
-    History("history", "History"),
-    Stats("stats", "Stats"),
-    Profile("profile", "Profile"),
+/** The four top-level tabs — a pure UI model (label + icon). The app maps each to its typed route. */
+enum class Tab(val label: String) {
+    Home("Home"),
+    History("History"),
+    Stats("Stats"),
+    Profile("Profile"),
 }
 
 private fun Tab.icon(): ImageVector = when (this) {
@@ -40,7 +40,7 @@ private fun Tab.icon(): ImageVector = when (this) {
  * inactive tabs are muted icon + label. [current] highlights the active tab.
  */
 @Composable
-fun CadenceBottomBar(current: String, onTab: (String) -> Unit) {
+fun CadenceBottomBar(current: Tab, onTab: (Tab) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(Modifier.background(colors.surfaceContainerLow)) {
         HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant.copy(alpha = 0.3f))
@@ -54,8 +54,8 @@ fun CadenceBottomBar(current: String, onTab: (String) -> Unit) {
             Tab.entries.forEach { tab ->
                 NavItem(
                     tab = tab,
-                    active = tab.route == current,
-                    onClick = { if (tab.route != current) onTab(tab.route) },
+                    active = tab == current,
+                    onClick = { if (tab != current) onTab(tab) },
                 )
             }
         }

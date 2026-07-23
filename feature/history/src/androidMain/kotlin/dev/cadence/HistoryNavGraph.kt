@@ -7,9 +7,9 @@ import androidx.navigation.toRoute
 /** The History tab (string-routed). */
 fun NavGraphBuilder.historyScreen(
     onOpenDetail: (String) -> Unit,
-    onTab: (String) -> Unit,
+    onTab: (Tab) -> Unit,
 ) {
-    composable(Tab.History.route) {
+    composable<History> {
         HistoryScreen(onOpenDetail = onOpenDetail, onTab = onTab)
     }
 }

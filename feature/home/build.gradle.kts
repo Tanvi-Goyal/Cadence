@@ -30,6 +30,7 @@ kotlin {
         androidMain.dependencies {
             implementation(projects.core.ui)          // SessionRow + shared session helpers + CadenceBottomBar
             implementation(projects.core.designsystem) // tokens, spacing, CadenceIcons, components, LocalWeightUnit
+            implementation(projects.core.navigation)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)

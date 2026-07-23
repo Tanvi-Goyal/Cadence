@@ -30,6 +30,7 @@ kotlin {
         androidMain.dependencies {
             implementation(projects.core.ui)
             implementation(projects.core.designsystem)
+            implementation(projects.core.navigation)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)

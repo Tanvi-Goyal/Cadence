@@ -10,9 +10,9 @@ fun NavGraphBuilder.homeScreen(
     onOpenTemplates: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
-    onTab: (String) -> Unit,
+    onTab: (Tab) -> Unit,
 ) {
-    composable(Tab.Home.route) {
+    composable<Home> {
         HomeScreen(
             onOpenSession = onOpenSession,
             onNewSession = onNewSession,

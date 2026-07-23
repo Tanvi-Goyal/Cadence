@@ -16,15 +16,15 @@ import androidx.navigation.compose.rememberNavController
 @Composable
 fun CadenceNavHost() {
     val nav = rememberNavController()
-    NavHost(navController = nav, startDestination = Tab.Home.route) {
+    NavHost(navController = nav, startDestination = Home) {
 
-        // ---- Bottom-nav tabs (string-routed; no args) ----
+        // ---- Bottom-nav tabs (typed routes; no args) ----
         homeScreen(
             onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
             onNewSession = { nav.navigate(NewSession) },
             onOpenTemplates = { nav.navigate(Templates) },
             onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
-            onSeeAll = { nav.switchTab(Tab.History.route) },
+            onSeeAll = { nav.switchTab(Tab.History) },
             onTab = nav::switchTab,
         )
         historyScreen(
@@ -46,7 +46,7 @@ fun CadenceNavHost() {
         logWorkoutScreen(
             onBack = { nav.popBackStack() },
             onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG)) },
-            onFinish = { nav.popBackStack(Tab.Home.route, inclusive = false) },
+            onFinish = { nav.popBackStack(Home, inclusive = false) },
         )
         exercisePickerScreen(
             onOpenDetail = { exerciseId, target -> nav.navigate(ExerciseDetail(exerciseId, target)) },
@@ -94,12 +94,17 @@ fun CadenceNavHost() {
 }
 
 /**
- * Switch to a bottom-nav tab. `popUpTo(startDestination) { saveState }` + `restoreState` +
- * `launchSingleTop` is the standard pattern so each tab keeps its own state and the back stack
- * doesn't grow a new entry every time you tap between tabs.
+ * Switch to a bottom-nav tab. Maps the UI [Tab] to its typed route, then applies the standard
+ * multi-back-stack pattern (`popUpTo(startDestination){saveState}` + `restoreState` +
+ * `launchSingleTop`) so each tab keeps its own back stack and tapping between tabs doesn't grow one.
  */
-private fun NavController.switchTab(route: String) {
-    if (currentDestination?.route == route) return
+private fun NavController.switchTab(tab: Tab) {
+    val route: Any = when (tab) {
+        Tab.Home -> Home
+        Tab.History -> History
+        Tab.Stats -> Stats
+        Tab.Profile -> Profile
+    }
     navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true

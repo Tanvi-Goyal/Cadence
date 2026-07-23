@@ -62,7 +62,7 @@ fun HomeScreen(
     onOpenTemplates: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
-    onTab: (String) -> Unit,
+    onTab: (Tab) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -73,7 +73,7 @@ fun HomeScreen(
     CadenceTheme {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
-            bottomBar = { CadenceBottomBar(current = Tab.Home.route, onTab = onTab) },
+            bottomBar = { CadenceBottomBar(current = Tab.Home, onTab = onTab) },
         ) { padding ->
             HomeContent(
                 state = state,

@@ -10,6 +10,19 @@ import kotlinx.serialization.Serializable
  * arg-carrying push destinations are typed.
  */
 
+// Bottom-nav tab destinations (no args). The Tab enum in :core:ui is the UI model; these are the routes.
+@Serializable
+object Home
+
+@Serializable
+object History
+
+@Serializable
+object Stats
+
+@Serializable
+object Profile
+
 @Serializable
 object NewSession
 

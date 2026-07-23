@@ -22,14 +22,14 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HistoryScreen(
     onOpenDetail: (String) -> Unit,
-    onTab: (String) -> Unit,
+    onTab: (Tab) -> Unit,
     viewModel: HistoryViewModel = koinViewModel(),
 ) {
     val rows by viewModel.rows.collectAsStateWithLifecycle()
     CadenceTheme {
         Scaffold(
             containerColor = Background,
-            bottomBar = { CadenceBottomBar(current = Tab.History.route, onTab = onTab) },
+            bottomBar = { CadenceBottomBar(current = Tab.History, onTab = onTab) },
         ) { padding ->
             LazyColumn(
                 // Stable handle for the scroll Macrobenchmark (exposed to UI Automator via

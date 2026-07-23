@@ -28,7 +28,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun ProfileScreen(
-    onTab: (String) -> Unit,
+    onTab: (Tab) -> Unit,
     onOpenCredits: () -> Unit,
     viewModel: PreferencesViewModel = koinViewModel(),
 ) {
@@ -36,7 +36,7 @@ fun ProfileScreen(
     CadenceTheme {
         Scaffold(
             containerColor = Background,
-            bottomBar = { CadenceBottomBar(current = Tab.Profile.route, onTab = onTab) },
+            bottomBar = { CadenceBottomBar(current = Tab.Profile, onTab = onTab) },
         ) { padding ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize().background(Background),

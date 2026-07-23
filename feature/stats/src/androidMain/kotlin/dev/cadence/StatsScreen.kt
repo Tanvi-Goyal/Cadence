@@ -36,14 +36,14 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun StatsScreen(
-    onTab: (String) -> Unit,
+    onTab: (Tab) -> Unit,
     viewModel: StatsViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     CadenceTheme {
         Scaffold(
             containerColor = Background,
-            bottomBar = { CadenceBottomBar(current = Tab.Stats.route, onTab = onTab) },
+            bottomBar = { CadenceBottomBar(current = Tab.Stats, onTab = onTab) },
         ) { padding ->
             Column(
                 modifier = Modifier

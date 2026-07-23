@@ -10,10 +10,10 @@ import androidx.navigation.compose.composable
 
 /** The Profile tab (string-routed, like the other bottom-nav tabs). */
 fun NavGraphBuilder.profileScreen(
-    onTab: (String) -> Unit,
+    onTab: (Tab) -> Unit,
     onOpenCredits: () -> Unit,
 ) {
-    composable(Tab.Profile.route) {
+    composable<Profile> {
         ProfileScreen(onTab = onTab, onOpenCredits = onOpenCredits)
     }
 }
