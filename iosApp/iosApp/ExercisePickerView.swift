@@ -14,8 +14,8 @@ struct ExercisePickerView: View {
 
     private var filtered: [Exercise] {
         store.exercises.filter { ex in
-            (query.isEmpty || ex.keywords.localizedCaseInsensitiveContains(query)) &&
-            (muscle == nil || ex.primaryMusclesList.contains(muscle!)) &&
+            (query.isEmpty || ex.matches(query)) &&
+            (muscle == nil || ex.primaryMuscles.contains(muscle!)) &&
             (equipment == nil || ex.equipment == equipment)
         }
     }
@@ -30,7 +30,7 @@ struct ExercisePickerView: View {
                         ExerciseDetailView(exercise: exercise) { onPick(exercise.id) }
                     } label: {
                         HStack(spacing: 12) {
-                            AsyncImage(url: URL(string: exercise.imageUrlsList.first ?? "")) { image in
+                            AsyncImage(url: URL(string: exercise.imageUrls.first ?? "")) { image in
                                 image.resizable().scaledToFill()
                             } placeholder: {
                                 Color(.secondarySystemBackground)
@@ -58,7 +58,7 @@ struct ExercisePickerView: View {
     }
 
     private func subtitle(_ ex: Exercise) -> String {
-        [ex.primaryMusclesList.first?.capitalized, ex.equipment]
+        [ex.primaryMuscles.first?.capitalized, ex.equipment]
             .compactMap { $0 }.joined(separator: " · ")
     }
 }
@@ -85,5 +85,13 @@ private struct ChipRow: View {
             }
             .padding(.horizontal)
         }
+    }
+}
+
+private extension Exercise {
+    /// Client-side search over the fields the old `keywords` string combined (model-v2 dropped it).
+    func matches(_ query: String) -> Bool {
+        let fields = [name, equipment, category].compactMap { $0 } + primaryMuscles + secondaryMuscles
+        return fields.contains { $0.localizedCaseInsensitiveContains(query) }
     }
 }

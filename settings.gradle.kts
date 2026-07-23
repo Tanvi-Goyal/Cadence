@@ -2,6 +2,7 @@ rootProject.name = "Cadence"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             mavenContent {
@@ -28,8 +29,25 @@ dependencyResolutionManagement {
     }
 }
 
-include(":composeApp")
+include(":app")
 include(":shared")
 include(":contracts")
 include(":server")
 include(":benchmark")
+include(":core:model")
+include(":core:common")
+include(":core:database")
+include(":core:network")
+include(":core:domain")
+include(":core:data")
+include(":core:sync")
+include(":core:designsystem")
+include(":core:ui")
+include(":core:navigation")
+include(":feature:profile")
+include(":feature:stats")
+include(":feature:history")
+include(":feature:exercises")
+include(":feature:logging")
+include(":feature:templates")
+include(":feature:home")

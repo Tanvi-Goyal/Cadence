@@ -97,7 +97,7 @@ struct HomeView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(session.name).font(.body.weight(.medium)).foregroundStyle(.primary)
-                            Text(Format.relativeDate(session.startedAt))
+                            Text(Format.relativeDate(session.startedAt.toEpochMilliseconds()))
                                 .font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()

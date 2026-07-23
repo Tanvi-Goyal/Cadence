@@ -1,0 +1,113 @@
+package dev.cadence
+
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.rememberNavController
+
+/**
+ * App navigation (JetBrains Compose Navigation, kept native per the PRD). The four tabs
+ * (Home/History/Stats/Profile) are top-level destinations reached via [switchTab]; the arg-carrying
+ * pushes (New Session, Log Workout, the shared Exercise Picker/Detail, Session Detail, Templates) are
+ * type-safe `@Serializable` routes (see NavRoutes.kt) so args are compile-checked. The graph mixes the
+ * string tab destinations with the typed pushes — navigation-compose supports both together.
+ */
+@Composable
+fun CadenceNavHost() {
+    val nav = rememberNavController()
+    NavHost(navController = nav, startDestination = Home) {
+
+        // ---- Bottom-nav tabs (typed routes; no args) ----
+        homeScreen(
+            onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
+            onNewSession = { nav.navigate(NewSession) },
+            onOpenTemplates = { nav.navigate(Templates) },
+            onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
+            onSeeAll = { nav.switchTab(Tab.History) },
+            onTab = nav::switchTab,
+        )
+        historyScreen(
+            onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
+            onTab = nav::switchTab,
+        )
+        statsScreen(onTab = nav::switchTab)
+        profileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Credits) })
+        creditsScreen(onBack = { nav.popBackStack() })
+
+        // ---- Full-screen pushes (type-safe routes) ----
+        newSessionScreen(
+            onBack = { nav.popBackStack() },
+            onCreated = { id ->
+                // Replace New Session with Log Workout so Back returns Home, not the picker.
+                nav.navigate(LogWorkout(id)) { popUpTo<NewSession> { inclusive = true } }
+            },
+        )
+        logWorkoutScreen(
+            onBack = { nav.popBackStack() },
+            onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG)) },
+            onFinish = { nav.popBackStack(Home, inclusive = false) },
+        )
+        exercisePickerScreen(
+            onOpenDetail = { exerciseId, target -> nav.navigate(ExerciseDetail(exerciseId, target)) },
+            onBack = { nav.popBackStack() },
+        )
+        exerciseDetailScreen(
+            onAdd = { exerciseId, target ->
+                // Hand the pick back to whichever screen launched the picker (Log Workout or the
+                // Template Builder, 2 back) and return to it. getBackStackEntry<T>() matches the
+                // single entry of that route type on the stack, regardless of its arg value.
+                val origin = when (target) {
+                    PickerTarget.LOG -> nav.getBackStackEntry<LogWorkout>()
+                    PickerTarget.BUILDER -> nav.getBackStackEntry<TemplateBuilder>()
+                }
+                origin.savedStateHandle[PICKED_EXERCISE] = exerciseId
+                when (target) {
+                    PickerTarget.LOG -> nav.popBackStack<LogWorkout>(inclusive = false)
+                    PickerTarget.BUILDER -> nav.popBackStack<TemplateBuilder>(inclusive = false)
+                }
+            },
+            onBack = { nav.popBackStack() },
+        )
+        sessionDetailScreen(onBack = { nav.popBackStack() })
+
+        // ---- Templates (D2) ----
+        templatesScreen(
+            onBack = { nav.popBackStack() },
+            onNewTemplate = { nav.navigate(NewTemplate) },
+            onEditTemplate = { id -> nav.navigate(TemplateBuilder(id)) },
+            onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
+        )
+        newTemplateScreen(
+            onBack = { nav.popBackStack() },
+            onCreated = { id ->
+                // Replace New Template with the builder so Back returns to the Templates list.
+                nav.navigate(TemplateBuilder(id)) { popUpTo<NewTemplate> { inclusive = true } }
+            },
+        )
+        templateBuilderScreen(
+            onBack = { nav.popBackStack() },
+            onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.BUILDER)) },
+            onDone = { nav.popBackStack() },
+        )
+    }
+}
+
+/**
+ * Switch to a bottom-nav tab. Maps the UI [Tab] to its typed route, then applies the standard
+ * multi-back-stack pattern (`popUpTo(startDestination){saveState}` + `restoreState` +
+ * `launchSingleTop`) so each tab keeps its own back stack and tapping between tabs doesn't grow one.
+ */
+private fun NavController.switchTab(tab: Tab) {
+    val route: Any = when (tab) {
+        Tab.Home -> Home
+        Tab.History -> History
+        Tab.Stats -> Stats
+        Tab.Profile -> Profile
+    }
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
+    }
+}
