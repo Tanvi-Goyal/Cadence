@@ -32,6 +32,18 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
+            // Export the modules whose types cross the Swift boundary so they enter Shared.framework's
+            // Obj-C header (KoinIos returns the VMs; Swift holds them + casts their UI-state types).
+            export(projects.core.model)   // Exercise, MuscleDiagram
+            export(projects.core.common)  // FlowSubscription
+            export(projects.core.domain)  // UserPreferences
+            export(projects.feature.home)
+            export(projects.feature.logging)
+            export(projects.feature.templates)
+            export(projects.feature.exercises)
+            export(projects.feature.history)
+            export(projects.feature.stats)
+            export(projects.feature.profile)
         }
     }
 

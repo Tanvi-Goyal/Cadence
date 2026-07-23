@@ -10,7 +10,7 @@ struct ExerciseDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let url = exercise.imageUrlsList.first {
+                if let url = exercise.imageUrls.first {
                     AsyncImage(url: URL(string: url)) { image in
                         image.resizable().scaledToFill()
                     } placeholder: {
@@ -26,15 +26,15 @@ struct ExerciseDetailView: View {
                         .compactMap { $0?.capitalized },
                     filled: false,
                 )
-                FlowChips(tags: exercise.primaryMusclesList.map { $0.capitalized }, filled: true)
+                FlowChips(tags: exercise.primaryMuscles.map { $0.capitalized }, filled: true)
 
-                if let muscle = exercise.primaryMusclesList.first {
+                if let muscle = exercise.primaryMuscles.first {
                     MuscleDiagramView(muscleName: muscle)
                 }
 
-                if !exercise.instructionsList.isEmpty {
+                if !exercise.instructions.isEmpty {
                     Text("Instructions").font(.headline)
-                    ForEach(Array(exercise.instructionsList.enumerated()), id: \.offset) { i, step in
+                    ForEach(Array(exercise.instructions.enumerated()), id: \.offset) { i, step in
                         HStack(alignment: .top, spacing: 8) {
                             Text("\(i + 1).").fontWeight(.bold).foregroundColor(.accentColor)
                             Text(step).foregroundColor(.secondary)
