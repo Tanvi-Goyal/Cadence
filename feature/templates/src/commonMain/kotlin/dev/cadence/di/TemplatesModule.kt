@@ -2,6 +2,7 @@ package dev.cadence.di
 
 import dev.cadence.presentation.TemplateBuilderViewModel
 import dev.cadence.presentation.TemplateDetailViewModel
+import dev.cadence.presentation.TemplateHyroxDetailViewModel
 import dev.cadence.presentation.TemplateLibraryViewModel
 import dev.cadence.presentation.TemplatesViewModel
 import org.koin.core.module.dsl.viewModel
@@ -12,6 +13,7 @@ import org.koin.dsl.module
 val templatesModule = module {
     viewModelOf(::TemplateLibraryViewModel)
     viewModelOf(::TemplateDetailViewModel)
+    viewModelOf(::TemplateHyroxDetailViewModel)
     viewModelOf(::TemplatesViewModel)
     viewModel { params -> TemplateBuilderViewModel(get(), params.get()) }
 }
