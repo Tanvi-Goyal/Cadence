@@ -42,6 +42,9 @@ import dev.cadence.model.Session
 import dev.cadence.ui.R
 import dev.cadence.domain.Units
 import dev.cadence.domain.WeightUnit
+import dev.cadence.icons.Add
+import dev.cadence.icons.Bolt
+import dev.cadence.icons.Dumbbell
 import dev.cadence.presentation.HomeStats
 import dev.cadence.presentation.HomeUiState
 import dev.cadence.presentation.HomeViewModel
@@ -195,8 +198,8 @@ private fun HeaderIconButton(
 ) {
     Box(
         modifier = Modifier
-            .size(44.dp)
             .clip(CircleShape)
+            .size(24.dp)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

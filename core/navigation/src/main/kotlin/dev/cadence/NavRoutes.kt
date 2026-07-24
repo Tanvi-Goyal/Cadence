@@ -45,6 +45,9 @@ object Credits
 object Templates
 
 @Serializable
+data class TemplateDetail(val templateId: String)
+
+@Serializable
 object NewTemplate
 
 @Serializable

@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import dev.cadence.domain.Units
 import dev.cadence.domain.WeightUnit
+import dev.cadence.icons.Bolt
+import dev.cadence.icons.Dumbbell
 import dev.cadence.model.Session
 import dev.cadence.model.SessionType
 import java.text.SimpleDateFormat

@@ -10,14 +10,34 @@ fun NavGraphBuilder.templatesScreen(
     onBack: () -> Unit,
     onNewTemplate: () -> Unit,
     onEditTemplate: (String) -> Unit,
-    onStarted: (String) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onStarted: (String) -> Unit,
 ) {
+    // The Templates route now renders the redesigned Template Library (Figma 33:1068). Its first pass
+    // opens a tapped template in the builder (onEditTemplate); the legacy start flow (onStarted) is
+    // reintroduced once cards carry real DB template ids — see TemplatesScreen.kt (kept until parity).
     composable<Templates> {
-        TemplatesScreen(
+        TemplateLibraryScreen(
             onBack = onBack,
             onNewTemplate = onNewTemplate,
-            onEditTemplate = onEditTemplate,
-            onStarted = onStarted,
+            onOpenTemplate = onEditTemplate,
+        )
+    }
+}
+
+/** Template Detail (Figma 33:1455). Opened from a Library card; START WORKOUT and the more-menu edit
+ *  route out via callbacks. Carries the tapped template id for [onEdit] (real per-template content +
+ *  the instantiate-on-start flow land with the data pass). */
+fun NavGraphBuilder.templateDetailScreen(
+    onBack: () -> Unit,
+    onStart: () -> Unit,
+    onEdit: (String) -> Unit,
+) {
+    composable<TemplateDetail> { entry ->
+        val templateId = entry.toRoute<TemplateDetail>().templateId
+        TemplateDetailScreen(
+            onBack = onBack,
+            onStart = onStart,
+            onEdit = { onEdit(templateId) },
         )
     }
 }
