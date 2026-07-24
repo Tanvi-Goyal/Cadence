@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -58,22 +60,26 @@ import dev.cadence.icons.SledPull
 import dev.cadence.icons.Timer
 import dev.cadence.icons.WallBall
 import dev.cadence.presentation.HyroxBlock
+import dev.cadence.presentation.HyroxDivision
 import dev.cadence.presentation.HyroxGlyph
 import dev.cadence.presentation.HyroxRow
 import dev.cadence.presentation.HyroxRowKind
+import dev.cadence.presentation.HyroxVariant
 import dev.cadence.presentation.TemplateHyroxDetailUiState
 import dev.cadence.presentation.TemplateHyroxDetailViewModel
 import dev.cadence.ui.R
 import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 /*
- * Template Detail — Full Hyrox Sim (Figma 33:1727). A desaturated hero (HYROX badge + duration +
- * description), a station/run block list (BLOCK 1/2/3, each a functional station row over an
- * interleaved run row with a lime left-accent), a "stations 5-8 continued" indicator, a SOLID
- * translucent top app bar (back + title + edit), and the sticky Start Workout CTA.
+ * Template Detail — HYROX sim (Figma 33:1727), shared by the Full and Half sims. A desaturated hero
+ * (HYROX badge + duration + description), a division selector (+ a 1st/2nd/halved variant selector on
+ * the half sim), a station/run block list (each block a functional station row over an interleaved run
+ * row with a lime left-accent), a finish-line indicator, a SOLID translucent top app bar (back + title
+ * + edit), and the sticky Start Workout CTA.
  *
- * Design-accurate static content from [TemplateHyroxDetailViewModel]; layout is stateless
- * ([TemplateHyroxDetailContent]) so it previews and tests without Koin.
+ * Content is derived by [TemplateHyroxDetailViewModel] from the selected division + variant; layout is
+ * stateless ([TemplateHyroxDetailContent]) so it previews and tests without Koin.
  */
 
 private val Gutter = 20.dp
@@ -81,14 +87,22 @@ private val BarHeight = 64.dp
 
 @Composable
 fun TemplateHyroxDetailScreen(
+    templateId: String,
     onBack: () -> Unit,
     onStart: () -> Unit,
     onEdit: () -> Unit,
-    viewModel: TemplateHyroxDetailViewModel = koinViewModel(),
+    viewModel: TemplateHyroxDetailViewModel = koinViewModel { parametersOf(templateId) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     CadenceTheme {
-        TemplateHyroxDetailContent(state = state, onBack = onBack, onStart = onStart, onEdit = onEdit)
+        TemplateHyroxDetailContent(
+            state = state,
+            onBack = onBack,
+            onStart = onStart,
+            onEdit = onEdit,
+            onDivisionSelected = viewModel::onDivisionSelected,
+            onVariantSelected = viewModel::onVariantSelected,
+        )
     }
 }
 
@@ -98,6 +112,8 @@ private fun TemplateHyroxDetailContent(
     onBack: () -> Unit,
     onStart: () -> Unit,
     onEdit: () -> Unit,
+    onDivisionSelected: (HyroxDivision) -> Unit,
+    onVariantSelected: (HyroxVariant) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     Scaffold(containerColor = colors.background) { inner ->
@@ -110,6 +126,14 @@ private fun TemplateHyroxDetailContent(
                 ),
             ) {
                 item(key = "hero", contentType = "hero") { HeroSection(state) }
+                item(key = "config", contentType = "config") {
+                    ConfigSection(
+                        state = state,
+                        onVariantSelected = onVariantSelected,
+                        onDivisionSelected = onDivisionSelected,
+                        modifier = Modifier.padding(top = 24.dp, start = Gutter, end = Gutter),
+                    )
+                }
                 item(key = "list", contentType = "list") {
                     Column(
                         modifier = Modifier.padding(top = 24.dp, start = Gutter, end = Gutter),
@@ -206,6 +230,93 @@ private fun HeroSection(state: TemplateHyroxDetailUiState) {
                 color = colors.onSurfaceVariant,
             )
         }
+    }
+}
+
+// ── Config selectors ────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ConfigSection(
+    state: TemplateHyroxDetailUiState,
+    onVariantSelected: (HyroxVariant) -> Unit,
+    onDivisionSelected: (HyroxDivision) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (state.showVariantSelector) {
+            SelectorGroup(
+                label = "Simulation",
+                options = HYROX_VARIANTS,
+                selected = state.variant,
+                labelOf = { it.label },
+                onSelect = onVariantSelected,
+            )
+        }
+        SelectorGroup(
+            label = "Division",
+            options = HYROX_DIVISIONS,
+            selected = state.division,
+            labelOf = { it.label },
+            onSelect = onDivisionSelected,
+        )
+    }
+}
+
+// Stable option lists (avoid rebuilding on each recomposition).
+private val HYROX_VARIANTS = listOf(HyroxVariant.FIRST_HALF, HyroxVariant.SECOND_HALF, HyroxVariant.HALVED)
+private val HYROX_DIVISIONS = HyroxDivision.entries.toList()
+
+@Composable
+private fun <T> SelectorGroup(
+    label: String,
+    options: List<T>,
+    selected: T,
+    labelOf: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            label.uppercase(),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            letterSpacing = 1.2.sp,
+            color = colors.onSurfaceVariant,
+        )
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { option ->
+                SelectorChip(
+                    label = labelOf(option),
+                    selected = option == selected,
+                    onClick = { onSelect(option) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectorChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val base = Modifier.clip(CircleShape)
+    val styled = if (selected) {
+        base.background(colors.primaryContainer)
+    } else {
+        base.background(colors.surfaceContainer).border(1.dp, colors.outlineVariant, CircleShape)
+    }
+    Box(
+        modifier = styled.clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            color = if (selected) colors.onPrimaryContainer else colors.onSurface,
+        )
     }
 }
 
@@ -444,10 +555,12 @@ private fun hyroxGlyphStyle(glyph: HyroxGlyph): HyroxGlyphStyle {
 private fun TemplateHyroxDetailPreview() {
     CadenceTheme {
         TemplateHyroxDetailContent(
-            state = TemplateHyroxDetailViewModel().uiState.value,
+            state = TemplateHyroxDetailViewModel("half-hyrox-sim").uiState.value,
             onBack = {},
             onStart = {},
             onEdit = {},
+            onDivisionSelected = {},
+            onVariantSelected = {},
         )
     }
 }

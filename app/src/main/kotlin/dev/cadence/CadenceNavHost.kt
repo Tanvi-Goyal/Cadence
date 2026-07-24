@@ -89,7 +89,7 @@ fun CadenceNavHost() {
             // uses the station-list variant; everything else uses the workout-protocol variant. This
             // id branch is a temporary shim until a real template "kind" drives the layout choice.
             onEditTemplate = { id ->
-                if (id == "full-hyrox-simulation") nav.navigate(TemplateHyroxDetail(id))
+                if (id == "full-hyrox-simulation" || id == "half-hyrox-sim") nav.navigate(TemplateHyroxDetail(id))
                 else nav.navigate(TemplateDetail(id))
             },
             onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },

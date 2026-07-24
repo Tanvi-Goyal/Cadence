@@ -42,7 +42,8 @@ fun NavGraphBuilder.templateDetailScreen(
     }
 }
 
-/** Template Detail — Full Hyrox Sim (Figma 33:1727). The station-list detail variant. */
+/** Template Detail — Hyrox sim (Figma 33:1727). The station-list detail variant, shared by the full
+ *  and half simulations; the VM seeds its content from the template id. */
 fun NavGraphBuilder.templateHyroxDetailScreen(
     onBack: () -> Unit,
     onStart: () -> Unit,
@@ -51,6 +52,7 @@ fun NavGraphBuilder.templateHyroxDetailScreen(
     composable<TemplateHyroxDetail> { entry ->
         val templateId = entry.toRoute<TemplateHyroxDetail>().templateId
         TemplateHyroxDetailScreen(
+            templateId = templateId,
             onBack = onBack,
             onStart = onStart,
             onEdit = { onEdit(templateId) },
