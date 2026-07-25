@@ -60,6 +60,24 @@ fun NavGraphBuilder.templateHyroxDetailScreen(
     }
 }
 
+/** Template Detail — Strength (Push / Pull / Lower Body). The exercise-list detail variant; the VM
+ *  seeds its content from the template id. */
+fun NavGraphBuilder.templateStrengthDetailScreen(
+    onBack: () -> Unit,
+    onStart: () -> Unit,
+    onEdit: (String) -> Unit,
+) {
+    composable<TemplateStrengthDetail> { entry ->
+        val templateId = entry.toRoute<TemplateStrengthDetail>().templateId
+        TemplateStrengthDetailScreen(
+            templateId = templateId,
+            onBack = onBack,
+            onStart = onStart,
+            onEdit = { onEdit(templateId) },
+        )
+    }
+}
+
 fun NavGraphBuilder.newTemplateScreen(
     onBack: () -> Unit,
     onCreated: (String) -> Unit,

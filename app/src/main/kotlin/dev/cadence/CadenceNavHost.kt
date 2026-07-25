@@ -85,12 +85,16 @@ fun CadenceNavHost() {
         templatesScreen(
             onBack = { nav.popBackStack() },
             onNewTemplate = { nav.navigate(NewTemplate) },
-            // A Library card now opens the read-only Template Detail (not the builder). The Hyrox sim
-            // uses the station-list variant; everything else uses the workout-protocol variant. This
-            // id branch is a temporary shim until a real template "kind" drives the layout choice.
+            // A Library card now opens the read-only Template Detail (not the builder). The Hyrox sims
+            // use the station-list variant; the strength blocks use the exercise-list variant; everything
+            // else uses the workout-protocol variant. This id branch is a temporary shim until a real
+            // template "kind" drives the layout choice.
             onEditTemplate = { id ->
-                if (id == "full-hyrox-simulation" || id == "half-hyrox-sim") nav.navigate(TemplateHyroxDetail(id))
-                else nav.navigate(TemplateDetail(id))
+                when (id) {
+                    "full-hyrox-simulation", "half-hyrox-sim" -> nav.navigate(TemplateHyroxDetail(id))
+                    "upper-strength-a", "upper-strength-b", "lower-body" -> nav.navigate(TemplateStrengthDetail(id))
+                    else -> nav.navigate(TemplateDetail(id))
+                }
             },
             onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
         )
@@ -102,6 +106,11 @@ fun CadenceNavHost() {
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
         )
         templateHyroxDetailScreen(
+            onBack = { nav.popBackStack() },
+            onStart = { nav.navigate(NewSession) },
+            onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
+        )
+        templateStrengthDetailScreen(
             onBack = { nav.popBackStack() },
             onStart = { nav.navigate(NewSession) },
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },

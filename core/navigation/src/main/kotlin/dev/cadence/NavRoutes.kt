@@ -51,6 +51,9 @@ data class TemplateDetail(val templateId: String)
 data class TemplateHyroxDetail(val templateId: String)
 
 @Serializable
+data class TemplateStrengthDetail(val templateId: String)
+
+@Serializable
 object NewTemplate
 
 @Serializable
