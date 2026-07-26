@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -19,6 +20,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.cadence.icons.NavAccount
+import dev.cadence.icons.NavHistory
+import dev.cadence.icons.NavHome
+import dev.cadence.icons.NavStats
 
 /** The four top-level tabs — a pure UI model (label + icon). The app maps each to its typed route. */
 enum class Tab(val label: String) {
@@ -29,10 +34,10 @@ enum class Tab(val label: String) {
 }
 
 private fun Tab.icon(): ImageVector = when (this) {
-    Tab.Home -> CadenceIcons.NavHome
-    Tab.History -> CadenceIcons.NavHistory
-    Tab.Stats -> CadenceIcons.NavStats
-    Tab.Profile -> CadenceIcons.NavProfile
+    Tab.Home -> NavHome
+    Tab.History -> NavHistory
+    Tab.Stats -> NavStats
+    Tab.Profile -> NavAccount
 }
 
 /**
@@ -40,14 +45,21 @@ private fun Tab.icon(): ImageVector = when (this) {
  * inactive tabs are muted icon + label. [current] highlights the active tab.
  */
 @Composable
-fun CadenceBottomBar(current: Tab, onTab: (Tab) -> Unit) {
+fun CadenceBottomBar(
+    current: Tab,
+    onTab: (Tab) -> Unit
+) {
     val colors = MaterialTheme.colorScheme
     Column(Modifier.background(colors.surfaceContainerLow)) {
         HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant.copy(alpha = 0.3f))
         Row(
             modifier = Modifier
+                .fillMaxWidth()
                 .background(colors.surfaceContainerLow)
-                .padding(horizontal = MaterialTheme.spacing.md, vertical = MaterialTheme.spacing.sm),
+                .padding(
+                    horizontal = MaterialTheme.spacing.md,
+                    vertical = MaterialTheme.spacing.sm
+                ),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically,
         ) {

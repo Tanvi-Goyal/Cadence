@@ -12,6 +12,9 @@ import kotlinx.serialization.Serializable
 
 // Bottom-nav tab destinations (no args). The Tab enum in :core:ui is the UI model; these are the routes.
 @Serializable
+object Login
+
+@Serializable
 object Home
 
 @Serializable
@@ -43,6 +46,15 @@ object Credits
 
 @Serializable
 object Templates
+
+@Serializable
+data class TemplateDetail(val templateId: String)
+
+@Serializable
+data class TemplateHyroxDetail(val templateId: String)
+
+@Serializable
+data class TemplateStrengthDetail(val templateId: String)
 
 @Serializable
 object NewTemplate

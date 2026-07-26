@@ -2,7 +2,6 @@ package dev.cadence
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 
@@ -18,8 +17,15 @@ fun CadenceNavHost() {
     val nav = rememberNavController()
     NavHost(
         navController = nav,
-        startDestination = Home
+        startDestination = Login
     ) {
+
+        // ---- Auth (app entry; design-static — any sign-in action enters the app) ----
+        loginScreen(
+            onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+            onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+            onForgotPassword = {},
+        )
 
         // ---- Bottom-nav tabs (typed routes; no args) ----
         homeScreen(
@@ -85,8 +91,35 @@ fun CadenceNavHost() {
         templatesScreen(
             onBack = { nav.popBackStack() },
             onNewTemplate = { nav.navigate(NewTemplate) },
-            onEditTemplate = { id -> nav.navigate(TemplateBuilder(id)) },
+            // A Library card now opens the read-only Template Detail (not the builder). The Hyrox sims
+            // use the station-list variant; the strength blocks use the exercise-list variant; everything
+            // else uses the workout-protocol variant. This id branch is a temporary shim until a real
+            // template "kind" drives the layout choice.
+            onEditTemplate = { id ->
+                when (id) {
+                    "full-hyrox-simulation", "half-hyrox-sim" -> nav.navigate(TemplateHyroxDetail(id))
+                    "upper-strength-a", "upper-strength-b", "lower-body" -> nav.navigate(TemplateStrengthDetail(id))
+                    else -> nav.navigate(TemplateDetail(id))
+                }
+            },
             onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
+        )
+        templateDetailScreen(
+            onBack = { nav.popBackStack() },
+            // Placeholder until the data pass: begin a fresh workout. Real behaviour = instantiate this
+            // template (deep copy) → open Log Workout.
+            onStart = { nav.navigate(NewSession) },
+            onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
+        )
+        templateHyroxDetailScreen(
+            onBack = { nav.popBackStack() },
+            onStart = { nav.navigate(NewSession) },
+            onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
+        )
+        templateStrengthDetailScreen(
+            onBack = { nav.popBackStack() },
+            onStart = { nav.navigate(NewSession) },
+            onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
         )
         newTemplateScreen(
             onBack = { nav.popBackStack() },
@@ -116,7 +149,9 @@ private fun NavController.switchTab(tab: Tab) {
         Tab.Profile -> Profile
     }
     navigate(route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
+        // Anchor each tab's back stack on Home (the tab root), not the graph start — the graph now
+        // starts at Login, which is popped once the user enters the app.
+        popUpTo(Home) { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
