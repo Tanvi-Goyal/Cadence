@@ -11,7 +11,9 @@ import dev.cadence.data.local.Session as SessionEntity
 import dev.cadence.data.local.SetEntry as SetEntryEntity
 import dev.cadence.model.Block
 import dev.cadence.model.BlockDetail
+import dev.cadence.model.BlockSection
 import dev.cadence.model.BlockType
+import dev.cadence.model.ConditioningFormat
 import dev.cadence.model.Exercise
 import dev.cadence.model.ExerciseEntry
 import dev.cadence.model.ExerciseEntryDetail
@@ -65,6 +67,9 @@ internal fun SessionEntity.toDomain(): Session = Session(
     isTemplate = isTemplate,
     source = safeEnum<SessionSource>(source) ?: SessionSource.MANUAL,
     templateId = templateId,
+    category = category,
+    focus = focus,
+    programWeek = programWeek,
     createdAt = ms(if (createdAt != 0L) createdAt else startedAt),
     updatedAt = ms(updatedAt),
     deletedAt = deletedAt?.let(::ms),
@@ -78,6 +83,10 @@ internal fun BlockEntity.toDomain(): Block = Block(
     rounds = rounds,
     restBetweenRoundsMs = restBetweenRoundsMs,
     label = label,
+    section = section?.let { safeEnum<BlockSection>(it) },
+    conditioningFormat = conditioningFormat?.let { safeEnum<ConditioningFormat>(it) },
+    capSeconds = capSeconds,
+    workSeconds = workSeconds,
     createdAt = ms(createdAt),
     updatedAt = ms(updatedAt),
     deletedAt = deletedAt?.let(::ms),
@@ -90,6 +99,8 @@ internal fun ExerciseEntryEntity.toDomain(): ExerciseEntry = ExerciseEntry(
     orderIndex = orderIndex,
     targetSets = targetSets,
     restMs = restMs,
+    note = note,
+    eachSide = eachSide ?: false,
     createdAt = ms(createdAt),
     updatedAt = ms(updatedAt),
     deletedAt = deletedAt?.let(::ms),

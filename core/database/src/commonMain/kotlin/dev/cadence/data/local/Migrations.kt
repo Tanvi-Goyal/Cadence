@@ -110,3 +110,27 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         connection.execSQL("CREATE INDEX IF NOT EXISTS `index_personal_records_exerciseId_kind_distanceBucketM` ON `personal_records` (`exerciseId`, `kind`, `distanceBucketM`)")
     }
 }
+
+/**
+ * v8 → v9. Adds the training-data-model columns needed to represent real programs: conditioning
+ * shape (`conditioningFormat`/`capSeconds`/`workSeconds`) and section grouping (`section`) on blocks;
+ * a coaching `note` + per-side `eachSide` flag on entries; and lightweight template metadata
+ * (`category`/`focus`/`programWeek`) on sessions.
+ *
+ * **Purely additive, all NULLABLE.** SQLite rejects a NOT-NULL added column without a DEFAULT, and
+ * Room's generated schema declares no default (see [MIGRATION_7_8]) — so every new column is nullable
+ * and this is plain `ALTER TABLE ADD COLUMN`, no table-recreate, no data touched.
+ */
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `blocks` ADD COLUMN `section` TEXT")
+        connection.execSQL("ALTER TABLE `blocks` ADD COLUMN `conditioningFormat` TEXT")
+        connection.execSQL("ALTER TABLE `blocks` ADD COLUMN `capSeconds` INTEGER")
+        connection.execSQL("ALTER TABLE `blocks` ADD COLUMN `workSeconds` INTEGER")
+        connection.execSQL("ALTER TABLE `exercise_entries` ADD COLUMN `note` TEXT")
+        connection.execSQL("ALTER TABLE `exercise_entries` ADD COLUMN `eachSide` INTEGER")
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `category` TEXT")
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `focus` TEXT")
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `programWeek` INTEGER")
+    }
+}

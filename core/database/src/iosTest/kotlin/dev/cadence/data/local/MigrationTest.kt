@@ -86,4 +86,52 @@ class MigrationTest {
 
         db.close()
     }
+
+    /**
+     * v8 → v9 is purely additive (nullable ADD COLUMN). Real v8 rows survive untouched, the new
+     * training-data columns exist and read back null, and the result validates against `9.json`
+     * (`runMigrationsAndValidate` throws on any schema drift).
+     */
+    @Test
+    fun v9_adds_nullable_training_columns_and_preserves_rows() = runTest {
+        // A distinct DB file — the shared `helper` file is left at v8 by the test above, and
+        // MigrationTestHelper refuses to createDatabase over an existing file.
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = schemaDir,
+            fileName = NSTemporaryDirectory() + "cadence-migration-test-v9.db",
+            driver = BundledSQLiteDriver(),
+            databaseClass = AppDatabase::class,
+        )
+        helper.createDatabase(version = 8).apply {
+            execSQL(
+                "INSERT INTO sessions (id, startedAt, name, type, notes, isTemplate, source, " +
+                    "templateId, updatedAt, syncStatus, createdAt, deletedAt) VALUES " +
+                    "('s1', 1000, 'Push', 'STRENGTH', NULL, 1, 'MANUAL', NULL, 2000, 'SYNCED', 1000, NULL)",
+            )
+            execSQL(
+                "INSERT INTO blocks (id, sessionId, type, orderIndex, rounds, restBetweenRoundsMs, " +
+                    "label, createdAt, updatedAt, deletedAt) VALUES " +
+                    "('b1', 's1', 'STRAIGHT', 0, 1, NULL, 'Main', 1000, 2000, NULL)",
+            )
+            execSQL(
+                "INSERT INTO exercise_entries (id, blockId, exerciseId, orderIndex, targetSets, " +
+                    "restMs, createdAt, updatedAt, deletedAt) VALUES " +
+                    "('e1', 'b1', 'bench-press', 0, 3, NULL, 1000, 2000, NULL)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(version = 9, migrations = listOf(MIGRATION_8_9))
+
+        // Existing rows preserved.
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM blocks WHERE id = 'b1' AND sessionId = 's1'"))
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM exercise_entries WHERE id = 'e1' AND blockId = 'b1'"))
+
+        // New columns exist and default to null on migrated rows.
+        assertTrue(db.long("SELECT section IS NULL AND conditioningFormat IS NULL AND capSeconds IS NULL AND workSeconds IS NULL FROM blocks WHERE id = 'b1'") == 1L)
+        assertTrue(db.long("SELECT note IS NULL AND eachSide IS NULL FROM exercise_entries WHERE id = 'e1'") == 1L)
+        assertTrue(db.long("SELECT category IS NULL AND focus IS NULL AND programWeek IS NULL FROM sessions WHERE id = 's1'") == 1L)
+
+        db.close()
+    }
 }

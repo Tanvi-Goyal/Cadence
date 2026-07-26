@@ -18,7 +18,7 @@ import androidx.room3.RoomDatabaseConstructor
         Exercise::class, ExerciseEntry::class, SetEntry::class, PreferencesEntity::class,
         Block::class, PersonalRecord::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)

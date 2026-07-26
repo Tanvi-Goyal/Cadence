@@ -21,6 +21,11 @@ data class Block(
     val rounds: Int?,
     val restBetweenRoundsMs: Long?,
     val label: String?,
+    /** v9: workout phase (warm-up/main/…) and conditioning shape. See [BlockSection]/[ConditioningFormat]. */
+    val section: BlockSection? = null,
+    val conditioningFormat: ConditioningFormat? = null,
+    val capSeconds: Long? = null,
+    val workSeconds: Long? = null,
     override val createdAt: Instant,
     override val updatedAt: Instant,
     override val deletedAt: Instant?,

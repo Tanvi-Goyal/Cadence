@@ -25,6 +25,12 @@ data class Session(
     val isTemplate: Boolean = false,
     val source: String = SessionSource.MANUAL,
     val templateId: String? = null,
+    // v9: lightweight template/collection metadata (NOT a program engine) — `category` groups a
+    // template into a collection (e.g. "HyFit 6-Week Strength"), `focus` is the day focus ("Glutes &
+    // Hamstring"), `programWeek` orders days within a block. All null on ordinary logged sessions.
+    val category: String? = null,
+    val focus: String? = null,
+    val programWeek: Int? = null,
     val updatedAt: Long,
     val syncStatus: String = SyncStatus.PENDING,
     // Sync envelope. [deletedAt] is the tombstone (null = live) — it replaced the pre-v8 boolean

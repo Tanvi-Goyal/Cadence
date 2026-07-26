@@ -29,6 +29,13 @@ data class Block(
     val rounds: Int? = null,
     val restBetweenRoundsMs: Long? = null,
     val label: String? = null,
+    // v9: section grouping (WARMUP/MAIN/ACCESSORY/CONDITIONING/CORE, as `BlockSection.name`) and the
+    // conditioning shape — `conditioningFormat` (AMRAP/EMOM/TABATA/FOR_TIME), `capSeconds` (AMRAP/EMOM/
+    // circuit time cap), `workSeconds` (TABATA work interval; rest reuses `restBetweenRoundsMs`).
+    val section: String? = null,
+    val conditioningFormat: String? = null,
+    val capSeconds: Long? = null,
+    val workSeconds: Long? = null,
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,

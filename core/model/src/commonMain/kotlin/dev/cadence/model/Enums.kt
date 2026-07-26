@@ -16,6 +16,16 @@ enum class MetricType { WEIGHT_REPS, REPS_ONLY, DISTANCE_TIME, DURATION, CALORIE
 /** How the exercises inside a [Block] are structured (straight sets vs supersets/circuits/etc.). */
 enum class BlockType { STRAIGHT, SUPERSET, CIRCUIT, INTERVAL, RUN }
 
+/** Which phase of the workout a [Block] belongs to — drives grouping/ordering on the session detail. */
+enum class BlockSection { WARMUP, MAIN, ACCESSORY, CONDITIONING, CORE }
+
+/**
+ * The shape of a conditioning [Block]. AMRAP = as many rounds as possible within `capSeconds`; EMOM =
+ * one movement per minute for `capSeconds`; TABATA = `workSeconds` on / `restBetweenRoundsMs` off ×
+ * `rounds`; FOR_TIME = complete the prescribed work as fast as possible (optional `capSeconds` cap).
+ */
+enum class ConditioningFormat { AMRAP, EMOM, TABATA, FOR_TIME }
+
 /** The session's dominant modality mix, used for badges/filtering. */
 enum class SessionType { STRENGTH, CONDITIONING, HYROX, MIXED }
 
