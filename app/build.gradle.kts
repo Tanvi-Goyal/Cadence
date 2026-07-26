@@ -38,6 +38,7 @@ dependencies {
     implementation(projects.feature.logging)
     implementation(projects.feature.templates)
     implementation(projects.feature.home)
+    implementation(projects.feature.auth)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.runtime)

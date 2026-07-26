@@ -2,7 +2,6 @@ package dev.cadence
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
 
@@ -18,8 +17,15 @@ fun CadenceNavHost() {
     val nav = rememberNavController()
     NavHost(
         navController = nav,
-        startDestination = Home
+        startDestination = Login
     ) {
+
+        // ---- Auth (app entry; design-static — any sign-in action enters the app) ----
+        loginScreen(
+            onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+            onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+            onForgotPassword = {},
+        )
 
         // ---- Bottom-nav tabs (typed routes; no args) ----
         homeScreen(
@@ -143,7 +149,9 @@ private fun NavController.switchTab(tab: Tab) {
         Tab.Profile -> Profile
     }
     navigate(route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
+        // Anchor each tab's back stack on Home (the tab root), not the graph start — the graph now
+        // starts at Login, which is popped once the user enters the app.
+        popUpTo(Home) { saveState = true }
         launchSingleTop = true
         restoreState = true
     }
