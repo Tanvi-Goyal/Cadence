@@ -96,9 +96,9 @@ fun CadenceNavHost() {
             // else uses the workout-protocol variant. This id branch is a temporary shim until a real
             // template "kind" drives the layout choice.
             onEditTemplate = { id ->
-                when (id) {
-                    "full-hyrox-simulation", "half-hyrox-sim" -> nav.navigate(TemplateHyroxDetail(id))
-                    "upper-strength-a", "upper-strength-b", "lower-body" -> nav.navigate(TemplateStrengthDetail(id))
+                when {
+                    id == "full-hyrox-simulation" || id == "half-hyrox-sim" -> nav.navigate(TemplateHyroxDetail(id))
+                    id.startsWith("hyfit-") -> nav.navigate(TemplateStrengthDetail(id))
                     else -> nav.navigate(TemplateDetail(id))
                 }
             },
@@ -118,7 +118,8 @@ fun CadenceNavHost() {
         )
         templateStrengthDetailScreen(
             onBack = { nav.popBackStack() },
-            onStart = { nav.navigate(NewSession) },
+            // Start deep-copies the template into a live session; open it in Log Workout.
+            onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
         )
         newTemplateScreen(

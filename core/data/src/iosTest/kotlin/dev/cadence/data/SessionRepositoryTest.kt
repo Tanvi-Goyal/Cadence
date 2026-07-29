@@ -4,8 +4,12 @@ import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import dev.cadence.common.UuidV7Generator
 import dev.cadence.data.local.AppDatabase
+import dev.cadence.data.local.Block
 import dev.cadence.data.local.ExerciseAssetReader
+import dev.cadence.data.local.ExerciseEntry
+import dev.cadence.data.local.SetEntry
 import dev.cadence.model.SessionSource
+import dev.cadence.data.local.Session as SessionEntity
 import dev.cadence.data.local.SessionType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -127,6 +131,46 @@ class SessionRepositoryTest {
         val spawnedSets = database.setEntryDao().getForEntry(spawnedItemId)
         assertEquals(1, spawnedSets.size, "spawned session must not see sets added to the template later")
         assertEquals(5, spawnedSets.first().targetReps)
+    }
+
+    /**
+     * A seeded program template ([TemplateSeed]) has MANY blocks (warm-up / main / … / conditioning),
+     * not the single implicit block a user-built template has. Instantiating one must deep-copy the
+     * whole block graph — preserving each block's section + conditioning shape and each entry's
+     * note/each-side — with all-fresh ids, not collapse it into one block.
+     */
+    @Test
+    fun instantiateTemplate_preservesMultiBlockStructure() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        // Seed a 2-block template directly via DAOs (the repo's addExercise only builds one implicit block).
+        database.sessionDao().insert(
+            SessionEntity(id = "t1", startedAt = 0, name = "Day", type = SessionType.STRENGTH, isTemplate = true, updatedAt = 0, createdAt = 0),
+        )
+        database.blockDao().insert(Block(id = "t1-b0", sessionId = "t1", type = "STRAIGHT", orderIndex = 0, section = "MAIN", label = "Main", createdAt = 0, updatedAt = 0))
+        database.blockDao().insert(Block(id = "t1-b1", sessionId = "t1", type = "INTERVAL", orderIndex = 1, section = "CONDITIONING", conditioningFormat = "AMRAP", capSeconds = 420, label = "Cond", createdAt = 0, updatedAt = 0))
+        database.exerciseEntryDao().insert(ExerciseEntry(id = "t1-e0", blockId = "t1-b0", exerciseId = "bench-press", orderIndex = 0, note = "focus on depth", eachSide = true, createdAt = 0, updatedAt = 0))
+        database.exerciseEntryDao().insert(ExerciseEntry(id = "t1-e1", blockId = "t1-b1", exerciseId = "bench-press", orderIndex = 0, createdAt = 0, updatedAt = 0))
+        database.setEntryDao().insert(SetEntry(id = "t1-s0", exerciseEntryId = "t1-e0", setNumber = 1, targetReps = 8, createdAt = 0, updatedAt = 0))
+
+        val session = repo.instantiateTemplate("t1")
+
+        val newBlocks = database.blockDao().getBySession(session.id).sortedBy { it.orderIndex }
+        assertEquals(2, newBlocks.size, "both blocks copied (not flattened)")
+        assertEquals("MAIN", newBlocks[0].section)
+        assertEquals("CONDITIONING", newBlocks[1].section)
+        assertEquals("AMRAP", newBlocks[1].conditioningFormat, "conditioning shape preserved")
+        assertEquals(420L, newBlocks[1].capSeconds)
+        assertTrue(newBlocks.none { it.id.startsWith("t1-") }, "copied blocks get fresh ids")
+
+        val newEntries = database.exerciseEntryDao().getBySession(session.id)
+        assertEquals(2, newEntries.size)
+        val mainEntry = newEntries.first { it.blockId == newBlocks[0].id }
+        assertEquals("focus on depth", mainEntry.note, "coaching note copied")
+        assertEquals(true, mainEntry.eachSide, "each-side flag copied")
+
+        val copiedSet = database.setEntryDao().getForEntry(mainEntry.id).first()
+        assertEquals(8, copiedSet.targetReps, "target copied")
+        assertNull(copiedSet.reps, "actual stays null")
     }
 
     /**

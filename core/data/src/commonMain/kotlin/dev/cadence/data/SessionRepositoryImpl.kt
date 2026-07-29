@@ -23,6 +23,7 @@ import dev.cadence.data.local.SetEntry as SetEntryEntity
 import dev.cadence.data.local.SyncMeta
 import dev.cadence.data.local.SyncMetaKeys
 import dev.cadence.data.local.SyncStatus
+import dev.cadence.data.local.TemplateSeed
 import dev.cadence.domain.detectPrs
 import dev.cadence.model.Exercise
 import dev.cadence.model.PlannedSession
@@ -56,8 +57,11 @@ class SessionRepositoryImpl(
     private fun now(): Long = clock.now().toEpochMilliseconds()
 
     private companion object {
-        /** Bump when [ExerciseImporter] output changes so existing installs re-seed (A7 = v2). */
-        const val CATALOG_SEED_VERSION = 2
+        /** Bump when [ExerciseImporter] output changes (v3 adds HyFit rows; v4 adds their muscles). */
+        const val CATALOG_SEED_VERSION = 4
+
+        /** Bump when [TemplateSeed] output changes (v2 adds per-day session goals). */
+        const val TEMPLATE_SEED_VERSION = 2
     }
 
     private val sessions get() = database.sessionDao()
@@ -312,20 +316,41 @@ class SessionRepositoryImpl(
             updatedAt = now,
         )
 
-        // Deep-copy the tree with FRESH ids, built outside the write transaction so the writer lock
-        // is held only for inserts. The template's entries (currently one block) are flattened into
-        // the new session's implicit block. Each set's targets carry over; actuals stay null → the
-        // UI shows the prescription as ghost values until the user logs what actually happened.
-        val newBlockId = implicitBlockId(newSession.id)
-        val entriesWithSets = entries.getBySession(templateId).mapIndexed { index, entry ->
+        // Deep-copy the WHOLE block tree with FRESH ids, built outside the write transaction so the
+        // writer lock is held only for inserts. Each template block is copied (carrying its section /
+        // conditioning shape), entries are reparented under their copied block, and each set's targets
+        // carry over while actuals stay null → the UI shows the prescription as ghost values until the
+        // user logs what actually happened.
+        val templateBlocks = blocks.getBySession(templateId)
+        val newBlockIdByOld = templateBlocks.associate { it.id to uuid.newId() }
+        val newBlocks = templateBlocks.map { tb ->
+            Block(
+                id = newBlockIdByOld.getValue(tb.id),
+                sessionId = newSession.id,
+                type = tb.type,
+                orderIndex = tb.orderIndex,
+                rounds = tb.rounds,
+                restBetweenRoundsMs = tb.restBetweenRoundsMs,
+                label = tb.label,
+                section = tb.section,
+                conditioningFormat = tb.conditioningFormat,
+                capSeconds = tb.capSeconds,
+                workSeconds = tb.workSeconds,
+                createdAt = now,
+                updatedAt = now,
+            )
+        }
+        val entriesWithSets = entries.getBySession(templateId).map { entry ->
             val newEntryId = uuid.newId()
             val newEntry = ExerciseEntry(
                 id = newEntryId,
-                blockId = newBlockId,
+                blockId = newBlockIdByOld.getValue(entry.blockId),
                 exerciseId = entry.exerciseId,
-                orderIndex = index,
+                orderIndex = entry.orderIndex,
                 targetSets = entry.targetSets,
                 restMs = entry.restMs,
+                note = entry.note,
+                eachSide = entry.eachSide,
                 createdAt = now,
                 updatedAt = now,
             )
@@ -349,7 +374,7 @@ class SessionRepositoryImpl(
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 sessions.insert(newSession)
-                blocks.insert(implicitBlock(newSession.id, now))
+                newBlocks.forEach { blocks.insert(it) }
                 entriesWithSets.forEach { (entry, sets) ->
                     entries.insert(entry)
                     sets.forEach { setEntries.insert(it) }
@@ -392,8 +417,28 @@ class SessionRepositoryImpl(
             exercises.upsertAll(catalog)
             syncMeta.set(SyncMeta(SyncMetaKeys.SEED_VERSION, CATALOG_SEED_VERSION.toString()))
         }
-        // No demo/sample data is seeded (ROADMAP P1.7): the "Up Next" card stays empty until a real
-        // planned-session/program feature populates it. Only the reference exercise catalog is seeded.
+
+        // Program templates (multi-block day trees, target-only sets). Seeded local reference data —
+        // like the catalog, they carry no outbox row. Fixed ids → an idempotent clear-then-insert.
+        val templateSeeded = syncMeta.get(SyncMetaKeys.TEMPLATE_SEED_VERSION)?.toIntOrNull() ?: 0
+        if (templateSeeded < TEMPLATE_SEED_VERSION) {
+            val templates = TemplateSeed.all(now())
+            database.useWriterConnection { connection ->
+                connection.immediateTransaction {
+                    templates.forEach { t ->
+                        val entryIds = entries.getBySession(t.session.id).map { it.id }
+                        if (entryIds.isNotEmpty()) setEntries.deleteForEntries(entryIds)
+                        entries.deleteBySession(t.session.id) // before blocks (its subquery joins blocks)
+                        blocks.deleteBySession(t.session.id)
+                        sessions.upsert(t.session)
+                        t.blocks.forEach { blocks.insert(it) }
+                        t.entries.forEach { entries.insert(it) }
+                        t.sets.forEach { setEntries.insert(it) }
+                    }
+                }
+            }
+            syncMeta.set(SyncMeta(SyncMetaKeys.TEMPLATE_SEED_VERSION, TEMPLATE_SEED_VERSION.toString()))
+        }
     }
 
     private fun displayName(type: String): String = when (type) {

@@ -32,4 +32,7 @@ object SyncMetaKeys {
 
     /** Version of the seeded reference catalog on this device; bump to re-import (see repository). */
     const val SEED_VERSION = "seed_version"
+
+    /** Version of the seeded program templates on this device; bump to re-seed (see repository). */
+    const val TEMPLATE_SEED_VERSION = "template_seed_version"
 }

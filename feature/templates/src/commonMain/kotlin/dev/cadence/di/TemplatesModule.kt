@@ -12,10 +12,10 @@ import org.koin.dsl.module
 
 /** Koin graph for the templates feature: the library + detail VMs, the list/create VM + the parameterized builder VM. */
 val templatesModule = module {
-    viewModelOf(::TemplateLibraryViewModel)
+    viewModel { TemplateLibraryViewModel(get()) }
     viewModelOf(::TemplateDetailViewModel)
     viewModel { params -> TemplateHyroxDetailViewModel(params.get()) }
-    viewModel { params -> TemplateStrengthDetailViewModel(params.get()) }
+    viewModel { params -> TemplateStrengthDetailViewModel(get(), params.get()) }
     viewModelOf(::TemplatesViewModel)
     viewModel { params -> TemplateBuilderViewModel(get(), params.get()) }
 }
