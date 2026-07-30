@@ -10,6 +10,11 @@ import kotlinx.serialization.Serializable
  * arg-carrying push destinations are typed.
  */
 
+// Branded splash shown on cold start; the app's start destination. Advances to [Login] after a
+// fixed hold (see SplashScreen) and is popped off the back stack so Back never returns to it.
+@Serializable
+object Splash
+
 // Bottom-nav tab destinations (no args). The Tab enum in :core:ui is the UI model; these are the routes.
 @Serializable
 object Login

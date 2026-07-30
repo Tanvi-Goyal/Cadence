@@ -17,10 +17,16 @@ fun CadenceNavHost() {
     val nav = rememberNavController()
     NavHost(
         navController = nav,
-        startDestination = Login
+        startDestination = Splash
     ) {
 
-        // ---- Auth (app entry; design-static — any sign-in action enters the app) ----
+        // ---- Splash (app entry; holds briefly, then advances and pops itself) ----
+        // Goes straight to Home for now — Login isn't implemented yet, so we skip it.
+        splashScreen(
+            onDone = { nav.navigate(Home) { popUpTo(Splash) { inclusive = true } } },
+        )
+
+        // ---- Auth (design-static — any sign-in action enters the app) ----
         loginScreen(
             onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
             onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },

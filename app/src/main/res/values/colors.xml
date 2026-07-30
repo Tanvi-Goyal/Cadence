@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand background (near-black). Shown as the launch window background so cold
+         start does not flash white before the Compose splash draws. Keep in sync with
+         BrandBg in SplashScreen.kt and tools/branding/generate_brand_assets.py. -->
+    <color name="brand_bg">#0F0F11</color>
+</resources>
