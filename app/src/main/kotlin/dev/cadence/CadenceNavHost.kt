@@ -119,7 +119,6 @@ fun CadenceNavHost() {
         )
         templateHyroxDetailScreen(
             onBack = { nav.popBackStack() },
-            onStart = { nav.navigate(NewSession) },
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
         )
         templateStrengthDetailScreen(

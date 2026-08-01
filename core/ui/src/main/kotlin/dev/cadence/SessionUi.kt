@@ -69,6 +69,7 @@ fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit) {
                 )
             }
         }
+        val finishedAt = session.finishedAt
         if (volumeKg > 0.0) {
             val unit = LocalWeightUnit.current
             Text(
@@ -76,8 +77,24 @@ fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit) {
                 style = MaterialTheme.typography.titleSmall,
                 color = colors.onSurface,
             )
+        } else if (finishedAt != null) {
+            // A completed timed workout (e.g. Hyrox) shows its total time instead of strength volume.
+            Text(
+                text = formatDuration(finishedAt.toEpochMilliseconds() - session.startedAt.toEpochMilliseconds()),
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.onSurface,
+            )
         }
     }
+}
+
+/** Compact workout duration: "1h 25m" past an hour, else "25m 10s". */
+fun formatDuration(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) "${h}h ${m}m" else "${m}m ${s}s"
 }
 
 /** Compact volume in the user's [unit]: 12,400 → "12.4k", 850 → "850". */

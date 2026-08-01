@@ -14,6 +14,11 @@ import dev.cadence.data.local.Exercise as ExerciseEntity
 import dev.cadence.data.local.ExerciseAssetReader
 import dev.cadence.data.local.ExerciseEntry
 import dev.cadence.data.local.ExerciseImporter
+import dev.cadence.data.local.HyroxDivisionRef
+import dev.cadence.data.local.HyroxLoadType
+import dev.cadence.data.local.HyroxSeed
+import dev.cadence.data.local.HyroxStationLoadRef
+import dev.cadence.data.local.HyroxStationRef
 import dev.cadence.data.local.OutboxEntry
 import dev.cadence.data.local.PersonalRecord as PersonalRecordEntity
 import dev.cadence.data.local.Session as SessionEntity
@@ -26,6 +31,11 @@ import dev.cadence.data.local.SyncStatus
 import dev.cadence.data.local.TemplateSeed
 import dev.cadence.domain.detectPrs
 import dev.cadence.model.Exercise
+import dev.cadence.model.HyroxDivisionInfo
+import dev.cadence.model.HyroxStation
+import dev.cadence.model.HyroxStepDef
+import dev.cadence.model.HyroxStepKind
+import dev.cadence.model.HyroxVariant
 import dev.cadence.model.PlannedSession
 import dev.cadence.model.Session
 import dev.cadence.model.SessionDetail
@@ -57,11 +67,17 @@ class SessionRepositoryImpl(
     private fun now(): Long = clock.now().toEpochMilliseconds()
 
     private companion object {
-        /** Bump when [ExerciseImporter] output changes (v3 adds HyFit rows; v4 adds their muscles). */
-        const val CATALOG_SEED_VERSION = 4
+        /**
+         * Bump when [ExerciseImporter] output changes (v3 adds HyFit rows; v4 adds their muscles;
+         * v5 adds the `hyrox-run` leg).
+         */
+        const val CATALOG_SEED_VERSION = 5
 
         /** Bump when [TemplateSeed] output changes (v2 adds per-day session goals). */
         const val TEMPLATE_SEED_VERSION = 2
+
+        /** Bump when [HyroxSeed] output changes. */
+        const val HYROX_SEED_VERSION = 1
     }
 
     private val sessions get() = database.sessionDao()
@@ -73,6 +89,7 @@ class SessionRepositoryImpl(
     private val plans get() = database.plannedSessionDao()
     private val personalRecords get() = database.personalRecordDao()
     private val syncMeta get() = database.syncMetaDao()
+    private val hyroxRef get() = database.hyroxRefDao()
 
     /**
      * Recompute + upsert PBs for a just-written set, inside the caller's write transaction. Pure
@@ -385,6 +402,154 @@ class SessionRepositoryImpl(
         return newSession.toDomain()
     }
 
+    // ── HYROX live workout ──────────────────────────────────────────────────────────────────────
+
+    override suspend fun hyroxDivisions(): List<HyroxDivisionInfo> {
+        ensureSeeded()
+        return hyroxRef.divisions().map { HyroxDivisionInfo(it.key, it.label) }
+    }
+
+    override suspend fun hyroxFormat(divisionKey: String, variant: HyroxVariant): List<HyroxStepDef> {
+        ensureSeeded()
+        val stations = hyroxRef.stations()
+        val division = hyroxRef.divisions().firstOrNull { it.key == divisionKey }
+        val loads = hyroxRef.loadsForDivision(divisionKey).associateBy { it.loadType }
+        // Resolve each station's HyroxStation enum from its catalog exercise (data-driven, not hardcoded).
+        val stationEnumByExercise = exercises.getByIds(stations.map { it.exerciseId })
+            .associate { it.id to it.hyroxStation?.let { name -> HyroxStation.entries.firstOrNull { e -> e.name == name } } }
+
+        val selected = when (variant) {
+            HyroxVariant.FIRST_HALF -> stations.filter { it.number in 1..4 }
+            HyroxVariant.SECOND_HALF -> stations.filter { it.number in 5..8 }
+            HyroxVariant.FULL, HyroxVariant.HALVED -> stations
+        }
+        val halve = variant == HyroxVariant.HALVED
+
+        val steps = mutableListOf<HyroxStepDef>()
+        for (s in selected) {
+            // A run leg precedes each station (the official 1 km run into every station).
+            steps += HyroxStepDef(
+                index = steps.size,
+                kind = HyroxStepKind.RUN,
+                station = null,
+                exerciseId = "hyrox-run",
+                title = "Run ${s.number}",
+                detail = s.runBeforeLabel,
+                value = if (halve) "0.5 km" else "1.0 km",
+                targetDistanceM = if (halve) 500 else 1000,
+            )
+            steps += stationStep(steps.size, s, stationEnumByExercise[s.exerciseId], loads, division, halve)
+        }
+        return steps
+    }
+
+    private fun stationStep(
+        index: Int,
+        s: HyroxStationRef,
+        station: HyroxStation?,
+        loads: Map<String, HyroxStationLoadRef>,
+        division: HyroxDivisionRef?,
+        halve: Boolean,
+    ): HyroxStepDef {
+        val title = "${s.number}. ${s.name}"
+        return when (s.loadType) {
+            HyroxLoadType.WALL_BALL -> {
+                val reps = (s.reps ?: 100).let { if (halve) it / 2 else it }
+                HyroxStepDef(
+                    index, HyroxStepKind.STATION, station, s.exerciseId, title,
+                    detail = "${division?.wallBallKg ?: 0}kg Ball • ${division?.wallTargetM ?: "-"}m Target",
+                    value = "$reps reps", targetReps = reps,
+                )
+            }
+            null -> {
+                val dist = (s.distanceM ?: 0).let { if (halve) it / 2 else it }
+                HyroxStepDef(
+                    index, HyroxStepKind.STATION, station, s.exerciseId, title,
+                    detail = "${dist}m ${s.descriptor}", value = "${dist}m", targetDistanceM = dist,
+                )
+            }
+            else -> {
+                val dist = (s.distanceM ?: 0).let { if (halve) it / 2 else it }
+                val weight = loads[s.loadType]?.weightDisplay ?: ""
+                HyroxStepDef(
+                    index, HyroxStepKind.STATION, station, s.exerciseId, title,
+                    detail = "${dist}m ${s.descriptor}", value = weight,
+                    targetDistanceM = dist, targetLoadKg = parseKg(weight),
+                )
+            }
+        }
+    }
+
+    /** Best-effort kg from a rulebook string ("152 kg" → 152; "2×24 kg" → 24). Display carries the truth. */
+    private fun parseKg(display: String): Double? =
+        Regex("""(\d+)\s*kg""").findAll(display).lastOrNull()?.groupValues?.getOrNull(1)?.toDoubleOrNull()
+
+    override suspend fun startHyroxSession(divisionKey: String, variant: HyroxVariant, templateId: String): String {
+        val steps = hyroxFormat(divisionKey, variant)
+        val now = now()
+        val sessionId = uuid.newId()
+        val session = SessionEntity(
+            id = sessionId, startedAt = now, name = "Hyrox", type = SessionType.HYROX,
+            isTemplate = false, source = SessionSource.FROM_TEMPLATE, templateId = templateId,
+            createdAt = now, updatedAt = now,
+        )
+        val block = implicitBlock(sessionId, now)
+        // One entry+set per step; the set carries the step's TARGETS (actuals filled in as splits land).
+        val rows = steps.map { step ->
+            val entryId = uuid.newId()
+            val entry = ExerciseEntry(
+                id = entryId, blockId = block.id, exerciseId = step.exerciseId,
+                orderIndex = step.index, note = step.title, createdAt = now, updatedAt = now,
+            )
+            val set = SetEntryEntity(
+                id = uuid.newId(), exerciseEntryId = entryId, setNumber = 1,
+                targetDistanceM = step.targetDistanceM, targetReps = step.targetReps,
+                targetLoadKg = step.targetLoadKg, createdAt = now, updatedAt = now,
+            )
+            entry to set
+        }
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                sessions.insert(session)
+                blocks.insert(block)
+                rows.forEach { (entry, set) ->
+                    entries.insert(entry)
+                    setEntries.insert(set)
+                }
+                enqueueOutbox(sessionId, now)
+            }
+        }
+        return sessionId
+    }
+
+    override suspend fun recordHyroxSplit(sessionId: String, stepIndex: Int, elapsedSec: Int) {
+        val entry = entries.getBySession(sessionId).firstOrNull { it.orderIndex == stepIndex } ?: return
+        val set = setEntries.getForEntry(entry.id).firstOrNull() ?: return
+        val now = now()
+        val updated = set.copy(
+            timeSec = elapsedSec,
+            distanceM = set.targetDistanceM ?: set.distanceM, // record the full distance for pace
+            updatedAt = now,
+        )
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                setEntries.update(updated)
+                touchSession(sessionId)
+            }
+        }
+    }
+
+    override suspend fun finishSession(sessionId: String) {
+        val current = sessions.getById(sessionId) ?: return
+        val now = now()
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                sessions.upsert(current.copy(finishedAt = now, updatedAt = now, syncStatus = SyncStatus.PENDING))
+                enqueueOutbox(sessionId, now)
+            }
+        }
+    }
+
     /** Marks a session dirty (new updatedAt + PENDING) and refreshes its single outbox row. */
     private suspend fun touchSession(sessionId: String) {
         val now = now()
@@ -438,6 +603,16 @@ class SessionRepositoryImpl(
                 }
             }
             syncMeta.set(SyncMeta(SyncMetaKeys.TEMPLATE_SEED_VERSION, TEMPLATE_SEED_VERSION.toString()))
+        }
+
+        // HYROX reference tables (stations / divisions / per-division loads). Reference data, like the
+        // catalog — no outbox. Fixed slug ids → idempotent upsert.
+        val hyroxSeeded = syncMeta.get(SyncMetaKeys.HYROX_SEED_VERSION)?.toIntOrNull() ?: 0
+        if (hyroxSeeded < HYROX_SEED_VERSION) {
+            hyroxRef.upsertStations(HyroxSeed.stations)
+            hyroxRef.upsertDivisions(HyroxSeed.divisions)
+            hyroxRef.upsertLoads(HyroxSeed.loads)
+            syncMeta.set(SyncMeta(SyncMetaKeys.HYROX_SEED_VERSION, HYROX_SEED_VERSION.toString()))
         }
     }
 

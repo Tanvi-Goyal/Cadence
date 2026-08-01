@@ -102,7 +102,16 @@ object ExerciseImporter {
      * station logged on one device resolves to the same row on another. Rep/weight *standards* stay
      * out of here — those are Phase-3 `RaceFormat` data (ROADMAP decision #4).
      */
-    fun supplementalSeed(): List<Exercise> = hyroxStations + conditioningMachines + hyfitExercises
+    fun supplementalSeed(): List<Exercise> =
+        hyroxStations + conditioningMachines + hyfitExercises + hyroxRun
+
+    /**
+     * The 1 km run leg interleaved between HYROX stations. A real catalog row so a synthesized Hyrox
+     * session's run steps resolve to a named exercise (distance + time → pace) like any other.
+     */
+    private val hyroxRun: List<Exercise> = listOf(
+        seedRow("hyrox-run", "Run", "cardio", Modality.RUN, MetricType.DISTANCE_TIME, "body only", station = null),
+    )
 
     /**
      * HyFit-class movements the public dataset doesn't carry (mobility drills + functional strength),

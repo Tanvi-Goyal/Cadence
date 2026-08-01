@@ -70,6 +70,7 @@ internal fun SessionEntity.toDomain(): Session = Session(
     category = category,
     focus = focus,
     programWeek = programWeek,
+    finishedAt = finishedAt?.let(::ms),
     createdAt = ms(if (createdAt != 0L) createdAt else startedAt),
     updatedAt = ms(updatedAt),
     deletedAt = deletedAt?.let(::ms),

@@ -46,7 +46,6 @@ fun NavGraphBuilder.templateDetailScreen(
  *  and half simulations; the VM seeds its content from the template id. */
 fun NavGraphBuilder.templateHyroxDetailScreen(
     onBack: () -> Unit,
-    onStart: () -> Unit,
     onEdit: (String) -> Unit,
 ) {
     composable<TemplateHyroxDetail> { entry ->
@@ -54,7 +53,6 @@ fun NavGraphBuilder.templateHyroxDetailScreen(
         TemplateHyroxDetailScreen(
             templateId = templateId,
             onBack = onBack,
-            onStart = onStart,
             onEdit = { onEdit(templateId) },
         )
     }

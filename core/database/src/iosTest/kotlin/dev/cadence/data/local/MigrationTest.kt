@@ -134,4 +134,41 @@ class MigrationTest {
 
         db.close()
     }
+
+    /**
+     * v9 → v10 adds the nullable `sessions.finishedAt` column and the three HYROX reference tables.
+     * A real v9 session survives with `finishedAt` null, the new tables exist and are empty, and the
+     * result validates against `10.json`.
+     */
+    @Test
+    fun v10_adds_finishedAt_and_hyrox_reference_tables() = runTest {
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = schemaDir,
+            fileName = NSTemporaryDirectory() + "cadence-migration-test-v10.db",
+            driver = BundledSQLiteDriver(),
+            databaseClass = AppDatabase::class,
+        )
+        helper.createDatabase(version = 9).apply {
+            execSQL(
+                "INSERT INTO sessions (id, startedAt, name, type, notes, isTemplate, source, " +
+                    "templateId, category, focus, programWeek, updatedAt, syncStatus, createdAt, deletedAt) VALUES " +
+                    "('s1', 1000, 'Hyrox', 'HYROX', NULL, 0, 'FROM_TEMPLATE', 'full-hyrox-simulation', " +
+                    "NULL, NULL, NULL, 2000, 'SYNCED', 1000, NULL)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(version = 10, migrations = listOf(MIGRATION_9_10))
+
+        // Existing row preserved; the new finishedAt column exists and is null.
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM sessions WHERE id = 's1'"))
+        assertTrue(db.long("SELECT finishedAt IS NULL FROM sessions WHERE id = 's1'") == 1L)
+
+        // New reference tables exist and start empty (seeding is a runtime concern, not the migration).
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM hyrox_stations"))
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM hyrox_divisions"))
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM hyrox_station_loads"))
+
+        db.close()
+    }
 }

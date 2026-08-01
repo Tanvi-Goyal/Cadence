@@ -14,7 +14,7 @@ import org.koin.dsl.module
 val templatesModule = module {
     viewModel { TemplateLibraryViewModel(get()) }
     viewModelOf(::TemplateDetailViewModel)
-    viewModel { params -> TemplateHyroxDetailViewModel(params.get()) }
+    viewModel { params -> TemplateHyroxDetailViewModel(get(), params.get()) }
     viewModel { params -> TemplateStrengthDetailViewModel(get(), params.get()) }
     viewModelOf(::TemplatesViewModel)
     viewModel { params -> TemplateBuilderViewModel(get(), params.get()) }

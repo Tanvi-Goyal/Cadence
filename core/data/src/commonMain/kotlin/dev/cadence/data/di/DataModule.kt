@@ -1,9 +1,11 @@
 package dev.cadence.data.di
 
+import dev.cadence.data.ActiveWorkoutControllerImpl
 import dev.cadence.data.MuscleImageProviderImpl
 import dev.cadence.data.PersonalRecordRepositoryImpl
 import dev.cadence.data.PreferencesRepositoryImpl
 import dev.cadence.data.SessionRepositoryImpl
+import dev.cadence.domain.ActiveWorkoutController
 import dev.cadence.domain.MuscleImageProvider
 import dev.cadence.domain.PersonalRecordRepository
 import dev.cadence.domain.PreferencesRepository
@@ -18,6 +20,8 @@ import org.koin.dsl.module
  */
 val dataModule = module {
     single { SessionRepositoryImpl(get(), get(), get(), get()) } bind SessionRepository::class
+    // App-scoped live-workout timer: a single instance shared by every surface (owns its own scope).
+    single { ActiveWorkoutControllerImpl(get(), get()) } bind ActiveWorkoutController::class
     single { PreferencesRepositoryImpl(get()) } bind PreferencesRepository::class
     single { PersonalRecordRepositoryImpl(get()) } bind PersonalRecordRepository::class
     single { MuscleImageProviderImpl(get()) } bind MuscleImageProvider::class

@@ -26,6 +26,8 @@ data class Session(
     val category: String? = null,
     val focus: String? = null,
     val programWeek: Int? = null,
+    /** v10: when a live workout was completed (null = in progress / not applicable). */
+    val finishedAt: Instant? = null,
     override val createdAt: Instant,
     override val updatedAt: Instant,
     override val deletedAt: Instant?,

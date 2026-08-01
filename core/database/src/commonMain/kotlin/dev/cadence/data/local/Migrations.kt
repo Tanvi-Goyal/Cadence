@@ -134,3 +134,37 @@ val MIGRATION_8_9 = object : Migration(8, 9) {
         connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `programWeek` INTEGER")
     }
 }
+
+/**
+ * v9 → v10. Adds the HYROX reference tables (the race format as DB-seeded data, replacing the in-code
+ * `HyroxStandards`) and a nullable `finishedAt` timestamp on sessions (stamped when a live workout is
+ * completed; enables total-time display + a "completed" notion).
+ *
+ * The three new `CREATE TABLE`s are copied verbatim from Room's generated `schemas/10.json` shape so
+ * post-migration validation passes column-for-column; `finishedAt` is a plain nullable `ADD COLUMN`
+ * (a NOT-NULL add without a DEFAULT would fail validation — see [MIGRATION_7_8]).
+ */
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `finishedAt` INTEGER")
+
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `hyrox_stations` (`id` TEXT NOT NULL, `number` INTEGER NOT NULL, " +
+                "`exerciseId` TEXT NOT NULL, `name` TEXT NOT NULL, `blockLabel` TEXT NOT NULL, " +
+                "`runBeforeLabel` TEXT NOT NULL, `metric` TEXT NOT NULL, `distanceM` INTEGER, `reps` INTEGER, " +
+                "`descriptor` TEXT NOT NULL, `loadType` TEXT, PRIMARY KEY(`id`))",
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `hyrox_divisions` (`key` TEXT NOT NULL, `label` TEXT NOT NULL, " +
+                "`orderIndex` INTEGER NOT NULL, `wallBallKg` INTEGER NOT NULL, `wallTargetM` TEXT NOT NULL, " +
+                "PRIMARY KEY(`key`))",
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `hyrox_station_loads` (`id` TEXT NOT NULL, `divisionKey` TEXT NOT NULL, " +
+                "`loadType` TEXT NOT NULL, `weightDisplay` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_hyrox_station_loads_divisionKey` ON `hyrox_station_loads` (`divisionKey`)",
+        )
+    }
+}

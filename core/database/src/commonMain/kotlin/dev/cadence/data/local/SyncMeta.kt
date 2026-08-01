@@ -35,4 +35,7 @@ object SyncMetaKeys {
 
     /** Version of the seeded program templates on this device; bump to re-seed (see repository). */
     const val TEMPLATE_SEED_VERSION = "template_seed_version"
+
+    /** Version of the seeded HYROX reference tables on this device; bump to re-seed (see repository). */
+    const val HYROX_SEED_VERSION = "hyrox_seed_version"
 }
