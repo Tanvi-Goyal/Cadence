@@ -2,6 +2,7 @@ package dev.cadence
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,14 +39,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import dev.cadence.model.PlannedSession
 import dev.cadence.model.Session
 import dev.cadence.ui.R
+import dev.cadence.domain.ActiveWorkout
 import dev.cadence.domain.Units
 import dev.cadence.domain.WeightUnit
 import dev.cadence.icons.Add
 import dev.cadence.icons.Bolt
-import dev.cadence.icons.Dumbbell
+import dev.cadence.icons.ChevronRight
+import dev.cadence.icons.Grid
 import dev.cadence.presentation.HomeStats
 import dev.cadence.presentation.HomeUiState
 import dev.cadence.presentation.HomeViewModel
@@ -63,6 +69,7 @@ fun HomeScreen(
     onOpenSession: (String) -> Unit,
     onNewSession: () -> Unit,
     onOpenTemplates: () -> Unit,
+    onOpenTemplate: (String) -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
     onTab: (Tab) -> Unit,
@@ -80,9 +87,15 @@ fun HomeScreen(
         ) { padding ->
             HomeContent(
                 state = state,
+                activeWorkout = viewModel.activeWorkout,
                 onStartPlanned = viewModel::onStartPlannedSession,
+                onExpandWorkout = viewModel::onExpandWorkout,
+                onResetWorkout = viewModel::onResetWorkout,
+                onToggleWorkoutPause = viewModel::onToggleWorkoutPause,
+                onAdvanceWorkout = viewModel::onAdvanceWorkout,
                 onNewSession = onNewSession,
                 onOpenTemplates = onOpenTemplates,
+                onOpenTemplate = onOpenTemplate,
                 onSync = viewModel::onSyncClick,
                 onOpenDetail = onOpenDetail,
                 onSeeAll = onSeeAll,
@@ -95,9 +108,15 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     state: HomeUiState,
+    activeWorkout: StateFlow<ActiveWorkout?>,
     onStartPlanned: () -> Unit,
+    onExpandWorkout: () -> Unit,
+    onResetWorkout: () -> Unit,
+    onToggleWorkoutPause: () -> Unit,
+    onAdvanceWorkout: () -> Unit,
     onNewSession: () -> Unit,
     onOpenTemplates: () -> Unit,
+    onOpenTemplate: (String) -> Unit,
     onSync: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
@@ -120,16 +139,28 @@ private fun HomeContent(
 
         item { SummaryMetrics(state.stats) }
 
-        state.plannedSession?.let { plan ->
-            item { UpNextSection(plan, onStartPlanned) }
+        // When a HYROX workout is live, the timer card takes the "Up next" slot; otherwise the planned
+        // session (if any) shows there. This slot collects the ticking state internally so the tick
+        // recomposes only the card, not the rest of Home.
+        item {
+            UpNextOrLiveSlot(
+                activeWorkout = activeWorkout,
+                plannedSession = state.plannedSession,
+                onStartPlanned = onStartPlanned,
+                onExpandWorkout = onExpandWorkout,
+                onResetWorkout = onResetWorkout,
+                onToggleWorkoutPause = onToggleWorkoutPause,
+                onAdvanceWorkout = onAdvanceWorkout,
+            )
         }
 
-        item { TemplatesSection(onOpenTemplates) }
+        item { TemplatesSection(state.templates, onOpenTemplate, onOpenTemplates) }
 
         item {
             RecentSection(
                 sessions = state.sessions,
                 volumeBySession = state.volumeBySession,
+                pbSessionIds = state.pbSessionIds,
                 onOpenDetail = onOpenDetail,
                 onSeeAll = onSeeAll,
             )
@@ -272,22 +303,179 @@ private fun UpNextSection(plan: PlannedSession, onStart: () -> Unit) {
     }
 }
 
+/**
+ * The "Up next" slot: a live HYROX timer card when a workout is running, else the planned session, else
+ * nothing. Collects the ticking [activeWorkout] here (not in [HomeUiState]) so only this slot — not the
+ * rest of Home — recomposes on each ~200 ms tick.
+ */
 @Composable
-private fun TemplatesSection(onOpenTemplates: () -> Unit) {
+private fun UpNextOrLiveSlot(
+    activeWorkout: StateFlow<ActiveWorkout?>,
+    plannedSession: PlannedSession?,
+    onStartPlanned: () -> Unit,
+    onExpandWorkout: () -> Unit,
+    onResetWorkout: () -> Unit,
+    onToggleWorkoutPause: () -> Unit,
+    onAdvanceWorkout: () -> Unit,
+) {
+    val workout by activeWorkout.collectAsStateWithLifecycle()
+    val live = workout
+    when {
+        live != null -> LiveWorkoutCard(
+            workout = live,
+            onExpand = onExpandWorkout,
+            onReset = onResetWorkout,
+            onTogglePause = onToggleWorkoutPause,
+            onNext = onAdvanceWorkout,
+        )
+        plannedSession != null -> UpNextSection(plannedSession, onStartPlanned)
+        // else: neither a live workout nor a planned session — render nothing.
+    }
+}
+
+/**
+ * Compact live-workout card (echoes the timer sheet's accent). Tapping the body re-expands the full
+ * sheet; the Reset / Pause / Next pills drive the same controller actions inline so the user can run
+ * the workout without expanding. Controls hide once the workout is finished.
+ */
+@Composable
+private fun LiveWorkoutCard(
+    workout: ActiveWorkout,
+    onExpand: () -> Unit,
+    onReset: () -> Unit,
+    onTogglePause: () -> Unit,
+    onNext: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
+        SectionLabel("In progress")
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(MaterialTheme.shapes.medium)
+                .background(colors.surfaceContainer)
+                .border(1.dp, colors.primary.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
+                .clickable(onClick = onExpand)
+                .padding(MaterialTheme.spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+                ) {
+                    Text(
+                        text = workout.current?.title ?: "Workout",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    SectionLabel("Step ${workout.currentIndex + 1} of ${workout.totalSteps}")
+                }
+                LiveClock(totalMs = workout.totalElapsedMs, paused = workout.paused, finished = workout.finished)
+                Icon(
+                    imageVector = CadenceIcons.ChevronRight,
+                    contentDescription = "Open workout",
+                    tint = colors.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            if (!workout.finished) {
+                val isLast = workout.currentIndex >= workout.totalSteps - 1
+                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
+                    WorkoutActionPill("Reset", primary = false, weight = 1f, onClick = onReset)
+                    WorkoutActionPill(
+                        text = if (workout.paused) "Resume" else "Pause",
+                        primary = false,
+                        weight = 1f,
+                        onClick = onTogglePause,
+                    )
+                    WorkoutActionPill(
+                        text = if (isLast) "Finish" else "Next",
+                        primary = true,
+                        weight = 1.4f,
+                        onClick = onNext,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A compact pill button for the Home card's inline workout controls (mirrors the sheet's controls). */
+@Composable
+private fun RowScope.WorkoutActionPill(text: String, primary: Boolean, weight: Float, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val base = Modifier
+        .weight(weight)
+        .height(44.dp)
+        .clip(CircleShape)
+    val styled = if (primary) {
+        base.background(colors.primary)
+    } else {
+        base.background(colors.surfaceContainerHigh).border(1.dp, colors.outlineVariant, CircleShape)
+    }
+    Box(styled.clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = if (primary) FontWeight.Bold else FontWeight.Normal,
+            color = if (primary) colors.onPrimary else colors.onSurface,
+        )
+    }
+}
+
+/** The count-up clock for the Home card, using the same [formatClock] mm:ss as the timer sheet. */
+@Composable
+private fun LiveClock(totalMs: Long, paused: Boolean, finished: Boolean) {
+    val colors = MaterialTheme.colorScheme
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = formatClock(totalMs),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (paused && !finished) colors.onSurfaceVariant else colors.onSurface,
+        )
+        Text(
+            text = when {
+                finished -> "DONE"
+                paused -> "PAUSED"
+                else -> "LIVE"
+            },
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = if (paused && !finished) colors.error else colors.primary,
+        )
+    }
+}
+
+@Composable
+private fun TemplatesSection(
+    templates: List<Session>,
+    onOpenTemplate: (String) -> Unit,
+    onOpenTemplates: () -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {
         SectionLabel("Templates")
-        // NOTE: HomeViewModel does not expose quick-start templates yet; this is a single
-        // placeholder chip routing to the full Templates screen. Wiring real template chips here
-        // needs a ViewModel/data change (out of scope for the theme + Home slice).
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
         ) {
-            CadenceChip(
-                label = "Browse templates",
-                icon = CadenceIcons.Dumbbell,
-                onClick = onOpenTemplates,
-            )
+            // Leading chip is always visible (no horizontal scroll needed) so the Templates library
+            // stays reachable — it's Home's only route into it.
+            CadenceChip(label = "Browse templates", icon = CadenceIcons.Grid, onClick = onOpenTemplates)
+            templates.take(6).forEach { template ->
+                CadenceChip(
+                    label = template.name,
+                    icon = typeIcon(template.type.name),
+                    onClick = { onOpenTemplate(template.id) },
+                )
+            }
         }
     }
 }
@@ -296,6 +484,7 @@ private fun TemplatesSection(onOpenTemplates: () -> Unit) {
 private fun RecentSection(
     sessions: List<Session>,
     volumeBySession: Map<String, Double>,
+    pbSessionIds: Set<String>,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
 ) {
@@ -334,6 +523,7 @@ private fun RecentSection(
                         session = session,
                         volumeKg = volumeBySession[session.id] ?: 0.0,
                         onClick = { onOpenDetail(session.id) },
+                        isPb = session.id in pbSessionIds,
                     )
                 }
             }
@@ -397,9 +587,15 @@ private fun HomeContentPreview() {
                 plannedSession = PlannedSession("1", "Upper Strength", dev.cadence.model.SessionType.STRENGTH, 55, "Push focus"),
                 stats = HomeStats(total = 20, dayStreak = 9, totalVolumeKg = 26700.0),
             ),
+            activeWorkout = MutableStateFlow(null),
             onStartPlanned = {},
+            onExpandWorkout = {},
+            onResetWorkout = {},
+            onToggleWorkoutPause = {},
+            onAdvanceWorkout = {},
             onNewSession = {},
             onOpenTemplates = {},
+            onOpenTemplate = {},
             onSync = {},
             onOpenDetail = {},
             onSeeAll = {},

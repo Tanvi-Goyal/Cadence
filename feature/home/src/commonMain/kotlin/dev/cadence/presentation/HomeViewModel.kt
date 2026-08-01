@@ -2,11 +2,16 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.cadence.domain.ActiveWorkout
+import dev.cadence.domain.ActiveWorkoutController
 import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.personalBestSessionIds
+import dev.cadence.domain.trainingStreakDays
 import dev.cadence.model.PlannedSession
 import dev.cadence.model.Session
 import dev.cadence.domain.SyncOutcome
 import dev.cadence.domain.Syncer
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -35,8 +40,20 @@ data class HomeUiState(
     val plannedSession: PlannedSession? = null,
     val stats: HomeStats = HomeStats(),
     val volumeBySession: Map<String, Double> = emptyMap(),
+    /** The user's templates, surfaced as Home quick-start chips. */
+    val templates: List<Session> = emptyList(),
+    /** Session ids that were a personal best (new all-time volume high) — drive the Recent "PB" tag. */
+    val pbSessionIds: Set<String> = emptySet(),
     val syncStatus: SyncStatusUi = SyncStatusUi.Idle,
     val syncError: String? = null,
+)
+
+/** The four DB-derived inputs to Home, combined before the sync flows are folded in. */
+private data class HomeData(
+    val sessions: List<Session>,
+    val planned: PlannedSession?,
+    val volumes: Map<String, Double>,
+    val templates: List<Session>,
 )
 
 /**
@@ -47,28 +64,44 @@ data class HomeUiState(
 class HomeViewModel(
     private val repository: SessionRepository,
     private val syncer: Syncer,
+    private val activeWorkoutController: ActiveWorkoutController,
 ) : ViewModel() {
 
     private val syncStatus = MutableStateFlow(SyncStatusUi.Idle)
     private val syncError = MutableStateFlow<String?>(null)
 
+    /**
+     * The live HYROX workout (or null). Deliberately exposed as its OWN StateFlow — NOT folded into
+     * [uiState] — so its ~5 Hz tick recomposes only the Home timer card, never the whole Home state or
+     * its sibling sections. Pass-through of the app-scoped controller's state.
+     */
+    val activeWorkout: StateFlow<ActiveWorkout?> get() = activeWorkoutController.state
+
     /** One-shot navigation: emits the id of a session to open in Log Workout. */
     private val _openSession = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val openSession: SharedFlow<String> = _openSession.asSharedFlow()
 
-    val uiState: StateFlow<HomeUiState> =
+    // The four DB streams are combined first (typed combine tops out at 5 args); the two sync flows
+    // are folded in a second combine so we stay within arity and keep the mapping readable.
+    private val homeData: Flow<HomeData> =
         combine(
             repository.observeSessions(),
             repository.observePlannedSession(),
             repository.observeVolumesBySession(),
-            syncStatus,
-            syncError,
-        ) { sessions, planned, volumes, status, error ->
+            repository.observeTemplates(),
+        ) { sessions, planned, volumes, templates ->
+            HomeData(sessions, planned, volumes, templates)
+        }
+
+    val uiState: StateFlow<HomeUiState> =
+        combine(homeData, syncStatus, syncError) { data, status, error ->
             HomeUiState(
-                sessions = sessions,
-                plannedSession = planned,
-                stats = computeStats(sessions, volumes.values.sum()),
-                volumeBySession = volumes,
+                sessions = data.sessions,
+                plannedSession = data.planned,
+                stats = computeStats(data.sessions, data.volumes.values.sum()),
+                volumeBySession = data.volumes,
+                templates = data.templates,
+                pbSessionIds = personalBestSessionIds(data.sessions, data.volumes),
                 syncStatus = status,
                 syncError = error,
             )
@@ -98,6 +131,33 @@ class HomeViewModel(
         sync()
     }
 
+    /** Intent: re-open the full timer sheet from the Home mini-card. */
+    fun onExpandWorkout() {
+        activeWorkoutController.expand()
+    }
+
+    /** Intent: restart the live workout from the first step (stays on whichever surface is showing). */
+    fun onResetWorkout() {
+        activeWorkoutController.reset()
+    }
+
+    /** Intent: toggle pause/resume on the live workout. */
+    fun onToggleWorkoutPause() {
+        val workout = activeWorkoutController.state.value ?: return
+        if (workout.paused) activeWorkoutController.resume() else activeWorkoutController.pause()
+    }
+
+    /**
+     * Intent: complete the current step and advance — or finish if it was the last. Finishing from the
+     * minimized Home card re-expands the sheet so the completion summary is surfaced.
+     */
+    fun onAdvanceWorkout() {
+        val workout = activeWorkoutController.state.value ?: return
+        val wasLast = workout.currentIndex >= workout.totalSteps - 1
+        activeWorkoutController.next()
+        if (wasLast) activeWorkoutController.expand()
+    }
+
     private fun sync() {
         viewModelScope.launch {
             syncStatus.value = SyncStatusUi.Syncing
@@ -118,20 +178,7 @@ class HomeViewModel(
     private fun computeStats(sessions: List<Session>, totalVolumeKg: Double): HomeStats {
         if (sessions.isEmpty()) return HomeStats(totalVolumeKg = totalVolumeKg)
         val now = Clock.System.now().toEpochMilliseconds()
-        val dayMs = 86_400_000L
-
-        // Streak: consecutive UTC epoch-days with >=1 session, ending today (or yesterday if today
-        // has none yet, so an active streak doesn't "break" until a full day is missed). UTC-bucketed
-        // for a dependency-free v1 — precise local-timezone bucketing is a noted refinement.
-        val trainedDays = sessions.map { it.startedAt.toEpochMilliseconds() / dayMs }.toSet()
-        val today = now / dayMs
-        var cursor = if (trainedDays.contains(today)) today else today - 1
-        var streak = 0
-        while (trainedDays.contains(cursor)) {
-            streak++
-            cursor--
-        }
-
+        val streak = trainingStreakDays(sessions.map { it.startedAt.toEpochMilliseconds() }, now)
         return HomeStats(total = sessions.size, dayStreak = streak, totalVolumeKg = totalVolumeKg)
     }
 }

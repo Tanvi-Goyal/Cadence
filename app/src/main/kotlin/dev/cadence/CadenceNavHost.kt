@@ -38,6 +38,7 @@ fun CadenceNavHost() {
             onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
             onNewSession = { nav.navigate(NewSession) },
             onOpenTemplates = { nav.navigate(Templates) },
+            onOpenTemplate = { id -> nav.openTemplateDetail(id) },
             onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
             onSeeAll = { nav.switchTab(Tab.History) },
             onTab = nav::switchTab,
@@ -101,13 +102,7 @@ fun CadenceNavHost() {
             // use the station-list variant; the strength blocks use the exercise-list variant; everything
             // else uses the workout-protocol variant. This id branch is a temporary shim until a real
             // template "kind" drives the layout choice.
-            onEditTemplate = { id ->
-                when {
-                    id == "full-hyrox-simulation" || id == "half-hyrox-sim" -> nav.navigate(TemplateHyroxDetail(id))
-                    id.startsWith("hyfit-") -> nav.navigate(TemplateStrengthDetail(id))
-                    else -> nav.navigate(TemplateDetail(id))
-                }
-            },
+            onEditTemplate = { id -> nav.openTemplateDetail(id) },
             onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
         )
         templateDetailScreen(
@@ -139,6 +134,20 @@ fun CadenceNavHost() {
             onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.BUILDER)) },
             onDone = { nav.popBackStack() },
         )
+    }
+}
+
+/**
+ * Open a template's read-only detail screen. The Hyrox sims use the station-list variant; the strength
+ * blocks use the exercise-list variant; everything else uses the workout-protocol variant. This id
+ * branch is a temporary shim (shared by the Templates library and the Home quick-start chips) until a
+ * real template "kind" drives the layout choice.
+ */
+private fun NavController.openTemplateDetail(id: String) {
+    when {
+        id == "full-hyrox-simulation" || id == "half-hyrox-sim" -> navigate(TemplateHyroxDetail(id))
+        id.startsWith("hyfit-") -> navigate(TemplateStrengthDetail(id))
+        else -> navigate(TemplateDetail(id))
     }
 }
 

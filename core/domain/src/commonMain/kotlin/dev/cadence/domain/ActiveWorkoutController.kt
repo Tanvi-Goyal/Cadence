@@ -37,6 +37,14 @@ interface ActiveWorkoutController {
     /** The current live workout, or null when none is running. */
     val state: StateFlow<ActiveWorkout?>
 
+    /**
+     * Presentation-only: whether the full timer sheet is [expand]ed (true) or minimized to the Home
+     * mini-card ([collapse]d, false). Does NOT affect the clock, splits, or persistence — the workout
+     * keeps running either way; this only chooses which surface shows it. Meaningless while [state] is
+     * null.
+     */
+    val expanded: StateFlow<Boolean>
+
     /** Synthesizes + starts a HYROX workout for the chosen division/variant and begins the clock. */
     fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String)
 
@@ -49,6 +57,12 @@ interface ActiveWorkoutController {
 
     /** Restart the whole workout from the first step with a zeroed clock. */
     fun reset()
+
+    /** Minimize the full sheet to the Home mini-card (the workout keeps running). */
+    fun collapse()
+
+    /** Re-open the full sheet from the minimized Home mini-card. */
+    fun expand()
 
     /** Clear the live state (close the sheet). A finished workout stays in History. */
     fun dismiss()

@@ -41,6 +41,11 @@ class ActiveWorkoutControllerImpl(
     private val _state = MutableStateFlow<ActiveWorkout?>(null)
     override val state: StateFlow<ActiveWorkout?> = _state.asStateFlow()
 
+    // Presentation-only: true = full sheet shown, false = minimized to the Home mini-card. Independent
+    // of the timing anchors, so it never affects the clock/splits/persistence.
+    private val _expanded = MutableStateFlow(true)
+    override val expanded: StateFlow<Boolean> = _expanded.asStateFlow()
+
     // Mutable timing anchors — only ever touched on the single-threaded [scope].
     private var sessionId: String = ""
     private var divisionKey: String = ""
@@ -68,6 +73,7 @@ class ActiveWorkoutControllerImpl(
             runStartMark = clock.now()
             paused = false
             finished = false
+            _expanded.value = true   // a fresh workout opens the full sheet
             emit()
             startTicking()
         }
@@ -120,6 +126,10 @@ class ActiveWorkoutControllerImpl(
         startTicking()
         emit()
     }
+
+    override fun collapse() = onScope { _expanded.value = false }
+
+    override fun expand() = onScope { _expanded.value = true }
 
     override fun dismiss() = onScope {
         tickJob?.cancel()

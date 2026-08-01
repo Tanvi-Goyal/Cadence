@@ -75,7 +75,10 @@ import dev.cadence.model.HyroxStepKind
 @Composable
 fun ActiveWorkoutHost(controller: ActiveWorkoutController) {
     val workout by controller.state.collectAsStateWithLifecycle()
-    val visible = workout != null
+    val expanded by controller.expanded.collectAsStateWithLifecycle()
+    // The sheet shows only while a workout is running AND not minimized; when minimized, the Home
+    // mini-card takes over (the workout keeps ticking either way).
+    val visible = workout != null && expanded
 
     // Keep the last non-null workout so the sheet still has content to render during its exit slide.
     var last by remember { mutableStateOf<ActiveWorkout?>(null) }
@@ -127,6 +130,7 @@ private fun HyroxTimerSheet(workout: ActiveWorkout, controller: ActiveWorkoutCon
                 index = workout.currentIndex,
                 total = workout.totalSteps,
                 finished = workout.finished,
+                onMinimize = controller::collapse,
                 onClose = controller::dismiss,
             )
 
@@ -156,21 +160,35 @@ private fun HyroxTimerSheet(workout: ActiveWorkout, controller: ActiveWorkoutCon
 }
 
 @Composable
-private fun Header(index: Int, total: Int, finished: Boolean, onClose: () -> Unit) {
+private fun Header(index: Int, total: Int, finished: Boolean, onMinimize: () -> Unit, onClose: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(verticalAlignment = Alignment.CenterVertically) {
         SectionLabel(if (finished) "COMPLETE" else "STEP ${index + 1} OF $total")
         Spacer(Modifier.weight(1f))
-        Box(
-            Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(colors.surfaceContainerHigh)
-                .clickable(onClick = onClose),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("✕", color = colors.onSurfaceVariant, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Minimize: keeps the workout running and hands off to the Home mini-card (only useful
+            // while a workout is live, not after it finishes).
+            if (!finished) {
+                HeaderCircleButton(glyph = "▾", onClick = onMinimize)
+            }
+            // Close: ends/clears the live workout (a finished one still stays in History).
+            HeaderCircleButton(glyph = "✕", onClick = onClose)
         }
+    }
+}
+
+@Composable
+private fun HeaderCircleButton(glyph: String, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        Modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .background(colors.surfaceContainerHigh)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(glyph, color = colors.onSurfaceVariant, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -365,17 +383,4 @@ private fun glyphIcon(step: HyroxStepDef): ImageVector = when (step.station) {
     HyroxStation.SANDBAG_LUNGES -> CadenceIcons.LowerBody
     HyroxStation.WALL_BALLS -> CadenceIcons.WallBall
     null -> CadenceIcons.EngineRun // runs
-}
-
-/** mm:ss, or h:mm:ss past an hour. */
-private fun formatClock(ms: Long): String {
-    val totalSec = (ms / 1000).coerceAtLeast(0)
-    val h = totalSec / 3600
-    val m = (totalSec % 3600) / 60
-    val s = totalSec % 60
-    return if (h > 0) {
-        h.toString() + ":" + m.toString().padStart(2, '0') + ":" + s.toString().padStart(2, '0')
-    } else {
-        m.toString().padStart(2, '0') + ":" + s.toString().padStart(2, '0')
-    }
 }
