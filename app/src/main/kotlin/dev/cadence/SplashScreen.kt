@@ -7,17 +7,13 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,46 +23,32 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
 /*
- * Branded cold-start splash (the app's start destination). Shows the MIND[SET] icon glyph, the
- * wordmark, and a minimal sheen progress line that shimmers while the splash holds, then calls
- * [onDone] after [SPLASH_DURATION_MS].
+ * Branded cold-start splash (the app's start destination). Shows the shared [BrandLockup] (icon glyph
+ * + MIND[SET] wordmark) and a minimal sheen progress line that shimmers while the splash holds, then
+ * calls [onDone] after [SPLASH_DURATION_MS].
  *
- * The palette is the logo's own (near-black + red), independent of the app's Kinetic Precision
- * theme, so this screen intentionally hardcodes its colors rather than reading MaterialTheme roles.
- * Only the wordmark borrows the theme's Inter type scale.
+ * The lockup is the SAME element the Onboarding header renders, so a future slide-up transition can
+ * carry it between the two screens. The palette is the logo's own (near-black + white/red), so this
+ * screen hardcodes its background rather than reading MaterialTheme roles.
  */
 
 /** How long the splash holds before advancing. Placeholder value — see the roadmap for real gating. */
 const val SPLASH_DURATION_MS = 2500L
 
 private val BrandBg = Color(0xFF0F0F11)
-private val BrandInk = Color(0xFFFFFFFF)
-private val BrandRed = Color(0xFFE5484D)
 
 @Composable
 fun SplashScreen(onDone: () -> Unit) {
-    // Hold for the splash duration, then advance. The visual below is a decorative shimmer, decoupled
-    // from this timer (no real work is being gated yet — see the roadmap).
+    // Hold for the splash duration, then advance. The hand-off motion (fade / slide-up into
+    // Onboarding) is a coordinated NavHost transition (see SplashNavGraph / OnboardingNavGraph), not
+    // an internal animation, so it only plays on the onboarding path and stays smooth.
     LaunchedEffect(Unit) {
         delay(SPLASH_DURATION_MS)
         onDone()
-    }
-
-    val wordmark = buildAnnotatedString {
-        withStyle(SpanStyle(color = BrandInk)) { append("MIND") }
-        withStyle(SpanStyle(color = BrandRed)) { append("[") }
-        withStyle(SpanStyle(color = BrandInk)) { append("SET") }
-        withStyle(SpanStyle(color = BrandRed)) { append("]") }
     }
 
     // Wrap in CadenceTheme so the wordmark renders in the app's Inter type scale (the per-screen
@@ -77,19 +59,7 @@ fun SplashScreen(onDone: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Image(
-                    painter = painterResource(R.drawable.brand_logo),
-                    contentDescription = null, // decorative; the wordmark below names the app
-                    modifier = Modifier.size(112.dp),
-                )
-                Spacer(Modifier.height(28.dp))
-                Text(
-                    text = wordmark,
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-1).sp,
-                    ),
-                )
+                BrandLockup()
                 Spacer(Modifier.height(36.dp))
                 SheenProgress(modifier = Modifier.width(200.dp).height(4.dp))
             }

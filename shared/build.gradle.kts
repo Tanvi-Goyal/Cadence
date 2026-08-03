@@ -79,6 +79,9 @@ kotlin {
             api(projects.feature.logging)
             api(projects.feature.templates)
             api(projects.feature.home)
+            // Onboarding VM graph. `api` for Koin aggregation in Modules.kt; not exported to the iOS
+            // framework (Android-first per the port-later decision) — add export(...) when iOS parity lands.
+            api(projects.feature.onboarding)
             // Room RUNTIME stays: the repository + sync engine + iosTest still call useWriterConnection /
             // Room.inMemoryDatabaseBuilder. Only the Room *plugin*/KSP/schemas moved to :core:database.
             implementation(libs.room.runtime)

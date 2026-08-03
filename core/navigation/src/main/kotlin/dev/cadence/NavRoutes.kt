@@ -19,6 +19,11 @@ object Splash
 @Serializable
 object Login
 
+// First-run onboarding (athlete profile + race config). Splash routes here when onboarding is
+// incomplete, else to [Home]; popped off the back stack once completed.
+@Serializable
+object Onboarding
+
 @Serializable
 object Home
 

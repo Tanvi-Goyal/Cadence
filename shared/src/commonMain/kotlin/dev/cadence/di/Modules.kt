@@ -38,6 +38,7 @@ fun initKoin(config: KoinAppDeclaration? = null): KoinApplication =
             historyModule,
             statsModule,
             profileModule,
+            onboardingModule,
         )
         monitoring()
     }

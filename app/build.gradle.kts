@@ -39,6 +39,7 @@ dependencies {
     implementation(projects.feature.templates)
     implementation(projects.feature.home)
     implementation(projects.feature.auth)
+    implementation(projects.feature.onboarding)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.runtime)
