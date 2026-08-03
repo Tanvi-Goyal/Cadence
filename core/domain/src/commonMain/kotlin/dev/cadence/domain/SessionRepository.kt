@@ -3,6 +3,9 @@ package dev.cadence.domain
 import androidx.paging.PagingData
 import dev.cadence.model.Exercise
 import dev.cadence.model.ExerciseRef
+import dev.cadence.model.HyroxDivisionInfo
+import dev.cadence.model.HyroxStepDef
+import dev.cadence.model.HyroxVariant
 import dev.cadence.model.PlannedSession
 import dev.cadence.model.Session
 import dev.cadence.model.SessionDetail
@@ -111,6 +114,31 @@ interface SessionRepository {
      * instantiate — later edits to the template never touch sessions already spawned from it.
      */
     suspend fun instantiateTemplate(templateId: String): Session
+
+    // ── HYROX live workout ──────────────────────────────────────────────────────────────────────
+
+    /** The division options (Women / Men / …) from the seeded HYROX reference tables. */
+    suspend fun hyroxDivisions(): List<HyroxDivisionInfo>
+
+    /**
+     * The ordered run→station sequence for a [divisionKey] + [variant], resolved from the reference
+     * tables (distances, reps, and division-accurate weights). This is the single source both the
+     * detail screen and the live timer consume — replacing the in-code `HyroxStandards`.
+     */
+    suspend fun hyroxFormat(divisionKey: String, variant: HyroxVariant): List<HyroxStepDef>
+
+    /**
+     * Synthesizes a live HYROX session (type = HYROX, one block, one entry+set per step carrying the
+     * step's targets; actuals null) and returns its id. Written atomically with its outbox row, so the
+     * workout is a real, syncable session from the first tick.
+     */
+    suspend fun startHyroxSession(divisionKey: String, variant: HyroxVariant, templateId: String): String
+
+    /** Records the elapsed split ([elapsedSec]) for the step at [stepIndex] onto its set. */
+    suspend fun recordHyroxSplit(sessionId: String, stepIndex: Int, elapsedSec: Int)
+
+    /** Stamps a session finished (total time = `finishedAt − startedAt`), atomically re-syncing it. */
+    suspend fun finishSession(sessionId: String)
 
     /** Inserts a sensible default plan + the exercise catalog if absent. */
     suspend fun ensureSeeded()

@@ -33,10 +33,13 @@ import java.util.Locale
  * database layer.
  */
 
-/** A tappable session row: type medallion + name + relative date, with optional volume. */
+/**
+ * A tappable session row: type medallion + name + relative date, with optional volume. When [isPb] is
+ * set, a small green "PB" tag is shown under the trailing metric (a personal-best session).
+ */
 @OptIn(kotlin.time.ExperimentalTime::class)
 @Composable
-fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit) {
+fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit, isPb: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
@@ -69,15 +72,55 @@ fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit) {
                 )
             }
         }
-        if (volumeKg > 0.0) {
-            val unit = LocalWeightUnit.current
-            Text(
-                text = "${formatVolume(volumeKg, unit)} ${Units.label(unit)}",
-                style = MaterialTheme.typography.titleSmall,
-                color = colors.onSurface,
-            )
+        val finishedAt = session.finishedAt
+        Column(horizontalAlignment = Alignment.End) {
+            if (volumeKg > 0.0) {
+                val unit = LocalWeightUnit.current
+                Text(
+                    text = "${formatVolume(volumeKg, unit)} ${Units.label(unit)}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.onSurface,
+                )
+            } else if (finishedAt != null) {
+                // A completed timed workout (e.g. Hyrox) shows its total time instead of strength volume.
+                Text(
+                    text = formatDuration(finishedAt.toEpochMilliseconds() - session.startedAt.toEpochMilliseconds()),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colors.onSurface,
+                )
+            }
+            if (isPb) {
+                Text(
+                    text = "PB",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.primary,
+                )
+            }
         }
     }
+}
+
+/** Live count-up clock: "mm:ss", or "h:mm:ss" past an hour. Used by the timer sheet and Home widget. */
+fun formatClock(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) {
+        h.toString() + ":" + m.toString().padStart(2, '0') + ":" + s.toString().padStart(2, '0')
+    } else {
+        m.toString().padStart(2, '0') + ":" + s.toString().padStart(2, '0')
+    }
+}
+
+/** Compact workout duration: "1h 25m" past an hour, else "25m 10s". */
+fun formatDuration(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(0)
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) "${h}h ${m}m" else "${m}m ${s}s"
 }
 
 /** Compact volume in the user's [unit]: 12,400 → "12.4k", 850 → "850". */

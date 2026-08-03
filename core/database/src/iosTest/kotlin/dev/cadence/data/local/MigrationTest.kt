@@ -86,4 +86,89 @@ class MigrationTest {
 
         db.close()
     }
+
+    /**
+     * v8 → v9 is purely additive (nullable ADD COLUMN). Real v8 rows survive untouched, the new
+     * training-data columns exist and read back null, and the result validates against `9.json`
+     * (`runMigrationsAndValidate` throws on any schema drift).
+     */
+    @Test
+    fun v9_adds_nullable_training_columns_and_preserves_rows() = runTest {
+        // A distinct DB file — the shared `helper` file is left at v8 by the test above, and
+        // MigrationTestHelper refuses to createDatabase over an existing file.
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = schemaDir,
+            fileName = NSTemporaryDirectory() + "cadence-migration-test-v9.db",
+            driver = BundledSQLiteDriver(),
+            databaseClass = AppDatabase::class,
+        )
+        helper.createDatabase(version = 8).apply {
+            execSQL(
+                "INSERT INTO sessions (id, startedAt, name, type, notes, isTemplate, source, " +
+                    "templateId, updatedAt, syncStatus, createdAt, deletedAt) VALUES " +
+                    "('s1', 1000, 'Push', 'STRENGTH', NULL, 1, 'MANUAL', NULL, 2000, 'SYNCED', 1000, NULL)",
+            )
+            execSQL(
+                "INSERT INTO blocks (id, sessionId, type, orderIndex, rounds, restBetweenRoundsMs, " +
+                    "label, createdAt, updatedAt, deletedAt) VALUES " +
+                    "('b1', 's1', 'STRAIGHT', 0, 1, NULL, 'Main', 1000, 2000, NULL)",
+            )
+            execSQL(
+                "INSERT INTO exercise_entries (id, blockId, exerciseId, orderIndex, targetSets, " +
+                    "restMs, createdAt, updatedAt, deletedAt) VALUES " +
+                    "('e1', 'b1', 'bench-press', 0, 3, NULL, 1000, 2000, NULL)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(version = 9, migrations = listOf(MIGRATION_8_9))
+
+        // Existing rows preserved.
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM blocks WHERE id = 'b1' AND sessionId = 's1'"))
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM exercise_entries WHERE id = 'e1' AND blockId = 'b1'"))
+
+        // New columns exist and default to null on migrated rows.
+        assertTrue(db.long("SELECT section IS NULL AND conditioningFormat IS NULL AND capSeconds IS NULL AND workSeconds IS NULL FROM blocks WHERE id = 'b1'") == 1L)
+        assertTrue(db.long("SELECT note IS NULL AND eachSide IS NULL FROM exercise_entries WHERE id = 'e1'") == 1L)
+        assertTrue(db.long("SELECT category IS NULL AND focus IS NULL AND programWeek IS NULL FROM sessions WHERE id = 's1'") == 1L)
+
+        db.close()
+    }
+
+    /**
+     * v9 → v10 adds the nullable `sessions.finishedAt` column and the three HYROX reference tables.
+     * A real v9 session survives with `finishedAt` null, the new tables exist and are empty, and the
+     * result validates against `10.json`.
+     */
+    @Test
+    fun v10_adds_finishedAt_and_hyrox_reference_tables() = runTest {
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = schemaDir,
+            fileName = NSTemporaryDirectory() + "cadence-migration-test-v10.db",
+            driver = BundledSQLiteDriver(),
+            databaseClass = AppDatabase::class,
+        )
+        helper.createDatabase(version = 9).apply {
+            execSQL(
+                "INSERT INTO sessions (id, startedAt, name, type, notes, isTemplate, source, " +
+                    "templateId, category, focus, programWeek, updatedAt, syncStatus, createdAt, deletedAt) VALUES " +
+                    "('s1', 1000, 'Hyrox', 'HYROX', NULL, 0, 'FROM_TEMPLATE', 'full-hyrox-simulation', " +
+                    "NULL, NULL, NULL, 2000, 'SYNCED', 1000, NULL)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(version = 10, migrations = listOf(MIGRATION_9_10))
+
+        // Existing row preserved; the new finishedAt column exists and is null.
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM sessions WHERE id = 's1'"))
+        assertTrue(db.long("SELECT finishedAt IS NULL FROM sessions WHERE id = 's1'") == 1L)
+
+        // New reference tables exist and start empty (seeding is a runtime concern, not the migration).
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM hyrox_stations"))
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM hyrox_divisions"))
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM hyrox_station_loads"))
+
+        db.close()
+    }
 }

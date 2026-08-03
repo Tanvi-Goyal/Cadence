@@ -3,6 +3,8 @@ package dev.cadence.presentation
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.cadence.domain.ActiveWorkoutController
+import dev.cadence.model.HyroxVariant as RaceVariant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -55,12 +57,29 @@ data class TemplateHyroxDetailUiState(
     val finishLabel: String,
 )
 
-class TemplateHyroxDetailViewModel(templateId: String) : ViewModel() {
+class TemplateHyroxDetailViewModel(
+    private val controller: ActiveWorkoutController,
+    private val templateId: String,
+) : ViewModel() {
 
     private val isHalf: Boolean = templateId == "half-hyrox-sim"
 
     private val division = MutableStateFlow(HyroxDivision.MEN)
     private val variant = MutableStateFlow(if (isHalf) HyroxVariant.FIRST_HALF else HyroxVariant.FULL)
+
+    /**
+     * Start a live workout for the current division/variant. Hands off to the app-scoped
+     * [ActiveWorkoutController] (which synthesizes + persists the session and drives the timer), so
+     * the running workout survives navigation and is observable everywhere. The feature-local
+     * [HyroxDivision]/[HyroxVariant] enums map by name onto the DB division key / domain [RaceVariant].
+     */
+    fun startWorkout() {
+        controller.startHyrox(
+            divisionKey = division.value.name,
+            variant = RaceVariant.valueOf(variant.value.name),
+            templateId = templateId,
+        )
+    }
 
     val uiState: StateFlow<TemplateHyroxDetailUiState> =
         combine(division, variant) { d, v -> buildState(d, v) }

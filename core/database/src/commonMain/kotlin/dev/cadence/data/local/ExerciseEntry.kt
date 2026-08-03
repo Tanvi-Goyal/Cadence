@@ -25,6 +25,11 @@ data class ExerciseEntry(
     val orderIndex: Int,
     val targetSets: Int? = null,
     val restMs: Long? = null,
+    // v9: a coaching cue ("50-55% of PR, focus on depth", "7+7+7 x2", rep ranges/tempo) and whether
+    // the prescription is per-side (the pervasive "ES"). `eachSide` is nullable (null = false) so the
+    // migration is a plain nullable ADD COLUMN.
+    val note: String? = null,
+    val eachSide: Boolean? = null,
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,

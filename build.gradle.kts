@@ -13,4 +13,5 @@ plugins {
     alias(libs.plugins.androidTest) apply false
     alias(libs.plugins.baselineprofile) apply false
     alias(libs.plugins.kotlinAndroid) apply false
+    alias(libs.plugins.kotzilla) apply false
 }

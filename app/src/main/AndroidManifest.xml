@@ -11,7 +11,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/Theme.MindSet">
 
         <!-- Lets Macrobenchmark capture traces from the non-debuggable benchmark build. -->
         <profileable android:shell="true" />

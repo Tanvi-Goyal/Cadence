@@ -22,6 +22,12 @@ data class Session(
     val isTemplate: Boolean,
     val source: SessionSource,
     val templateId: String?,
+    /** v9: lightweight template metadata — collection, day focus, and week ordering within a block. */
+    val category: String? = null,
+    val focus: String? = null,
+    val programWeek: Int? = null,
+    /** v10: when a live workout was completed (null = in progress / not applicable). */
+    val finishedAt: Instant? = null,
     override val createdAt: Instant,
     override val updatedAt: Instant,
     override val deletedAt: Instant?,

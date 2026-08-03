@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App-wide launch theme. The whole app is dark, so the pre-first-frame window
+         (drawn by the system before Compose renders) must be dark too — otherwise the
+         default Material.Light theme flashes white on cold start, right before the
+         near-black splash. windowBackground = brand_bg makes that window blend in. -->
+    <style name="Theme.MindSet" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_bg</item>
+        <!-- Android 12+ system splash (the window shown before Compose draws its first frame).
+             Without these it defaults to the launcher icon on a system background, which showed
+             the stock droid. Point it at the brand glyph on brand_bg so the whole cold-start
+             sequence is branded and cross-fades cleanly into the Compose splash. API 31+ only;
+             ignored on older devices. -->
+        <item name="android:windowSplashScreenBackground">@color/brand_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+    </style>
+</resources>

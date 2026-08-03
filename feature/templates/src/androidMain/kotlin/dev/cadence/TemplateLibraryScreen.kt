@@ -654,7 +654,7 @@ private fun glyphStyle(glyph: TemplateGlyph): GlyphStyle {
 private fun TemplateLibraryPreview() {
     CadenceTheme {
         TemplateLibraryContent(
-            state = TemplateLibraryViewModel().uiState.value,
+            state = TemplateLibraryUiState(),
             onBack = {},
             onNewTemplate = {},
             onOpenTemplate = {},

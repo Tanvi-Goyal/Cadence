@@ -17,8 +17,10 @@ import androidx.room3.RoomDatabaseConstructor
         Session::class, OutboxEntry::class, SyncMeta::class, PlannedSession::class,
         Exercise::class, ExerciseEntry::class, SetEntry::class, PreferencesEntity::class,
         Block::class, PersonalRecord::class,
+        // v10: HYROX reference tables (format-as-data) + `sessions.finishedAt`.
+        HyroxStationRef::class, HyroxDivisionRef::class, HyroxStationLoadRef::class,
     ],
-    version = 8,
+    version = 10,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -34,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun preferencesDao(): PreferencesDao
     abstract fun blockDao(): BlockDao
     abstract fun personalRecordDao(): PersonalRecordDao
+    abstract fun hyroxRefDao(): HyroxRefDao
 }
 
 // KSP generates the actual implementation per target.

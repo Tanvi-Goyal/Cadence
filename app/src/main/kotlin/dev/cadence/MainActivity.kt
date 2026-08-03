@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.cadence.domain.SessionRepository
 import dev.cadence.presentation.PreferencesViewModel
 import kotlinx.coroutines.runBlocking
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.context.GlobalContext
 
@@ -43,6 +44,9 @@ class MainActivity : ComponentActivity() {
                 ) {
                     CadenceNavHost()
                 }
+                // App-scoped live-workout overlay: floats over every screen, survives navigation, and
+                // observes the single ActiveWorkoutController (the seam a future widget / notification reuse).
+                ActiveWorkoutHost(koinInject())
             }
         }
     }

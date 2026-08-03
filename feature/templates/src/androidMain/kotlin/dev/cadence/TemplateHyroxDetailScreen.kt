@@ -89,7 +89,6 @@ private val BarHeight = 64.dp
 fun TemplateHyroxDetailScreen(
     templateId: String,
     onBack: () -> Unit,
-    onStart: () -> Unit,
     onEdit: () -> Unit,
     viewModel: TemplateHyroxDetailViewModel = koinViewModel { parametersOf(templateId) },
 ) {
@@ -98,7 +97,8 @@ fun TemplateHyroxDetailScreen(
         TemplateHyroxDetailContent(
             state = state,
             onBack = onBack,
-            onStart = onStart,
+            // Start hands off to the app-scoped timer; the ActiveWorkoutHost overlay animates up.
+            onStart = viewModel::startWorkout,
             onEdit = onEdit,
             onDivisionSelected = viewModel::onDivisionSelected,
             onVariantSelected = viewModel::onVariantSelected,
@@ -555,7 +555,17 @@ private fun hyroxGlyphStyle(glyph: HyroxGlyph): HyroxGlyphStyle {
 private fun TemplateHyroxDetailPreview() {
     CadenceTheme {
         TemplateHyroxDetailContent(
-            state = TemplateHyroxDetailViewModel("half-hyrox-sim").uiState.value,
+            state = dev.cadence.presentation.TemplateHyroxDetailUiState(
+                title = "Half Hyrox Sim",
+                badge = "Hyrox",
+                duration = "35-45 min",
+                description = "The opening four stations at full race distance.",
+                division = HyroxDivision.MEN,
+                variant = HyroxVariant.FIRST_HALF,
+                showVariantSelector = true,
+                blocks = dev.cadence.presentation.HyroxStandards.buildBlocks(HyroxDivision.MEN, HyroxVariant.FIRST_HALF),
+                finishLabel = "Finish Line",
+            ),
             onBack = {},
             onStart = {},
             onEdit = {},

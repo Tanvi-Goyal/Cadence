@@ -7,6 +7,7 @@ import dev.cadence.data.local.di.databasePlatformModule
 import dev.cadence.data.remote.di.networkModule
 import dev.cadence.data.remote.di.networkPlatformModule
 import dev.cadence.sync.di.syncModule
+import io.kotzilla.generated.monitoring
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.dsl.KoinAppDeclaration
@@ -38,4 +39,5 @@ fun initKoin(config: KoinAppDeclaration? = null): KoinApplication =
             statsModule,
             profileModule,
         )
+        monitoring()
     }

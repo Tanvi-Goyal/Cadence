@@ -102,7 +102,83 @@ object ExerciseImporter {
      * station logged on one device resolves to the same row on another. Rep/weight *standards* stay
      * out of here — those are Phase-3 `RaceFormat` data (ROADMAP decision #4).
      */
-    fun supplementalSeed(): List<Exercise> = hyroxStations + conditioningMachines
+    fun supplementalSeed(): List<Exercise> =
+        hyroxStations + conditioningMachines + hyfitExercises + hyroxRun
+
+    /**
+     * The 1 km run leg interleaved between HYROX stations. A real catalog row so a synthesized Hyrox
+     * session's run steps resolve to a named exercise (distance + time → pace) like any other.
+     */
+    private val hyroxRun: List<Exercise> = listOf(
+        seedRow("hyrox-run", "Run", "cardio", Modality.RUN, MetricType.DISTANCE_TIME, "body only", station = null),
+    )
+
+    /**
+     * HyFit-class movements the public dataset doesn't carry (mobility drills + functional strength),
+     * referenced by the seeded program templates ([TemplateSeed]). Stable slug ids. Dataset rows that
+     * DO match are reused by slug in TemplateSeed and are NOT duplicated here — e.g. `Pushups`,
+     * `Barbell_Curl`, `Barbell_Glute_Bridge`, `Zercher_Squats`, `EZ-Bar_Skullcrusher`,
+     * `Bent-Arm_Dumbbell_Pullover`, `Alternating_Renegade_Row`, `Superman`, `Worlds_Greatest_Stretch`,
+     * `90_90_Hamstring`, `Crunches`, `Russian_Twist`, `Flutter_Kicks`, `Triceps_Pushdown`, `Pullups`.
+     */
+    private val hyfitExercises: List<Exercise> = listOf(
+        // Warm-up / mobility
+        hyfit("cat-cow-thoracic-opener", "Cat/Cow to Thoracic Opener", "stretching", Modality.MOBILITY, MetricType.REPS_ONLY, "body only", "middle back"),
+        hyfit("scap-push-up", "Scapular Push-Up", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "shoulders"),
+        hyfit("shoulder-rotation", "Shoulder Rotation", "stretching", Modality.MOBILITY, MetricType.REPS_ONLY, "body only", "shoulders"),
+        hyfit("hamstring-scoops", "Hamstring Scoops", "stretching", Modality.MOBILITY, MetricType.REPS_ONLY, "body only", "hamstrings"),
+        hyfit("glute-bridge-bw", "Glute Bridge (Bodyweight)", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "glutes"),
+        hyfit("dog-and-bone", "Dog & Bone Game", "stretching", Modality.MOBILITY, MetricType.REPS_ONLY, "body only", "shoulders"),
+        hyfit("hindu-push-up", "Hindu Push-Up", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "chest", "shoulders"),
+        hyfit("adductor-opener", "Adductor Opener", "stretching", Modality.MOBILITY, MetricType.REPS_ONLY, "body only", "adductors"),
+        hyfit("reverse-snow-angel", "Reverse Snow Angel", "stretching", Modality.MOBILITY, MetricType.REPS_ONLY, "body only", "shoulders"),
+        // Main strength
+        hyfit("vertical-jump", "Vertical Jump", "plyometrics", Modality.CONDITIONING, MetricType.REPS_ONLY, "body only", "quadriceps"),
+        hyfit("single-leg-box-jump", "Single-Leg Box Jump", "plyometrics", Modality.CONDITIONING, MetricType.REPS_ONLY, "body only", "quadriceps"),
+        hyfit("broad-jump", "Broad Jump", "plyometrics", Modality.CONDITIONING, MetricType.REPS_ONLY, "body only", "quadriceps", "glutes"),
+        hyfit("db-stiff-legged-deadlift", "DB Stiff-Legged Deadlift", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "dumbbell", "hamstrings", "glutes"),
+        hyfit("db-glutes-bulgarian-split-squat", "DB Glutes-Biased Bulgarian Split-Squat", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "dumbbell", "glutes", "quadriceps"),
+        hyfit("db-floor-chest-fly", "DB Floor Chest Fly", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "dumbbell", "chest"),
+        hyfit("staggered-stance-push-up", "Staggered-Stance Push-Up", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "chest", "triceps"),
+        hyfit("db-21-curl", "DB 21 Curl", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "dumbbell", "biceps"),
+        hyfit("banded-triceps-pushdown", "Banded Triceps Pushdown", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "bands", "triceps"),
+        hyfit("kb-half-staggered-squat", "KB Half-Set Staggered Squat", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "kettlebells", "quadriceps", "glutes"),
+        hyfit("landmine-single-arm-row", "Landmine Single-Arm Bent-Over Row", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "barbell", "middle back", "lats"),
+        hyfit("half-kneeling-sa-bb-shoulder-press", "Half-Kneeling Single-Arm BB Shoulder Press", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "barbell", "shoulders"),
+        hyfit("half-kneeling-band-pull", "Half-Kneeling Band Pull", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "bands", "lats"),
+        hyfit("db-rear-delt-fly", "DB Rear Delt Fly", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "dumbbell", "shoulders"),
+        // Accessory / burner
+        hyfit("curtsy-lunge-pulses", "Curtsy Lunge Pulses", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "glutes"),
+        hyfit("kb-swing", "Kettlebell Swing", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "kettlebells", "glutes", "hamstrings"),
+        hyfit("plate-zercher-squat-march", "Plate Zercher Squat March", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "other", "quadriceps"),
+        hyfit("single-arm-db-floor-chest-press", "Single-Arm DB Floor Chest Press", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "dumbbell", "chest"),
+        hyfit("pistol-box-squat", "Pistol Box Squat", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "quadriceps"),
+        hyfit("wall-squat-hold", "Wall Squat Hold", "strength", Modality.STRENGTH, MetricType.DURATION, "body only", "quadriceps"),
+        hyfit("kb-upright-row", "KB Upright Row", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "kettlebells", "shoulders", "traps"),
+        hyfit("db-shrug", "DB Shrug", "strength", Modality.STRENGTH, MetricType.WEIGHT_REPS, "dumbbell", "traps"),
+        // Conditioning
+        hyfit("v-ups", "V-Ups", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "abdominals"),
+        hyfit("db-man-makers", "DB Man Makers", "strength", Modality.CONDITIONING, MetricType.REPS_ONLY, "dumbbell", "chest", "middle back"),
+        hyfit("bicycle-crunch", "Bicycle Crunch", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "abdominals"),
+        hyfit("plate-hold", "Plate Hold (Grip)", "strength", Modality.STRENGTH, MetricType.DURATION, "other", "forearms"),
+        hyfit("devil-press", "Devil Press", "strength", Modality.CONDITIONING, MetricType.REPS_ONLY, "dumbbell", "shoulders", "chest"),
+        hyfit("mma-plank", "MMA Plank", "strength", Modality.STRENGTH, MetricType.DURATION, "body only", "abdominals"),
+        hyfit("high-knees", "High Knees", "cardio", Modality.CONDITIONING, MetricType.DURATION, "body only", "quadriceps"),
+        hyfit("jumping-jacks", "Jumping Jacks", "cardio", Modality.CONDITIONING, MetricType.DURATION, "body only", "shoulders"),
+        // Core
+        hyfit("hollow-hold", "Hollow Hold", "strength", Modality.STRENGTH, MetricType.DURATION, "body only", "abdominals"),
+        hyfit("feet-elevated-calf-raise", "Feet-Elevated Standing Calf Raise", "strength", Modality.STRENGTH, MetricType.REPS_ONLY, "body only", "calves"),
+    )
+
+    private fun hyfit(
+        id: String,
+        name: String,
+        category: String,
+        modality: Modality,
+        metric: MetricType,
+        equipment: String,
+        vararg muscles: String,
+    ): Exercise = seedRow(id, name, category, modality, metric, equipment, station = null, muscles = muscles.toList())
 
     private val hyroxStations: List<Exercise> = listOf(
         station("hyrox-ski-erg", "Ski Erg", Modality.CONDITIONING, MetricType.DISTANCE_TIME, HyroxStation.SKI_ERG, "ski erg"),
@@ -140,17 +216,18 @@ object ExerciseImporter {
         metric: MetricType,
         equipment: String,
         station: HyroxStation?,
+        muscles: List<String> = emptyList(),
     ): Exercise = Exercise(
         id = id,
         name = name,
         category = category,
         metric = if (metric == MetricType.WEIGHT_REPS) ExerciseMetric.WEIGHT_REPS else ExerciseMetric.TIME_DISTANCE,
         equipment = equipment,
-        primaryMuscles = "",
+        primaryMuscles = if (muscles.isEmpty()) "" else json.encodeToString(muscles),
         secondaryMuscles = "",
         instructions = "",
         imageUrls = "",
-        keywords = "$name $category $equipment".lowercase(),
+        keywords = "$name $category $equipment ${muscles.joinToString(" ")}".lowercase(),
         modality = modality.name,
         defaultMetric = metric.name,
         hyroxStation = station?.name,

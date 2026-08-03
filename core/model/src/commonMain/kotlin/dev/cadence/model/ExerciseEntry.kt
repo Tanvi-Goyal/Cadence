@@ -17,6 +17,9 @@ data class ExerciseEntry(
     val orderIndex: Int,
     val targetSets: Int?,
     val restMs: Long?,
+    /** v9: a coaching cue for this exercise, and whether the prescription is per-side ("ES"). */
+    val note: String? = null,
+    val eachSide: Boolean = false,
     override val createdAt: Instant,
     override val updatedAt: Instant,
     override val deletedAt: Instant?,

@@ -2,9 +2,13 @@ package dev.cadence.presentation
 
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dev.cadence.domain.SessionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
 /*
@@ -89,21 +93,51 @@ data class TemplateLibraryUiState(
     val showSelfProgrammed: Boolean get() = selectedCategory == TemplateCategory.ALL
 }
 
-class TemplateLibraryViewModel : ViewModel() {
+class TemplateLibraryViewModel(
+    private val repository: SessionRepository,
+) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SEED)
-    val uiState: StateFlow<TemplateLibraryUiState> = _uiState.asStateFlow()
+    private val query = MutableStateFlow("")
+    private val category = MutableStateFlow(TemplateCategory.ALL)
+
+    /** The Strength Blocks section is now real: the seeded HyFit program days observed from the DB
+     *  (ordered by week). The other sections remain design-static until their own data pass. */
+    val uiState: StateFlow<TemplateLibraryUiState> =
+        combine(query, category, repository.observeTemplates()) { q, cat, templates ->
+            val strength = templates
+                .filter { it.category == HYFIT_CATEGORY }
+                .sortedWith(compareBy({ it.programWeek ?: 0 }, { it.name }))
+                .map {
+                    LibraryTemplate(
+                        id = it.id,
+                        title = it.name,
+                        subtitle = listOfNotNull(it.programWeek?.let { w -> "Week $w" }, it.focus.takeIf { f -> !f.isNullOrBlank() })
+                            .joinToString(" • "),
+                        badge = TemplateBadge.STRENGTH,
+                        glyph = TemplateGlyph.DUMBBELL,
+                    )
+                }
+            SEED.copy(
+                query = q,
+                selectedCategory = cat,
+                strengthBlocks = strength.ifEmpty { SEED.strengthBlocks },
+            )
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SEED)
 
     fun onCategorySelected(category: TemplateCategory) {
-        _uiState.update { it.copy(selectedCategory = category) }
+        this.category.update { category }
     }
 
     fun onQueryChange(query: String) {
-        _uiState.update { it.copy(query = query) }
+        this.query.update { query }
     }
 
     private companion object {
-        // Design sample content (Figma 33:1068). Replaced by real DB-observed data in a later pass.
+        /** Category tag the seeder ([TemplateSeed]) stamps on the HyFit program days. */
+        const val HYFIT_CATEGORY = "HyFit 6-Week Strength"
+
+        // Design sample content (Figma 33:1068). Strength blocks are overridden with DB data above;
+        // the rest remains sample content until their own data pass.
         val SEED = TemplateLibraryUiState(
             featured = FeaturedTemplate(
                 id = "full-hyrox-simulation",

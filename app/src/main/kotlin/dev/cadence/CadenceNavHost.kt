@@ -17,10 +17,16 @@ fun CadenceNavHost() {
     val nav = rememberNavController()
     NavHost(
         navController = nav,
-        startDestination = Login
+        startDestination = Splash
     ) {
 
-        // ---- Auth (app entry; design-static — any sign-in action enters the app) ----
+        // ---- Splash (app entry; holds briefly, then advances and pops itself) ----
+        // Goes straight to Home for now — Login isn't implemented yet, so we skip it.
+        splashScreen(
+            onDone = { nav.navigate(Home) { popUpTo(Splash) { inclusive = true } } },
+        )
+
+        // ---- Auth (design-static — any sign-in action enters the app) ----
         loginScreen(
             onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
             onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
@@ -32,16 +38,21 @@ fun CadenceNavHost() {
             onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
             onNewSession = { nav.navigate(NewSession) },
             onOpenTemplates = { nav.navigate(Templates) },
+            onOpenTemplate = { id -> nav.openTemplateDetail(id) },
             onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
             onSeeAll = { nav.switchTab(Tab.History) },
             onTab = nav::switchTab,
         )
+
         historyScreen(
             onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
             onTab = nav::switchTab,
         )
+
         statsScreen(onTab = nav::switchTab)
+
         profileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Credits) })
+
         creditsScreen(onBack = { nav.popBackStack() })
 
         // ---- Full-screen pushes (type-safe routes) ----
@@ -52,11 +63,13 @@ fun CadenceNavHost() {
                 nav.navigate(LogWorkout(id)) { popUpTo<NewSession> { inclusive = true } }
             },
         )
+
         logWorkoutScreen(
             onBack = { nav.popBackStack() },
             onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG)) },
             onFinish = { nav.popBackStack(Home, inclusive = false) },
         )
+
         exercisePickerScreen(
             onOpenDetail = { exerciseId, target ->
                 nav.navigate(
@@ -68,6 +81,7 @@ fun CadenceNavHost() {
             },
             onBack = { nav.popBackStack() },
         )
+
         exerciseDetailScreen(
             onAdd = { exerciseId, target ->
                 // Hand the pick back to whichever screen launched the picker (Log Workout or the
@@ -85,6 +99,7 @@ fun CadenceNavHost() {
             },
             onBack = { nav.popBackStack() },
         )
+
         sessionDetailScreen(onBack = { nav.popBackStack() })
 
         // ---- Templates (D2) ----
@@ -95,30 +110,25 @@ fun CadenceNavHost() {
             // use the station-list variant; the strength blocks use the exercise-list variant; everything
             // else uses the workout-protocol variant. This id branch is a temporary shim until a real
             // template "kind" drives the layout choice.
-            onEditTemplate = { id ->
-                when (id) {
-                    "full-hyrox-simulation", "half-hyrox-sim" -> nav.navigate(TemplateHyroxDetail(id))
-                    "upper-strength-a", "upper-strength-b", "lower-body" -> nav.navigate(TemplateStrengthDetail(id))
-                    else -> nav.navigate(TemplateDetail(id))
-                }
-            },
+            onEditTemplate = { id -> nav.openTemplateDetail(id) },
             onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
         )
+
         templateDetailScreen(
             onBack = { nav.popBackStack() },
-            // Placeholder until the data pass: begin a fresh workout. Real behaviour = instantiate this
+            // Placeholder until the data pass: begin a fresh workout. Real behavior = instantiate this
             // template (deep copy) → open Log Workout.
             onStart = { nav.navigate(NewSession) },
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
         )
         templateHyroxDetailScreen(
             onBack = { nav.popBackStack() },
-            onStart = { nav.navigate(NewSession) },
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
         )
         templateStrengthDetailScreen(
             onBack = { nav.popBackStack() },
-            onStart = { nav.navigate(NewSession) },
+            // Start deep-copies the template into a live session; open it in Log Workout.
+            onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
         )
         newTemplateScreen(
@@ -133,6 +143,20 @@ fun CadenceNavHost() {
             onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.BUILDER)) },
             onDone = { nav.popBackStack() },
         )
+    }
+}
+
+/**
+ * Open a template's read-only detail screen. The Hyrox sims use the station-list variant; the strength
+ * blocks use the exercise-list variant; everything else uses the workout-protocol variant. This id
+ * branch is a temporary shim (shared by the Templates library and the Home quick-start chips) until a
+ * real template "kind" drives the layout choice.
+ */
+private fun NavController.openTemplateDetail(id: String) {
+    when {
+        id == "full-hyrox-simulation" || id == "half-hyrox-sim" -> navigate(TemplateHyroxDetail(id))
+        id.startsWith("hyfit-") -> navigate(TemplateStrengthDetail(id))
+        else -> navigate(TemplateDetail(id))
     }
 }
 
