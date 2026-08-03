@@ -43,12 +43,16 @@ fun CadenceNavHost() {
             onSeeAll = { nav.switchTab(Tab.History) },
             onTab = nav::switchTab,
         )
+
         historyScreen(
             onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
             onTab = nav::switchTab,
         )
+
         statsScreen(onTab = nav::switchTab)
+
         profileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Credits) })
+
         creditsScreen(onBack = { nav.popBackStack() })
 
         // ---- Full-screen pushes (type-safe routes) ----
@@ -59,11 +63,13 @@ fun CadenceNavHost() {
                 nav.navigate(LogWorkout(id)) { popUpTo<NewSession> { inclusive = true } }
             },
         )
+
         logWorkoutScreen(
             onBack = { nav.popBackStack() },
             onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG)) },
             onFinish = { nav.popBackStack(Home, inclusive = false) },
         )
+
         exercisePickerScreen(
             onOpenDetail = { exerciseId, target ->
                 nav.navigate(
@@ -75,6 +81,7 @@ fun CadenceNavHost() {
             },
             onBack = { nav.popBackStack() },
         )
+
         exerciseDetailScreen(
             onAdd = { exerciseId, target ->
                 // Hand the pick back to whichever screen launched the picker (Log Workout or the
@@ -92,6 +99,7 @@ fun CadenceNavHost() {
             },
             onBack = { nav.popBackStack() },
         )
+
         sessionDetailScreen(onBack = { nav.popBackStack() })
 
         // ---- Templates (D2) ----
@@ -105,9 +113,10 @@ fun CadenceNavHost() {
             onEditTemplate = { id -> nav.openTemplateDetail(id) },
             onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
         )
+
         templateDetailScreen(
             onBack = { nav.popBackStack() },
-            // Placeholder until the data pass: begin a fresh workout. Real behaviour = instantiate this
+            // Placeholder until the data pass: begin a fresh workout. Real behavior = instantiate this
             // template (deep copy) → open Log Workout.
             onStart = { nav.navigate(NewSession) },
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
