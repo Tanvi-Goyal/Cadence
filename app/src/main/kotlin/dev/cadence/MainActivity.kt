@@ -7,6 +7,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -37,16 +40,22 @@ class MainActivity : ComponentActivity() {
             // Read preferences once at the root and publish theme + unit down the tree, so the whole
             // app re-themes / re-labels from a single source when the Profile screen changes them.
             val prefs by koinViewModel<PreferencesViewModel>().preferences.collectAsStateWithLifecycle()
+            // In-memory design-system toggle (NOT persisted, defaults to Obsidian) — an ephemeral
+            // switch to compare the two themes; one is removed later. Resets on process death by design.
+            var themeVariant by remember { mutableStateOf(ThemeVariant.OBSIDIAN) }
             Box(Modifier.semantics { testTagsAsResourceId = true }) {
                 CompositionLocalProvider(
                     LocalThemeMode provides prefs.themeMode,
                     LocalWeightUnit provides prefs.weightUnit,
+                    LocalThemeVariant provides themeVariant,
+                    LocalSetThemeVariant provides { themeVariant = it },
                 ) {
                     CadenceNavHost()
+                    // App-scoped live-workout overlay: floats over every screen, survives navigation, and
+                    // observes the single ActiveWorkoutController (the seam a future widget / notification reuse).
+                    // Inside the provider so it recolors with the active theme variant too.
+                    ActiveWorkoutHost(koinInject())
                 }
-                // App-scoped live-workout overlay: floats over every screen, survives navigation, and
-                // observes the single ActiveWorkoutController (the seam a future widget / notification reuse).
-                ActiveWorkoutHost(koinInject())
             }
         }
     }

@@ -22,6 +22,19 @@ import dev.cadence.domain.WeightUnit
 val LocalThemeMode = staticCompositionLocalOf { ThemeMode.SYSTEM }
 val LocalWeightUnit = staticCompositionLocalOf { WeightUnit.KG }
 
+/**
+ * The two coexisting design systems. This is an ephemeral, in-memory comparison switch (the app
+ * ships one of these long-term) — it is deliberately NOT persisted and defaults to [OBSIDIAN].
+ * Kept in `:core:designsystem` (not a domain type) precisely because it never touches storage.
+ */
+enum class ThemeVariant { KINETIC, OBSIDIAN }
+
+/** The active variant, provided at the app root; defaults to Obsidian and resets on process death. */
+val LocalThemeVariant = staticCompositionLocalOf { ThemeVariant.OBSIDIAN }
+
+/** Setter for [LocalThemeVariant], provided alongside it so any screen (e.g. Profile) can flip it. */
+val LocalSetThemeVariant = staticCompositionLocalOf<(ThemeVariant) -> Unit> { {} }
+
 /*
  * Legacy color accessors. Existing screens paint with these names; they now delegate to the M3
  * color roles so every screen adopts Kinetic Precision without edits. New/redesigned screens should
@@ -37,14 +50,20 @@ val TextPrimary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.col
 val TextSecondary: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.onSurfaceVariant
 internal val Danger: Color @Composable @ReadOnlyComposable get() = MaterialTheme.colorScheme.error
 
-/** Applies the Kinetic Precision M3 theme (color scheme + typography + shapes + spacing). */
+/**
+ * Applies the active dark M3 theme (color scheme + typography + shapes + spacing). The variant is
+ * read from [LocalThemeVariant] (provided at the app root), so screens keep wrapping in
+ * `CadenceTheme { }` unchanged and both the root wrap and per-screen wraps resolve to the same
+ * variant. Nesting stays idempotent.
+ */
 @Composable
 fun CadenceTheme(content: @Composable () -> Unit) {
+    val obsidian = LocalThemeVariant.current == ThemeVariant.OBSIDIAN
     CompositionLocalProvider(LocalSpacing provides Spacing()) {
         MaterialTheme(
-            colorScheme = KineticColorScheme,
-            typography = KineticTypography,
-            shapes = KineticShapes,
+            colorScheme = if (obsidian) ObsidianColorScheme else KineticColorScheme,
+            typography = if (obsidian) ObsidianTypography else KineticTypography,
+            shapes = if (obsidian) ObsidianShapes else KineticShapes,
             content = content,
         )
     }

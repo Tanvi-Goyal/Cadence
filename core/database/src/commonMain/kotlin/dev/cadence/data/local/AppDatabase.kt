@@ -19,8 +19,10 @@ import androidx.room3.RoomDatabaseConstructor
         Block::class, PersonalRecord::class,
         // v10: HYROX reference tables (format-as-data) + `sessions.finishedAt`.
         HyroxStationRef::class, HyroxDivisionRef::class, HyroxStationLoadRef::class,
+        // v11: athlete profile + race config (Onboarding) and the subscription-entitlement stub.
+        AthleteProfileEntity::class, EntitlementEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -37,6 +39,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun blockDao(): BlockDao
     abstract fun personalRecordDao(): PersonalRecordDao
     abstract fun hyroxRefDao(): HyroxRefDao
+    abstract fun athleteProfileDao(): AthleteProfileDao
+    abstract fun entitlementDao(): EntitlementDao
 }
 
 // KSP generates the actual implementation per target.

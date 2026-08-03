@@ -171,4 +171,37 @@ class MigrationTest {
 
         db.close()
     }
+
+    /**
+     * v10 → v11 adds the two device-local single-row tables (`athlete_profile`, `entitlement`) for
+     * MindSet v1. A real v10 session survives untouched, both new tables exist and start empty (the
+     * repos map an absent row to defaults), and the result validates against `11.json`.
+     */
+    @Test
+    fun v11_adds_athlete_profile_and_entitlement_tables() = runTest {
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = schemaDir,
+            fileName = NSTemporaryDirectory() + "cadence-migration-test-v11.db",
+            driver = BundledSQLiteDriver(),
+            databaseClass = AppDatabase::class,
+        )
+        helper.createDatabase(version = 10).apply {
+            execSQL(
+                "INSERT INTO sessions (id, startedAt, name, type, isTemplate, source, updatedAt, " +
+                    "syncStatus, createdAt) VALUES " +
+                    "('s1', 1000, 'Hyrox', 'HYROX', 0, 'MANUAL', 2000, 'SYNCED', 1000)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(version = 11, migrations = listOf(MIGRATION_10_11))
+
+        // Existing row preserved across the additive migration.
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM sessions WHERE id = 's1'"))
+        // New single-row tables exist and start empty (no seed row — repos default an absent row).
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM athlete_profile"))
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM entitlement"))
+
+        db.close()
+    }
 }

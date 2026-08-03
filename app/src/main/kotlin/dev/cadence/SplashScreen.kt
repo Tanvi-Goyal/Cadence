@@ -47,7 +47,7 @@ import kotlinx.coroutines.delay
  */
 
 /** How long the splash holds before advancing. Placeholder value — see the roadmap for real gating. */
-const val SPLASH_DURATION_MS = 5_000L
+const val SPLASH_DURATION_MS = 2500L
 
 private val BrandBg = Color(0xFF0F0F11)
 private val BrandInk = Color(0xFFFFFFFF)

@@ -168,3 +168,24 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
         )
     }
 }
+
+/**
+ * v10 → v11. Adds two device-local single-row tables for MindSet v1: `athlete_profile` (profile + target
+ * race captured in Onboarding) and `entitlement` (the subscription stub). Both are brand-new tables, so
+ * they are created fresh from Room's generated `schemas/11.json` shape (verbatim) — no data to migrate,
+ * no seed row (the repos map an absent row to defaults, like `preferences`). NOT-NULL columns need no
+ * DEFAULT here because a fresh CREATE TABLE inserts no rows (contrast the ADD COLUMN rule in [MIGRATION_7_8]).
+ */
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `athlete_profile` (`id` INTEGER NOT NULL, `fullName` TEXT NOT NULL, " +
+                "`bodyweightKg` REAL, `heightCm` REAL, `defaultDivision` TEXT NOT NULL, `raceDate` INTEGER, " +
+                "`raceFormat` TEXT, `raceCity` TEXT, `onboardingComplete` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `entitlement` (`id` INTEGER NOT NULL, `isPro` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`id`))",
+        )
+    }
+}

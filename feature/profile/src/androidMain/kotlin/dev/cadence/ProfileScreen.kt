@@ -120,6 +120,20 @@ fun ProfileScreen(
                                     )
                                 },
                             )
+                            RowDivider()
+                            // TEMPORARY: in-memory design-system toggle (not persisted; resets to Obsidian
+                            // on relaunch). Drives LocalThemeVariant to compare Obsidian vs Kinetic. This
+                            // gets a styled home when the Profile screen is redesigned.
+                            val setVariant = LocalSetThemeVariant.current
+                            ToggleRow(
+                                icon = CadenceIcons.DarkMode,
+                                title = "Obsidian Theme",
+                                subtitle = "Toggle off for the original Kinetic look",
+                                checked = LocalThemeVariant.current == ThemeVariant.OBSIDIAN,
+                                onCheckedChange = { on ->
+                                    setVariant(if (on) ThemeVariant.OBSIDIAN else ThemeVariant.KINETIC)
+                                },
+                            )
                         }
                         Spacer(Modifier.height(24.dp))
 

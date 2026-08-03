@@ -43,7 +43,7 @@ fun StatsScreen(
     CadenceTheme {
         Scaffold(
             containerColor = Background,
-            bottomBar = { CadenceBottomBar(current = Tab.Stats, onTab = onTab) },
+            bottomBar = { CadenceBottomBar(current = Tab.Stations, onTab = onTab) },
         ) { padding ->
             Column(
                 modifier = Modifier

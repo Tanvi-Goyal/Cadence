@@ -1,6 +1,7 @@
 package dev.cadence
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
@@ -15,6 +16,8 @@ import androidx.navigation.compose.rememberNavController
 @Composable
 fun CadenceNavHost() {
     val nav = rememberNavController()
+    // The center Quick-Start (+) FAB in the bottom bar fires this ambient action on any tab.
+    CompositionLocalProvider(LocalQuickStart provides { nav.navigate(NewSession) }) {
     NavHost(
         navController = nav,
         startDestination = Splash
@@ -144,6 +147,7 @@ fun CadenceNavHost() {
             onDone = { nav.popBackStack() },
         )
     }
+    }
 }
 
 /**
@@ -169,7 +173,9 @@ private fun NavController.switchTab(tab: Tab) {
     val route: Any = when (tab) {
         Tab.Home -> Home
         Tab.History -> History
-        Tab.Stats -> Stats
+        // Interim: the Stations tab reuses the existing Stats screen until the Hyrox station board
+        // (Figma 0:876) is built — its analytics fold into Stations/Profile then.
+        Tab.Stations -> Stats
         Tab.Profile -> Profile
     }
     navigate(route) {
