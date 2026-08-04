@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,12 +40,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.cadence.icons.Add
+import dev.cadence.components.FieldLabel
+import dev.cadence.components.GlassCard
+import dev.cadence.components.GlassTextField
+import dev.cadence.components.PrimaryButton
+import dev.cadence.components.SecondaryButton
 import dev.cadence.icons.ChevronRight
 import dev.cadence.presentation.Gender
 import dev.cadence.presentation.OnboardingStep
@@ -57,25 +62,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/*
- * First-run onboarding (Figma 0:3 / 0:105). A data-driven flow: the scaffold (brand lockup, STEP x/N
- * caption, progress bar, bottom buttons) is shared across steps; the step content switches on
- * [OnboardingStep]. Adding a step = extend the enum + add a content branch here. All fields live in
- * [OnboardingViewModel]; on Complete it persists the AthleteProfile and the screen leaves onboarding.
- */
-
-private val Gutter = 24.dp
-private val GlassFill = Color.White.copy(alpha = 0.05f)
-private val GlassBorder = Color.White.copy(alpha = 0.12f)
-
 @Composable
 fun OnboardingScreen(
     onComplete: () -> Unit,
     viewModel: OnboardingViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    // Leave onboarding once the profile is persisted.
-    androidx.compose.runtime.LaunchedEffect(state.done) { if (state.done) onComplete() }
+    LaunchedEffect(state.done) { if (state.done) onComplete() }
 
     CadenceTheme {
         val colors = MaterialTheme.colorScheme
@@ -84,25 +77,19 @@ fun OnboardingScreen(
             Column(
                 Modifier
                     .fillMaxSize()
-                    // safeDrawing = max(systemBars, ime, cutout) per edge, so the bottom follows the
-                    // keyboard (animated) without double-counting the nav bar. Paired with the
-                    // activity's adjustResize so the window resizes in sync instead of panning.
                     .safeDrawingPadding()
-                    .padding(horizontal = Gutter),
+                    .padding(horizontal = Dimens.Padding.lg),
             ) {
-                Spacer(Modifier.height(24.dp))
-                // Logo only (no wordmark) — the wordmark lives on the splash; onboarding shows the
-                // glyph then the steps.
-                BrandLockup(
+                Spacer(Modifier.height(MaterialTheme.spacing.lg))
+                AppBrand(
                     modifier = Modifier.fillMaxWidth(),
                     logoSize = 60.dp,
                     showWordmark = false,
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(MaterialTheme.spacing.lg))
                 StepIndicator(stepIndex = state.stepIndex, stepCount = state.stepCount)
                 Spacer(Modifier.height(28.dp))
 
-                // Scrollable step content; the bottom buttons stay pinned below.
                 Column(
                     Modifier
                         .weight(1f)
@@ -112,19 +99,16 @@ fun OnboardingScreen(
                         OnboardingStep.ATHLETE_PROFILE -> AthleteProfileStep(state, viewModel)
                         OnboardingStep.RACE_CONFIG -> RaceConfigStep(state, viewModel)
                     }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(MaterialTheme.spacing.md))
                 }
 
                 BottomButtons(state, viewModel)
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(MaterialTheme.spacing.md))
             }
         }
     }
 }
 
-// ── Backdrop ────────────────────────────────────────────────────────────────────────────────────
-
-/** Obsidian base + a subtle warm radial glow near the top-center (Figma 0:3). */
 @Composable
 private fun OnboardingBackdrop() {
     val colors = MaterialTheme.colorScheme
@@ -140,8 +124,6 @@ private fun OnboardingBackdrop() {
     )
 }
 
-// ── Header bits ─────────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun StepIndicator(stepIndex: Int, stepCount: Int) {
     val colors = MaterialTheme.colorScheme
@@ -154,15 +136,18 @@ private fun StepIndicator(stepIndex: Int, stepCount: Int) {
         Spacer(Modifier.height(10.dp))
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
         ) {
             repeat(stepCount) { i ->
                 Box(
                     Modifier
                         .weight(1f)
-                        .height(4.dp)
+                        .height(2.dp)
                         .clip(CircleShape)
-                        .background(if (i <= stepIndex) colors.primary else colors.surfaceContainerHigh),
+                        .background(
+                            if (i <= stepIndex) colors.primary
+                            else colors.surfaceContainerHigh
+                        ),
                 )
             }
         }
@@ -173,27 +158,28 @@ private fun StepIndicator(stepIndex: Int, stepCount: Int) {
 private fun StepHeading(title: String, subtitle: String) {
     val colors = MaterialTheme.colorScheme
     Column {
-        Text(title, style = MaterialTheme.typography.headlineMedium, color = colors.onSurface)
-        Spacer(Modifier.height(8.dp))
+        Text(title, style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
+        Spacer(Modifier.height(MaterialTheme.spacing.sm))
         Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(MaterialTheme.spacing.lg))
     }
 }
-
-// ── Step 1: Athlete Profile ───────────────────────────────────────────────────────────────────
 
 @Composable
 private fun AthleteProfileStep(state: OnboardingUiState, vm: OnboardingViewModel) {
     Column {
-        StepHeading("Athlete Profile", "Define your physical baseline for precise programming.")
+        StepHeading(
+            "Athlete Profile",
+            "Define your physical baseline for precise programming."
+        )
         FieldLabel("Full Name")
         GlassTextField(
             value = state.fullName,
             onValueChange = vm::onFullName,
             placeholder = "e.g. Alex Sterling",
         )
-        Spacer(Modifier.height(20.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Spacer(Modifier.height(MaterialTheme.spacing.md))
+        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {
             StepperField(
                 label = "Bodyweight (kg)",
                 value = state.bodyweightKg,
@@ -202,6 +188,7 @@ private fun AthleteProfileStep(state: OnboardingUiState, vm: OnboardingViewModel
                 onIncrement = { vm.stepBodyweight(+1) },
                 modifier = Modifier.weight(1f),
             )
+
             StepperField(
                 label = "Height (in)",
                 value = state.heightIn,
@@ -213,8 +200,6 @@ private fun AthleteProfileStep(state: OnboardingUiState, vm: OnboardingViewModel
         }
     }
 }
-
-// ── Step 2: Race Configuration ──────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -230,10 +215,11 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
             Text(
                 text = state.raceDateMillis?.let(::formatDate) ?: "mm / dd / yyyy",
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (state.raceDateMillis != null) colors.onSurface else colors.onSurfaceVariant.copy(alpha = 0.6f),
+                color = if (state.raceDateMillis != null) colors.onSurface
+                else colors.onSurfaceVariant.copy(alpha = 0.6f),
             )
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(MaterialTheme.spacing.md))
 
         FieldLabel("Category")
         SegmentedSelector(
@@ -241,7 +227,7 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
             selectedIndex = state.gender?.ordinal ?: -1,
             onSelect = { vm.onGender(Gender.entries[it]) },
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(MaterialTheme.spacing.md))
 
         FieldLabel("Division")
         SegmentedSelector(
@@ -249,7 +235,7 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
             selectedIndex = state.tier?.ordinal ?: -1,
             onSelect = { vm.onTier(Tier.entries[it]) },
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(MaterialTheme.spacing.md))
 
         FieldLabel("Format")
         SegmentedSelector(
@@ -257,7 +243,7 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
             selectedIndex = state.format?.ordinal ?: -1,
             onSelect = { vm.onFormat(RaceFormat.entries[it]) },
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(MaterialTheme.spacing.md))
 
         FieldLabel("Target Race City")
         GlassTextField(
@@ -286,76 +272,22 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
     }
 }
 
-// ── Bottom navigation buttons ─────────────────────────────────────────────────────────────────
-
 @Composable
 private fun BottomButtons(state: OnboardingUiState, vm: OnboardingViewModel) {
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.Padding.sm),
     ) {
         if (!state.isFirst) {
-            GhostButton(text = "Back", onClick = vm::onBack, modifier = Modifier.weight(1f))
+            SecondaryButton(text = "Back", onClick = vm::onBack, modifier = Modifier.weight(1f))
         }
+
         PrimaryButton(
             text = if (state.isLast) "Complete Setup" else "Next Configuration",
             enabled = state.currentStepValid && !state.saving,
             onClick = { if (state.isLast) vm.onComplete() else vm.onNext() },
             modifier = Modifier.weight(if (state.isFirst) 1f else 2f),
         )
-    }
-}
-
-// ── Reusable primitives ───────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun FieldLabel(text: String) {
-    Text(
-        text = text.uppercase(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp),
-    )
-}
-
-/** The glass surface primitive — translucent fill + hairline border (design-v2 "glass"). */
-@Composable
-private fun GlassCard(
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    val shape = MaterialTheme.shapes.medium
-    var base = modifier
-        .fillMaxWidth()
-        .clip(shape)
-        .background(GlassFill)
-        .border(1.dp, GlassBorder, shape)
-    if (onClick != null) base = base.clickable(onClick = onClick)
-    Box(base.padding(horizontal = 16.dp, vertical = 18.dp)) { content() }
-}
-
-@Composable
-private fun GlassTextField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
-    val colors = MaterialTheme.colorScheme
-    GlassCard {
-        Box {
-            if (value.isEmpty()) {
-                Text(
-                    placeholder,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.onSurfaceVariant.copy(alpha = 0.5f),
-                )
-            }
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onSurface),
-                cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.primary),
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
     }
 }
 
@@ -378,13 +310,13 @@ private fun StepperField(
                     onValueChange = onValueChange,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    textStyle = MaterialTheme.typography.titleLarge.copy(color = colors.onSurface),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.primary),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.onSurface),
+                    cursorBrush = SolidColor(colors.primary),
                     decorationBox = { inner ->
                         if (value.isEmpty()) {
                             Text(
                                 "0",
-                                style = MaterialTheme.typography.titleLarge,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = colors.onSurfaceVariant.copy(alpha = 0.4f),
                             )
                         }
@@ -392,11 +324,11 @@ private fun StepperField(
                     },
                     modifier = Modifier.weight(1f),
                 )
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    StepChevron(up = true, onClick = onIncrement)
-                    Spacer(Modifier.height(6.dp))
-                    StepChevron(up = false, onClick = onDecrement)
-                }
+//                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+//                    StepChevron(up = true, onClick = onIncrement)
+//                    Spacer(Modifier.height(Dimens.Padding.xxs))
+//                    StepChevron(up = false, onClick = onDecrement)
+//                }
             }
         }
     }
@@ -431,8 +363,8 @@ private fun SegmentedSelector(options: List<String>, selectedIndex: Int, onSelec
             .clip(shape)
             .background(GlassFill)
             .border(1.dp, GlassBorder, shape)
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(Dimens.Padding.xs),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
     ) {
         options.forEachIndexed { i, label ->
             val active = i == selectedIndex
@@ -442,7 +374,7 @@ private fun SegmentedSelector(options: List<String>, selectedIndex: Int, onSelec
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (active) colors.primary else Color.Transparent)
                     .clickable { onSelect(i) }
-                    .padding(vertical = 12.dp),
+                    .padding(vertical = Dimens.Padding.xsm),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -452,50 +384,6 @@ private fun SegmentedSelector(options: List<String>, selectedIndex: Int, onSelec
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun PrimaryButton(text: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    val bg = if (enabled) colors.primary else colors.surfaceContainerHigh
-    val fg = if (enabled) colors.onPrimary else colors.onSurfaceVariant.copy(alpha = 0.5f)
-    Box(
-        modifier
-            .height(60.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .background(bg)
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text.uppercase(),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = fg,
-        )
-    }
-}
-
-@Composable
-private fun GhostButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    val shape = MaterialTheme.shapes.medium
-    Box(
-        modifier
-            .height(60.dp)
-            .clip(shape)
-            .border(1.dp, GlassBorder, shape)
-            .background(GlassFill)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text.uppercase(),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = colors.onSurface,
-        )
     }
 }
 

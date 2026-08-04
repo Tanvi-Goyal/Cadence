@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
  */
 
 // Primary — electric red as the high-emphasis action color (overrides design-v2's pale tonal value).
-private val Primary = Color(0xFFFF5545)
+private val Primary = Color(0xFFE5484D)
 private val OnPrimary = Color(0xFFFFFFFF)
 private val PrimaryContainer = Color(0xFFFF3B30)
 private val OnPrimaryContainer = Color(0xFFFFFFFF)
@@ -107,3 +107,7 @@ internal val ObsidianColorScheme = darkColorScheme(
     outline = OutlineColor,
     outlineVariant = OutlineVariant,
 )
+
+val GlassFill = Color.White.copy(alpha = 0.05f)
+val GlassBorder = Color.White.copy(alpha = 0.12f)
+

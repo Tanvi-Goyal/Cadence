@@ -18,6 +18,7 @@ fun CadenceNavHost() {
     val nav = rememberNavController()
     // The center Quick-Start (+) FAB in the bottom bar fires this ambient action on any tab.
     CompositionLocalProvider(LocalQuickStart provides { nav.navigate(NewSession) }) {
+
     NavHost(
         navController = nav,
         startDestination = Splash
@@ -27,12 +28,11 @@ fun CadenceNavHost() {
         // Routes on the persisted onboarding flag: first-run → Onboarding, returning → Home.
         splashScreen(
             onDone = { onboardingComplete ->
-                val destination: Any = if (onboardingComplete) Home else Onboarding
+                val destination: Any = if (onboardingComplete) Onboarding else Onboarding
                 nav.navigate(destination) { popUpTo(Splash) { inclusive = true } }
             },
         )
 
-        // ---- Onboarding (first run: athlete profile + race config) ----
         onboardingScreen(
             onComplete = { nav.navigate(Home) { popUpTo(Onboarding) { inclusive = true } } },
         )

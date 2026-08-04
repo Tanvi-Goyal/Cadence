@@ -19,52 +19,37 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.cadence.ui.R
 
-/*
- * The shared MIND[SET] brand lockup — the icon glyph above the wordmark — used by the Splash screen
- * and the Onboarding header so both render an identical element (enabling the splash→onboarding
- * slide-up). The palette is the logo's own (near-white ink + brand red), independent of the app
- * theme, so it looks the same in either design variant.
- */
-
-private val BrandInk = Color(0xFFFFFFFF)
-private val BrandRed = Color(0xFFE5484D)
-
-/** MIND[SET], with the brackets in brand red. */
-val brandWordmark = buildAnnotatedString {
-    withStyle(SpanStyle(color = BrandInk)) { append("MIND") }
-    withStyle(SpanStyle(color = BrandRed)) { append("[") }
-    withStyle(SpanStyle(color = BrandInk)) { append("SET") }
-    withStyle(SpanStyle(color = BrandRed)) { append("]") }
-}
-
-/**
- * The icon glyph stacked above the [brandWordmark]. [logoSize] and [gap] let callers scale it
- * (Splash uses the large centred form; Onboarding a smaller header form). Colours are fixed to the
- * brand palette so the element is pixel-identical across screens.
- */
 @Composable
-fun BrandLockup(
+fun AppBrand(
     modifier: Modifier = Modifier,
-    logoSize: Dp = 112.dp,
+    logoSize: Dp = 108.dp,
     gap: Dp = 28.dp,
     showWordmark: Boolean = true,
     wordmarkStyle: TextStyle = MaterialTheme.typography.displaySmall.copy(
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-1).sp,
     ),
 ) {
+    val primary = MaterialTheme.colorScheme.primary
+
+    val appName = buildAnnotatedString {
+        withStyle(SpanStyle(color = Color.White)) { append("MIND") }
+        withStyle(SpanStyle(color = primary)) { append("[") }
+        withStyle(SpanStyle(color = Color.White)) { append("SET") }
+        withStyle(SpanStyle(color = primary)) { append("]") }
+    }
+
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Image(
             painter = painterResource(R.drawable.brand_logo),
             contentDescription = "MIND[SET]",
             modifier = Modifier.size(logoSize),
         )
+
         if (showWordmark) {
             Spacer(Modifier.height(gap))
-            Text(text = brandWordmark, style = wordmarkStyle)
+            Text(text = appName, style = wordmarkStyle)
         }
     }
 }

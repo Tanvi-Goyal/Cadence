@@ -1,0 +1,21 @@
+package dev.cadence.components
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import dev.cadence.Dimens
+
+@Composable
+fun FieldLabel(text: String) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(
+            bottom = Dimens.Padding.xsm,
+            start = Dimens.Padding.xs
+        ),
+    )
+}

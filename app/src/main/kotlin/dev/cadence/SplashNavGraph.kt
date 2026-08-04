@@ -28,6 +28,7 @@ fun NavGraphBuilder.splashScreen(onDone: (onboardingComplete: Boolean) -> Unit) 
         val onboardingComplete by remember(repository) {
             repository.observe().map { it.onboardingComplete }
         }.collectAsStateWithLifecycle(initialValue = false)
+
         SplashScreen(onDone = { onDone(onboardingComplete) })
     }
 }
