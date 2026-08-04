@@ -25,6 +25,8 @@ data class HyroxStepDef(
     val targetDistanceM: Int? = null,
     val targetReps: Int? = null,
     val targetLoadKg: Double? = null,
+    /** v12: the `event_segment.id` this step resolves from — persisted onto the entry's `segmentKey`. */
+    val segmentKey: String? = null,
 )
 
 /** A HYROX division option for the selector (from the seeded reference tables). */

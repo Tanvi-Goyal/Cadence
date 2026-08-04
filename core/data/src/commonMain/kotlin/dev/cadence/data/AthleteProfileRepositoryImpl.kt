@@ -30,10 +30,8 @@ private fun AthleteProfileEntity.toDomain() = AthleteProfile(
     fullName = fullName,
     bodyweightKg = bodyweightKg,
     heightCm = heightCm,
-    defaultDivision = defaultDivision,
-    raceDate = raceDate,
-    raceFormat = raceFormat,
-    raceCity = raceCity,
+    defaultDivisionKey = defaultDivisionKey,
+    defaultMode = defaultMode,
     onboardingComplete = onboardingComplete,
 )
 
@@ -41,9 +39,7 @@ private fun AthleteProfile.toEntity() = AthleteProfileEntity(
     fullName = fullName,
     bodyweightKg = bodyweightKg,
     heightCm = heightCm,
-    defaultDivision = defaultDivision,
-    raceDate = raceDate,
-    raceFormat = raceFormat,
-    raceCity = raceCity,
+    defaultDivisionKey = defaultDivisionKey,
+    defaultMode = defaultMode,
     onboardingComplete = onboardingComplete,
 )

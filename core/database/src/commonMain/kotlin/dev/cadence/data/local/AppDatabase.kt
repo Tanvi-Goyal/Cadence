@@ -17,12 +17,13 @@ import androidx.room3.RoomDatabaseConstructor
         Session::class, OutboxEntry::class, SyncMeta::class, PlannedSession::class,
         Exercise::class, ExerciseEntry::class, SetEntry::class, PreferencesEntity::class,
         Block::class, PersonalRecord::class,
-        // v10: HYROX reference tables (format-as-data) + `sessions.finishedAt`.
-        HyroxStationRef::class, HyroxDivisionRef::class, HyroxStationLoadRef::class,
         // v11: athlete profile + race config (Onboarding) and the subscription-entitlement stub.
         AthleteProfileEntity::class, EntitlementEntity::class,
+        // v12 (iteration 3): event-format reference tables (generalize Hyrox → data) + first-class race goal.
+        EventFormatEntity::class, EventSegmentEntity::class, EventDivisionEntity::class,
+        SegmentStandardEntity::class, RaceGoalEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 @ConstructedBy(AppDatabaseConstructor::class)
@@ -38,7 +39,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun preferencesDao(): PreferencesDao
     abstract fun blockDao(): BlockDao
     abstract fun personalRecordDao(): PersonalRecordDao
-    abstract fun hyroxRefDao(): HyroxRefDao
+    abstract fun eventRefDao(): EventRefDao
+    abstract fun raceGoalDao(): RaceGoalDao
     abstract fun athleteProfileDao(): AthleteProfileDao
     abstract fun entitlementDao(): EntitlementDao
 }

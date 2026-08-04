@@ -20,6 +20,8 @@ data class PersonalRecord(
     val kind: PrKind,
     val value: Double,
     val distanceBucketM: Int?,
+    /** v12: weight-class key (an `event_division.key`) for a loaded station's PB; null = division-agnostic. */
+    val divisionKey: String? = null,
     val achievedAt: Instant,
     val sourceSetId: String,
     override val createdAt: Instant,

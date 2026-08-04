@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.Flow
  */
 @Entity(
     tableName = "personal_records",
-    indices = [Index("exerciseId"), Index("exerciseId", "kind", "distanceBucketM")],
+    indices = [Index("exerciseId"), Index("exerciseId", "kind", "divisionKey", "distanceBucketM")],
 )
 data class PersonalRecord(
     @PrimaryKey val id: String,
@@ -27,6 +27,10 @@ data class PersonalRecord(
     val kind: String,
     val value: Double,
     val distanceBucketM: Int? = null,
+    // v12: weight-class dimension — an `event_division.key` (e.g. "MEN"). A loaded station's PB is
+    // per-division ("Sled Push @ Men" ≠ "@ Women Pro"); null for division-agnostic PBs (bodyweight,
+    // free-weight lifts, runs). Part of the "current PR of this kind (+ division + bucket)" lookup key.
+    val divisionKey: String? = null,
     val achievedAt: Long,
     val sourceSetId: String,
     val createdAt: Long,

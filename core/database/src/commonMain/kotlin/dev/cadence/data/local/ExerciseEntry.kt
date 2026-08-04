@@ -30,6 +30,10 @@ data class ExerciseEntry(
     // migration is a plain nullable ADD COLUMN.
     val note: String? = null,
     val eachSide: Boolean? = null,
+    // v12: tags a race entry to the format segment it fulfils (an `event_segment.id`) so the race
+    // timeline, per-segment PBs, and compromised-running splits are ordered reads instead of an
+    // inference from orderIndex+exerciseId. Null on ordinary (non-race) entries.
+    val segmentKey: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,

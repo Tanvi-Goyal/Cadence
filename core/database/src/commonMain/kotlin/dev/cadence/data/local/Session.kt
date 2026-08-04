@@ -34,6 +34,17 @@ data class Session(
     // v10: stamped when a live workout is completed (null = in progress / not applicable). Enables a
     // total-time readout and a "finished" notion without changing the "live from insert" model.
     val finishedAt: Long? = null,
+    // v12 (iteration 3): race-awareness + session summary. A race sim links to the goal it trained
+    // for ([raceGoalId]) and self-describes its format/division (so it survives the goal being
+    // deleted, and per-station PBs know the weight class). Summary metrics are nullable — v1 has no
+    // wearable, so Health Connect (Phase 5) fills HR/calories and [perceivedEffort] (session RPE 1–10)
+    // is the only intensity source until then. All null on ordinary non-race sessions.
+    val raceGoalId: String? = null,
+    val formatKey: String? = null,
+    val divisionKey: String? = null,
+    val avgHeartRate: Int? = null,
+    val caloriesKcal: Int? = null,
+    val perceivedEffort: Int? = null,
     val updatedAt: Long,
     val syncStatus: String = SyncStatus.PENDING,
     // Sync envelope. [deletedAt] is the tombstone (null = live) — it replaced the pre-v8 boolean

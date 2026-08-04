@@ -1,14 +1,21 @@
+@file:OptIn(ExperimentalTime::class)
+
 package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.cadence.domain.AthleteProfile
 import dev.cadence.domain.AthleteProfileRepository
+import dev.cadence.domain.RaceGoalRepository
+import dev.cadence.model.EventFormat
+import dev.cadence.model.RaceMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 enum class OnboardingStep { ATHLETE_PROFILE, RACE_CONFIG }
 enum class Gender { WOMEN, MEN }
@@ -17,6 +24,7 @@ enum class RaceFormat { SINGLES, DOUBLES, RELAY }
 
 class OnboardingViewModel(
     private val repository: AthleteProfileRepository,
+    private val raceGoals: RaceGoalRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingUiState())
@@ -49,17 +57,30 @@ class OnboardingViewModel(
         if (!s.currentStepValid || s.saving) return
         _state.update { it.copy(saving = true) }
         viewModelScope.launch {
+            val division = divisionKey(s.gender, s.tier)
+            val mode = when (s.format) {
+                RaceFormat.DOUBLES -> RaceMode.DOUBLES
+                RaceFormat.RELAY -> RaceMode.RELAY
+                else -> RaceMode.SINGLES
+            }
+            // Identity + baseline on the profile…
             repository.save(
                 AthleteProfile(
                     fullName = s.fullName.trim(),
                     bodyweightKg = s.bodyweightKg.toDoubleOrNull(),
                     heightCm = s.heightIn.toDoubleOrNull()?.let { inches -> inches * INCH_TO_CM },
-                    defaultDivision = divisionKey(s.gender, s.tier),
-                    raceDate = s.raceDateMillis,
-                    raceFormat = s.format?.name,
-                    raceCity = s.raceCity.trim().ifBlank { null },
+                    defaultDivisionKey = division,
+                    defaultMode = mode.name,
                     onboardingComplete = true,
                 ),
+            )
+            // …and the target race as a first-class, multi-instance goal (drives the Home countdown).
+            raceGoals.create(
+                formatKey = EventFormat.HYROX,
+                divisionKey = division,
+                mode = mode,
+                targetDate = s.raceDateMillis?.let(Instant::fromEpochMilliseconds),
+                city = s.raceCity.trim().ifBlank { null },
             )
             _state.update { it.copy(saving = false, done = true) }
         }

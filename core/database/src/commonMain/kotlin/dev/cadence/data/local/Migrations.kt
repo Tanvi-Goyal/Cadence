@@ -189,3 +189,118 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         )
     }
 }
+
+/**
+ * v11 → v12 (iteration 3). Generalizes the reference plane past Hyrox and makes the goal race
+ * first-class:
+ *  - the Hyrox-specific `hyrox_*` reference tables become format-agnostic `event_*` tables (Hyrox is
+ *    reseeded at runtime as data; a new event is then pure seed rows, never a migration);
+ *  - a new syncable `race_goal` table replaces the single target that lived on `athlete_profile`;
+ *  - race-awareness columns land on `sessions` (`raceGoalId`/`formatKey`/`divisionKey` + nullable
+ *    summary metrics) and `exercise_entries` (`segmentKey`), plus a weight-class `divisionKey` on
+ *    `personal_records`;
+ *  - `athlete_profile` slims to identity + baseline.
+ *
+ * All new `CREATE TABLE`s are copied verbatim from Room's generated `schemas/12.json`, so post-migration
+ * validation passes column-for-column. New columns are NULLABLE (plain `ADD COLUMN` — a NOT-NULL add
+ * without a DEFAULT would fail validation, see [MIGRATION_7_8]).
+ *
+ * **Order matters:** the existing athlete's race intent is copied INTO `race_goal` (step 6) *before*
+ * `athlete_profile` is recreated (step 7) — the recreate drops `raceDate`/`raceFormat`/`raceCity`, so
+ * we must read them first. The migrated goal can't call the injected `Clock` (raw SQL), so its
+ * timestamps come from SQLite `strftime` wall-clock; its id is deterministic (only one profile row).
+ */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        // 1. Event-format reference tables (empty; runtime ensureSeeded populates them).
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `event_format` (`formatKey` TEXT NOT NULL, `name` TEXT NOT NULL, " +
+                "`description` TEXT NOT NULL, PRIMARY KEY(`formatKey`))",
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `event_segment` (`id` TEXT NOT NULL, `formatKey` TEXT NOT NULL, " +
+                "`orderIndex` INTEGER NOT NULL, `kind` TEXT NOT NULL, `exerciseId` TEXT NOT NULL, " +
+                "`name` TEXT NOT NULL, `label` TEXT NOT NULL, `metric` TEXT NOT NULL, `distanceM` INTEGER, " +
+                "`reps` INTEGER, `loadType` TEXT, `descriptor` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        )
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_event_segment_formatKey` ON `event_segment` (`formatKey`)")
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `event_division` (`id` TEXT NOT NULL, `formatKey` TEXT NOT NULL, " +
+                "`key` TEXT NOT NULL, `label` TEXT NOT NULL, `gender` TEXT NOT NULL, `tier` TEXT NOT NULL, " +
+                "`orderIndex` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_event_division_formatKey` ON `event_division` (`formatKey`)")
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `segment_standard` (`id` TEXT NOT NULL, `formatKey` TEXT NOT NULL, " +
+                "`divisionKey` TEXT NOT NULL, `segmentId` TEXT NOT NULL, `mode` TEXT NOT NULL, `loadKg` REAL, " +
+                "`loadDisplay` TEXT, `targetReps` INTEGER, `targetDistanceM` INTEGER, `targetHeightM` REAL, " +
+                "PRIMARY KEY(`id`))",
+        )
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_segment_standard_formatKey` ON `segment_standard` (`formatKey`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_segment_standard_divisionKey` ON `segment_standard` (`divisionKey`)")
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_segment_standard_segmentId` ON `segment_standard` (`segmentId`)")
+
+        // 2. Drop the old Hyrox-specific reference tables (regenerated as event_* data — no user data).
+        connection.execSQL("DROP TABLE IF EXISTS `hyrox_station_loads`")
+        connection.execSQL("DROP TABLE IF EXISTS `hyrox_divisions`")
+        connection.execSQL("DROP TABLE IF EXISTS `hyrox_stations`")
+        connection.execSQL("DELETE FROM `sync_meta` WHERE `key` = 'hyrox_seed_version'")
+
+        // 3. sessions → race-awareness + summary (all nullable ADD COLUMN).
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `raceGoalId` TEXT")
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `formatKey` TEXT")
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `divisionKey` TEXT")
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `avgHeartRate` INTEGER")
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `caloriesKcal` INTEGER")
+        connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `perceivedEffort` INTEGER")
+
+        // 4. exercise_entries → segment tag (nullable ADD COLUMN).
+        connection.execSQL("ALTER TABLE `exercise_entries` ADD COLUMN `segmentKey` TEXT")
+
+        // 5. personal_records → weight-class dimension + recreate the composite index to include it.
+        connection.execSQL("ALTER TABLE `personal_records` ADD COLUMN `divisionKey` TEXT")
+        connection.execSQL("DROP INDEX IF EXISTS `index_personal_records_exerciseId_kind_distanceBucketM`")
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_personal_records_exerciseId_kind_divisionKey_distanceBucketM` " +
+                "ON `personal_records` (`exerciseId`, `kind`, `divisionKey`, `distanceBucketM`)",
+        )
+
+        // 6. race_goal → new table, then migrate an existing user's race intent INTO it (before the
+        //    athlete_profile recreate drops those columns). Deterministic id (one profile row);
+        //    strftime wall-clock for the envelope; status by whether the race date is still ahead.
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `race_goal` (`id` TEXT NOT NULL, `formatKey` TEXT NOT NULL, " +
+                "`divisionKey` TEXT NOT NULL, `mode` TEXT NOT NULL, `targetDate` INTEGER, `city` TEXT, " +
+                "`goalTimeSec` INTEGER, `status` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, `syncStatus` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        )
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_race_goal_status_targetDate` ON `race_goal` (`status`, `targetDate`)",
+        )
+        connection.execSQL(
+            "INSERT INTO `race_goal` (id, formatKey, divisionKey, mode, targetDate, city, goalTimeSec, " +
+                "status, createdAt, updatedAt, deletedAt, syncStatus) " +
+                "SELECT 'goal-migrated-0', 'HYROX', defaultDivision, COALESCE(raceFormat, 'SINGLES'), " +
+                "raceDate, raceCity, NULL, " +
+                "CASE WHEN raceDate >= strftime('%s','now') * 1000 THEN 'UPCOMING' ELSE 'COMPLETED' END, " +
+                "strftime('%s','now') * 1000, strftime('%s','now') * 1000, NULL, 'PENDING' " +
+                "FROM `athlete_profile` WHERE id = 0 AND raceDate IS NOT NULL",
+        )
+
+        // 7. athlete_profile → recreate slim (rename defaultDivision→defaultDivisionKey, + defaultMode,
+        //    drop the race columns). Column removal needs a table-recreate (no DROP COLUMN pre-3.35).
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `athlete_profile_new` (`id` INTEGER NOT NULL, `fullName` TEXT NOT NULL, " +
+                "`bodyweightKg` REAL, `heightCm` REAL, `defaultDivisionKey` TEXT NOT NULL, `defaultMode` TEXT, " +
+                "`onboardingComplete` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        )
+        connection.execSQL(
+            "INSERT INTO `athlete_profile_new` (id, fullName, bodyweightKg, heightCm, defaultDivisionKey, " +
+                "defaultMode, onboardingComplete) " +
+                "SELECT id, fullName, bodyweightKg, heightCm, defaultDivision, NULL, onboardingComplete " +
+                "FROM `athlete_profile`",
+        )
+        connection.execSQL("DROP TABLE `athlete_profile`")
+        connection.execSQL("ALTER TABLE `athlete_profile_new` RENAME TO `athlete_profile`")
+    }
+}

@@ -8,10 +8,12 @@ import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Single-row table holding the athlete's profile + target race, captured in Onboarding. Device-local —
- * like [PreferencesEntity] it carries no sync fields and never enqueues an outbox row. `defaultDivision`
- * / `raceFormat` are stored as plain TEXT (a `hyrox_divisions.key` such as "MEN", and a race format such
- * as "SINGLES"); `onboardingComplete` gates the app's start destination.
+ * Single-row table holding the athlete's identity + physical baseline, captured in Onboarding.
+ * Device-local — like [PreferencesEntity] it carries no sync fields and never enqueues an outbox row.
+ * The **target race moved out** in v12 to the first-class, syncable `race_goal` table; this row keeps
+ * only the defaults that pre-fill new goals/sims. `defaultDivisionKey` is an `event_division.key`
+ * (e.g. "MEN"); `defaultMode` is a [dev.cadence.model.RaceMode] name (e.g. "SINGLES"); `onboardingComplete`
+ * gates the app's start destination.
  */
 @Entity(tableName = "athlete_profile")
 data class AthleteProfileEntity(
@@ -19,10 +21,8 @@ data class AthleteProfileEntity(
     val fullName: String,
     val bodyweightKg: Double?,
     val heightCm: Double?,
-    val defaultDivision: String,
-    val raceDate: Long?,
-    val raceFormat: String?,
-    val raceCity: String?,
+    val defaultDivisionKey: String,
+    val defaultMode: String?,
     val onboardingComplete: Boolean,
 ) {
     companion object {

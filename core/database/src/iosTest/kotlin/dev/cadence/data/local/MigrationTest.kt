@@ -41,6 +41,9 @@ class MigrationTest {
     private fun SQLiteConnection.nullableLong(sql: String): Long? =
         prepare(sql).use { st -> st.step(); if (st.isNull(0)) null else st.getLong(0) }
 
+    private fun SQLiteConnection.text(sql: String): String? =
+        prepare(sql).use { st -> st.step(); if (st.isNull(0)) null else st.getText(0) }
+
     @Test
     fun folds_legacy_session_tree_into_blocks_and_backfills_tombstones() = runTest {
         helper.createDatabase(version = 7).apply {
@@ -201,6 +204,74 @@ class MigrationTest {
         // New single-row tables exist and start empty (no seed row — repos default an absent row).
         assertEquals(0L, db.long("SELECT COUNT(*) FROM athlete_profile"))
         assertEquals(0L, db.long("SELECT COUNT(*) FROM entitlement"))
+
+        db.close()
+    }
+
+    /**
+     * v11 → v12 (iteration 3). The load-bearing case: an existing athlete's race intent (stored on
+     * `athlete_profile`) must survive as a first-class `race_goal` row *before* the profile is slimmed.
+     * Also asserts the reference plane generalized (`hyrox_*` dropped, empty `event_*` created), the
+     * additive columns exist, and no session/PR data is lost. Validates against `12.json`.
+     */
+    @Test
+    fun v12_generalizes_events_and_migrates_race_intent_to_goal() = runTest {
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = schemaDir,
+            fileName = NSTemporaryDirectory() + "cadence-migration-test-v12.db",
+            driver = BundledSQLiteDriver(),
+            databaseClass = AppDatabase::class,
+        )
+        val futureRaceDate = 4_102_444_800_000L // year 2100 — comfortably ahead of strftime('now')
+        helper.createDatabase(version = 11).apply {
+            // An onboarded athlete with a target race on the (soon-to-be-removed) profile columns.
+            execSQL(
+                "INSERT INTO athlete_profile (id, fullName, bodyweightKg, heightCm, defaultDivision, " +
+                    "raceDate, raceFormat, raceCity, onboardingComplete) VALUES " +
+                    "(0, 'Alex', 80.0, 180.0, 'MEN', $futureRaceDate, 'SINGLES', 'Mumbai', 1)",
+            )
+            // A logged session + a cached PB — must survive the additive changes untouched.
+            execSQL(
+                "INSERT INTO sessions (id, startedAt, name, type, isTemplate, source, updatedAt, " +
+                    "syncStatus, createdAt) VALUES " +
+                    "('s1', 1000, 'Hyrox', 'HYROX', 0, 'MANUAL', 2000, 'SYNCED', 1000)",
+            )
+            execSQL(
+                "INSERT INTO personal_records (id, exerciseId, kind, value, distanceBucketM, achievedAt, " +
+                    "sourceSetId, createdAt, updatedAt, deletedAt) VALUES " +
+                    "('pr1', 'hyrox-sled-push', 'BEST_TIME', 135.0, 50, 1500, 'set1', 1000, 1500, NULL)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(version = 12, migrations = listOf(MIGRATION_11_12))
+
+        // Race intent migrated into a first-class goal, keyed off the old profile columns.
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM race_goal"))
+        assertEquals("goal-migrated-0", db.text("SELECT id FROM race_goal"))
+        assertEquals("HYROX", db.text("SELECT formatKey FROM race_goal"))
+        assertEquals("MEN", db.text("SELECT divisionKey FROM race_goal"))
+        assertEquals("SINGLES", db.text("SELECT mode FROM race_goal"))
+        assertEquals("Mumbai", db.text("SELECT city FROM race_goal"))
+        assertEquals(futureRaceDate, db.long("SELECT targetDate FROM race_goal"))
+        // Future race date ⇒ UPCOMING (the CASE branch); envelope + local syncStatus populated.
+        assertEquals("UPCOMING", db.text("SELECT status FROM race_goal"))
+        assertEquals("PENDING", db.text("SELECT syncStatus FROM race_goal"))
+
+        // Profile slimmed: race columns gone, division renamed, defaultMode added (null).
+        assertEquals("MEN", db.text("SELECT defaultDivisionKey FROM athlete_profile WHERE id = 0"))
+        assertTrue(db.long("SELECT defaultMode IS NULL FROM athlete_profile WHERE id = 0") == 1L)
+
+        // Reference plane generalized: hyrox_* dropped, event_* created and empty (runtime seeds them).
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='hyrox_stations'"))
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='event_format'"))
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM event_segment"))
+
+        // No data loss on the additive changes; new columns read back null on migrated rows.
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM sessions WHERE id = 's1'"))
+        assertTrue(db.long("SELECT raceGoalId IS NULL AND formatKey IS NULL AND divisionKey IS NULL FROM sessions WHERE id = 's1'") == 1L)
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM personal_records WHERE id = 'pr1'"))
+        assertTrue(db.long("SELECT divisionKey IS NULL FROM personal_records WHERE id = 'pr1'") == 1L)
 
         db.close()
     }

@@ -28,6 +28,19 @@ data class Session(
     val programWeek: Int? = null,
     /** v10: when a live workout was completed (null = in progress / not applicable). */
     val finishedAt: Instant? = null,
+    /**
+     * v12: race-awareness + summary. A race sim links to the [RaceGoal] it trained for ([raceGoalId])
+     * and self-describes its event [formatKey] / [divisionKey] (so it survives the goal being deleted
+     * and per-station PBs know the weight class). Summary metrics are nullable — [avgHeartRate] /
+     * [caloriesKcal] await Health Connect (Phase 5); [perceivedEffort] (session RPE 1–10) is the only
+     * intensity source until then. All null on ordinary non-race sessions.
+     */
+    val raceGoalId: String? = null,
+    val formatKey: String? = null,
+    val divisionKey: String? = null,
+    val avgHeartRate: Int? = null,
+    val caloriesKcal: Int? = null,
+    val perceivedEffort: Int? = null,
     override val createdAt: Instant,
     override val updatedAt: Instant,
     override val deletedAt: Instant?,
