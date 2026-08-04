@@ -40,3 +40,29 @@ enum class HyroxStation {
 
 /** The kinds of personal record Cadence tracks (per exercise, and per distance bucket for time). */
 enum class PrKind { EST_1RM, MAX_WEIGHT, MAX_REPS, BEST_TIME, MAX_CALORIES }
+
+// --- Event-format model (iteration 3) --------------------------------------------------------------
+// These generalize the previously Hyrox-specific reference data. Hyrox is the v1 seeded instance;
+// DEKA / CrossFit arrive later as pure seed rows (no schema change).
+
+/**
+ * A segment of an [EventFormat] is a RUN leg, a functional STATION, or a TRANSITION (roxzone).
+ * Modelling runs as explicit segments (rather than a "run before" label on a station) makes the
+ * race timeline and per-run pace an ordered read instead of an inference.
+ */
+enum class SegmentKind { RUN, STATION, TRANSITION }
+
+/**
+ * How a race is contested. v1 seeds SINGLES standards and captures single-athlete work; DOUBLES /
+ * RELAY loads are seedable later as additional [SegmentStandard] rows with no migration.
+ */
+enum class RaceMode { SINGLES, DOUBLES, RELAY }
+
+/** Lifecycle of a [RaceGoal] — Home reads the next [UPCOMING]; past races become [COMPLETED]. */
+enum class RaceGoalStatus { UPCOMING, COMPLETED, ABANDONED }
+
+/** Division axis: competitor gender category. */
+enum class Gender { WOMEN, MEN }
+
+/** Division axis: open (standard) vs pro (elite) weights. */
+enum class Tier { OPEN, PRO }

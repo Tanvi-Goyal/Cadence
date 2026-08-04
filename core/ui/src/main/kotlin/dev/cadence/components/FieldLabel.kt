@@ -5,7 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import dev.cadence.Dimens
+import dev.cadence.spacing
 
 @Composable
 fun FieldLabel(text: String) {
@@ -14,8 +14,8 @@ fun FieldLabel(text: String) {
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(
-            bottom = Dimens.Padding.xsm,
-            start = Dimens.Padding.xs
+            bottom = MaterialTheme.spacing.sm,
+            start = MaterialTheme.spacing.xs
         ),
     )
 }

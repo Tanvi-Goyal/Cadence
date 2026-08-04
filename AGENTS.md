@@ -9,11 +9,22 @@ Canonical agent brief. Claude Code reads it via `@AGENTS.md` in CLAUDE.md; other
 tools read it directly. Keep it lean — every line must change agent behavior.
 
 ## Project snapshot
-- Modules: `:composeApp` (Android UI) · `:shared` (commonMain domain/data/sync/
-  ViewModels, plus androidMain + iosMain seams) · `:contracts` (shared wire DTOs,
-  consumed by client + server) · `:server` (Ktor sync backend) · `:benchmark`
-  (Macrobenchmark + Baseline Profile — exists). `iosApp/` is a SwiftUI shell at
-  feature parity (shared ViewModels back both platforms).
+- Modules — Android host + KMP shared logic, split into `:core:*` and `:feature:*`:
+  - `:app` — Android entry point: Compose host + navigation wiring; depends on the
+    UI cores + every feature. No business logic.
+  - `:shared` — KMP aggregator + Koin DI (`di/Modules.kt`). api-exports the core +
+    feature modules so the app and the iOS framework consume one dependency. Holds
+    NO domain/data/UI itself (that moved into `:core:*` and `:feature:*`).
+  - `:core:*` — shared logic. Pure KMP: `:core:model`, `:core:common`, `:core:domain`.
+    Offline-first data layer (KMP + androidMain/iosMain seams): `:core:database`,
+    `:core:network`, `:core:data`, `:core:sync`. Android-only Compose: `:core:designsystem`
+    (theme/spacing tokens), `:core:ui` (shared components), `:core:navigation`.
+  - `:feature:*` — one module per feature (profile, stats, history, exercises, logging,
+    templates, home, auth, onboarding). KMP: ViewModels/MVI state in commonMain,
+    Compose screens in androidMain.
+  - `:contracts` (shared wire DTOs, client + server) · `:server` (Ktor sync backend) ·
+    `:benchmark` (Macrobenchmark + Baseline Profile). `iosApp/` is a SwiftUI shell at
+    feature parity (shared ViewModels back both platforms).
 - Stack: Kotlin 2.4 (K2), Room-KMP, Ktor 3, Koin, Coroutines/Flow, Compose.
   Versions live in `gradle/libs.versions.toml` — read there, never guess.
 - Backend: custom Ktor sync engine (outbox push / cursor pull / LWW / soft
@@ -26,14 +37,14 @@ tools read it directly. Keep it lean — every line must change agent behavior.
   (Sept 2026); template-first capture; Hyrox race module; Health Connect import.
 
 ## Build & run
-- `./gradlew :composeApp:assembleDebug`      # Android debug build
+- `./gradlew :app:assembleDebug`             # Android debug build
 - `./gradlew :shared:testAndroidHostTest`    # shared unit tests (androidLibrary
   Gradle plugin uses "hostTest" terminology, not the classic testDebugUnitTest)
 - `./gradlew :shared:iosSimulatorArm64Test`  # shared tests on iOS (Room integration
   tests live in iosTest — the no-arg in-memory DB builder is Context-free on native)
 - `./gradlew :server:run`                     # start the Ktor sync backend on :8080
 - `./gradlew :server:test`                    # sync route tests (LWW / cursor / soft delete)
-- `./gradlew :composeApp:generateBaselineProfile`  # generate + package the baseline profile (needs a device)
+- `./gradlew :app:generateBaselineProfile`   # generate + package the baseline profile (needs a device)
 - `./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest`  # run Macrobenchmarks (Startup/Scroll) on a device
   # benchmark plugin pinned to 1.5.0-alpha06 — 1.4.1 needs the legacy TestExtension which AGP 9's new DSL dropped
 

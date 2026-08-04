@@ -11,9 +11,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import dev.cadence.Dimens
 import dev.cadence.GlassBorder
 import dev.cadence.GlassFill
+import dev.cadence.spacing
 
 @Composable
 fun GlassCard(
@@ -30,8 +30,8 @@ fun GlassCard(
     if (onClick != null) base = base.clickable(onClick = onClick)
     Box(
         base.padding(
-            horizontal = Dimens.Padding.xmd,
-            vertical = Dimens.Padding.sm,
+            horizontal = MaterialTheme.spacing.md,
+            vertical = MaterialTheme.spacing.smd,
         )
     ) { content() }
 

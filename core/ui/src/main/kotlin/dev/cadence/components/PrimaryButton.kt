@@ -13,9 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.cadence.Dimens
 import dev.cadence.GlassBorder
 import dev.cadence.GlassFill
+import dev.cadence.spacing
 
 @Composable
 fun PrimaryButton(
@@ -29,7 +29,7 @@ fun PrimaryButton(
             .clip(MaterialTheme.shapes.medium)
             .background(bg)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = Dimens.Padding.sm, horizontal = Dimens.Padding.xsm),
+            .padding(vertical = MaterialTheme.spacing.smd, horizontal = MaterialTheme.spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
         Text(

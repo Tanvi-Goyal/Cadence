@@ -78,7 +78,7 @@ fun OnboardingScreen(
                 Modifier
                     .fillMaxSize()
                     .safeDrawingPadding()
-                    .padding(horizontal = Dimens.Padding.lg),
+                    .padding(horizontal = MaterialTheme.spacing.lg),
             ) {
                 Spacer(Modifier.height(MaterialTheme.spacing.lg))
                 AppBrand(
@@ -276,7 +276,7 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
 private fun BottomButtons(state: OnboardingUiState, vm: OnboardingViewModel) {
     Row(
         Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.Padding.sm),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
     ) {
         if (!state.isFirst) {
             SecondaryButton(text = "Back", onClick = vm::onBack, modifier = Modifier.weight(1f))
@@ -326,7 +326,7 @@ private fun StepperField(
                 )
 //                Column(horizontalAlignment = Alignment.CenterHorizontally) {
 //                    StepChevron(up = true, onClick = onIncrement)
-//                    Spacer(Modifier.height(Dimens.Padding.xxs))
+//                    Spacer(Modifier.height(MaterialTheme.spacing.xs))
 //                    StepChevron(up = false, onClick = onDecrement)
 //                }
             }
@@ -363,7 +363,7 @@ private fun SegmentedSelector(options: List<String>, selectedIndex: Int, onSelec
             .clip(shape)
             .background(GlassFill)
             .border(1.dp, GlassBorder, shape)
-            .padding(Dimens.Padding.xs),
+            .padding(MaterialTheme.spacing.xs),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
     ) {
         options.forEachIndexed { i, label ->
@@ -374,7 +374,7 @@ private fun SegmentedSelector(options: List<String>, selectedIndex: Int, onSelec
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (active) colors.primary else Color.Transparent)
                     .clickable { onSelect(i) }
-                    .padding(vertical = Dimens.Padding.xsm),
+                    .padding(vertical = MaterialTheme.spacing.sm),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

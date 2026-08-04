@@ -9,14 +9,16 @@ import androidx.compose.ui.unit.dp
 
 /*
  * Spacing tokens — Material 3 has no spacing scale, so Kinetic Precision defines its own on the
- * strict 8dp grid from docs/design.md (xs=4 is the only sub-8 increment, for tight in-component
- * grouping). Provided via [LocalSpacing] in [CadenceTheme] and read as `MaterialTheme.spacing.md`
- * so screens use tokens instead of raw dp literals.
+ * 8dp baseline grid from docs/design.md. Two 4dp sub-grid steps are allowed for fine, in-component
+ * work (per M3: 8dp for layout, 4dp increments for small elements): `xs`=4 for tight grouping and
+ * `smd`=12 for component-internal padding (button/card insets). Provided via [LocalSpacing] in
+ * [CadenceTheme] and read as `MaterialTheme.spacing.md` so screens use tokens instead of raw dp.
  */
 data class Spacing(
     val none: Dp = 0.dp,
     val xs: Dp = 4.dp,
     val sm: Dp = 8.dp,
+    val smd: Dp = 12.dp,
     val md: Dp = 16.dp,
     val lg: Dp = 24.dp,
     val xl: Dp = 32.dp,
