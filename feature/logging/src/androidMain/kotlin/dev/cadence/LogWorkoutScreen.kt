@@ -12,17 +12,24 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,40 +39,58 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.cadence.components.GlassTextField
+import dev.cadence.components.PrimaryButton
+import dev.cadence.components.StepperField
 import dev.cadence.domain.LoggedItemUi
-import dev.cadence.domain.LogSectionUi
 import dev.cadence.domain.Units
 import dev.cadence.domain.WeightUnit
 import dev.cadence.icons.Add
-import dev.cadence.icons.ArrowBack
+import dev.cadence.icons.Bolt
+import dev.cadence.icons.Burpee
+import dev.cadence.icons.Check
+import dev.cadence.icons.Close
+import dev.cadence.icons.Delete
 import dev.cadence.icons.Dumbbell
-import dev.cadence.icons.Play
+import dev.cadence.icons.Info
+import dev.cadence.icons.LowerBody
+import dev.cadence.icons.Rowing
+import dev.cadence.icons.SkiErg
+import dev.cadence.icons.SledPull
+import dev.cadence.icons.WallBall
 import dev.cadence.model.CaptureFields
 import dev.cadence.model.MetricType
+import dev.cadence.model.SessionType
 import dev.cadence.model.SetEntry
 import dev.cadence.presentation.LogWorkoutViewModel
+import dev.cadence.presentation.StationOption
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /*
- * Log Workout — the live tracking screen for one session (Kinetic design). Reads the DB-hydrated
- * session as ordered sections (warm-up / main / … / core), and renders each exercise's sets as
- * metric-aware rows (driven by CaptureFields). A set instantiated from a template shows its
- * prescription as a GHOST (prefilled, faint target); tapping ✓ writes the actual. Rest-timer / pause
- * / ongoing-notification are the separate tracker slice.
+ * Log Session — the core capture screen for one active session (MindSet / Obsidian). Reads the DB-
+ * hydrated session as a flat list of exercise/station cards, each rendered metric-aware from
+ * CaptureFields. Strength sets prefill from the last time the exercise was logged (ghost targets you
+ * confirm with ✓); Hyrox stations prefill their division standard and show a "Standard" reference.
+ * The session type is auto-derived from content (a read-only header tag) and persisted on Complete.
+ * No timers / rest countdowns / supersets in v1.
  */
 
-private val Gutter = 20.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogWorkoutScreen(
     sessionId: String,
@@ -77,223 +102,857 @@ fun LogWorkoutScreen(
     viewModel: LogWorkoutViewModel = koinViewModel { parametersOf(sessionId) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val stations by viewModel.stations.collectAsStateWithLifecycle()
+    val standards by viewModel.stationStandards.collectAsStateWithLifecycle()
+    var showAddSheet by remember { mutableStateOf(false) }
+
     // An exercise picked in the ExercisePicker is added here (this screen's alive VM scope) so the
-    // write can't be cancelled by the picker being popped off the back stack.
+    // write — and its history prefill — can't be cancelled by the picker being popped off the stack.
     LaunchedEffect(pickedExerciseId) {
         if (pickedExerciseId != null) {
-            viewModel.addExercise(pickedExerciseId)
+            viewModel.addExercisePrefilled(pickedExerciseId)
             onExerciseConsumed()
         }
     }
+
     CadenceTheme {
         val colors = MaterialTheme.colorScheme
-        Scaffold(containerColor = colors.background) { inner ->
-            Box(Modifier.fillMaxSize()) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        top = inner.calculateTopPadding(),
-                        bottom = inner.calculateBottomPadding() + 108.dp,
-                        start = Gutter,
-                        end = Gutter,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                ) {
-                    item(key = "header") { TopBar(state.sessionName.ifEmpty { "Session" }, onBack) }
-                    state.sections.forEach { section ->
-                        item(key = "sec-${section.label}") { SectionHeader(section.label, section.meta) }
-                        items(section.items, key = { it.loggedItemId }) { item ->
-                            ExerciseCard(
-                                item = item,
-                                onUpdate = viewModel::updateActual,
-                                onAddSet = { r, l, t, d -> viewModel.addSet(item.loggedItemId, r, l, t, d) },
-                            )
-                        }
-                    }
-                    item(key = "add-exercise") { AddExerciseButton(onAddExercise) }
+        val cards = remember(state.sections) { state.sections.flatMap { it.items } }
+
+        Scaffold(
+            contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+            bottomBar = { CompleteCta(onClick = { viewModel.finish(onFinish) }) },
+        ) { inner ->
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = inner.calculateTopPadding() + MaterialTheme.spacing.md,
+                    bottom = inner.calculateBottomPadding() + MaterialTheme.spacing.md,
+                    start = MaterialTheme.spacing.md,
+                    end = MaterialTheme.spacing.md,
+                ),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
+            ) {
+                item(key = "header") {
+                    Header(
+                        sessionType = state.sessionType,
+                        startedAtMillis = state.startedAtMillis,
+                        notes = state.notes,
+                        sessionId = sessionId,
+                        onBack = onBack,
+                        onNotesChange = viewModel::onNotesChange,
+                    )
                 }
 
-                FinishCta(onFinish, Modifier.align(Alignment.BottomStart).padding(bottom = inner.calculateBottomPadding()))
+                item(key = "add") { AddCta(onClick = { showAddSheet = true }) }
+
+                // Running station index for the "STATION n" tag.
+                var stationNo = 0
+                val numbered = cards.map { item ->
+                    val n = if (item.segmentKey != null) ++stationNo else null
+                    item to n
+                }
+                items(numbered, key = { it.first.loggedItemId }) { (item, n) ->
+                    if (item.segmentKey != null) {
+                        StationCard(
+                            item = item,
+                            stationNumber = n ?: 0,
+                            standard = standards[item.segmentKey],
+                            onUpdate = viewModel::updateActual,
+                            onRemove = { viewModel.removeEntry(item.loggedItemId) },
+                        )
+                    } else {
+                        EntryCard(
+                            item = item,
+                            onUpdate = viewModel::updateActual,
+                            onAddSet = { viewModel.addSet(item.loggedItemId) },
+                            onRemove = { viewModel.removeEntry(item.loggedItemId) },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (showAddSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showAddSheet = false },
+                sheetState = rememberModalBottomSheetState(),
+                containerColor = colors.surfaceContainerLow,
+            ) {
+                AddToSessionSheet(
+                    stations = stations,
+                    onBrowseExercises = { showAddSheet = false; onAddExercise() },
+                    onPickStation = { segmentKey -> showAddSheet = false; viewModel.addStation(segmentKey) },
+                )
             }
         }
     }
 }
 
-// ── Top bar / section header ──────────────────────────────────────────────────────────────────
+// ── Header ────────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun TopBar(title: String, onBack: () -> Unit) {
+private fun Header(
+    sessionType: SessionType,
+    startedAtMillis: Long,
+    notes: String,
+    sessionId: String,
+    onBack: () -> Unit,
+    onNotesChange: (String) -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onBack), contentAlignment = Alignment.Center) {
-            Icon(CadenceIcons.ArrowBack, contentDescription = "Back", tint = colors.onSurface, modifier = Modifier.size(16.dp))
-        }
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colors.onSurface)
-    }
-}
+    var noteText by remember(sessionId) { mutableStateOf(notes) }
+    LaunchedEffect(notes) { if (notes.isNotEmpty() && noteText.isEmpty()) noteText = notes }
 
-@Composable
-private fun SectionHeader(label: String, meta: String?) {
-    val colors = MaterialTheme.colorScheme
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label.uppercase(), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, color = colors.onSurfaceVariant)
-        if (meta != null) {
-            Box(Modifier.clip(CircleShape).background(colors.primary.copy(alpha = 0.1f)).padding(horizontal = 10.dp, vertical = 3.dp)) {
-                Text(meta, style = MaterialTheme.typography.labelSmall, color = colors.primary)
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top,
+        ) {
+            Column {
+                Text(
+                    text = typeLabel(sessionType.name).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.primary,
+                )
+                if (startedAtMillis > 0L) {
+                    Text(
+                        text = formatDateTime(startedAtMillis),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+            }
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(colors.surfaceContainerHigh)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    CadenceIcons.Close,
+                    contentDescription = "Close",
+                    tint = colors.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
+        Text(
+            text = "Active Session",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.onSurface,
+        )
+
+        GlassTextField(
+            value = noteText,
+            onValueChange = { noteText = it; onNotesChange(it) },
+            placeholder = "Session notes (e.g. Focus on explosive push)",
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 
-// ── Exercise card ─────────────────────────────────────────────────────────────────────────────
+// ── Entry card (strength / conditioning) ────────────────────────────────────────────────────────
 
 @Composable
-private fun ExerciseCard(
+private fun EntryCard(
     item: LoggedItemUi,
     onUpdate: (SetEntry) -> Unit,
-    onAddSet: (Int?, Double?, Int?, Int?) -> Unit,
+    onAddSet: () -> Unit,
+    onRemove: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     val unit = LocalWeightUnit.current
     val capture = remember(item.metric) { CaptureFields.of(MetricType.valueOf(item.metric)) }
+    val isStrength = capture is CaptureFields.WeightReps || capture is CaptureFields.RepsOnly
+    val shape = MaterialTheme.shapes.medium
+
     Column(
-        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(colors.surfaceContainer).border(1.dp, colors.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.medium).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill)
+            .border(1.dp, GlassBorder, shape)
+            .padding(MaterialTheme.spacing.md),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
     ) {
-        // Header: medallion + name (+ ES) + note.
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(40.dp).clip(MaterialTheme.shapes.small).background(colors.surfaceContainerHigh), contentAlignment = Alignment.Center) {
-                Icon(CadenceIcons.Dumbbell, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
+        // Header: medallion + name (+ES) + note; trailing muted tag.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier.size(40.dp).clip(shape).background(colors.surfaceContainerHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (isStrength) CadenceIcons.Dumbbell else CadenceIcons.Bolt,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(18.dp),
+                )
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(item.exerciseName, style = MaterialTheme.typography.bodyLarge, color = colors.onSurface)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)
+                ) {
+                    Text(
+                        item.exerciseName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.onSurface
+                    )
                     if (item.eachSide) EsBadge()
                 }
                 if (!item.note.isNullOrBlank()) {
-                    Text(item.note!!, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                    Text(
+                        item.note!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant
+                    )
                 }
             }
+            Text(
+                text = if (isStrength) "STRENGTH" else "CONDITIONING",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.outline,
+            )
+            DeleteButton(onRemove)
         }
-        // Set rows.
+
         item.sets.forEach { set ->
-            HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant.copy(alpha = 0.15f))
-            SetRow(capture, set, unit, onUpdate)
+            SetRow(capture, set, showSetLabel = isStrength, unit = unit, onUpdate = onUpdate)
         }
-        AddSetRow(capture, unit, onAddSet)
+
+        if (capture !is CaptureFields.Calories) {
+            AddSetButton(onAddSet)
+        }
+    }
+}
+
+// ── Station card (Hyrox) ────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun StationCard(
+    item: LoggedItemUi,
+    stationNumber: Int,
+    standard: String?,
+    onUpdate: (SetEntry) -> Unit,
+    onRemove: () -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    val unit = LocalWeightUnit.current
+    val shape = MaterialTheme.shapes.medium
+    val set = item.sets.firstOrNull()
+
+    // Fields the station captures: TIME always; + REPS (wall balls) or LOAD (loaded); + DIST if it has one.
+    val second: SecondField = when {
+        set?.targetReps != null -> SecondField.REPS
+        set?.targetLoadKg != null -> SecondField.LOAD
+        else -> SecondField.NONE
+    }
+    val hasDist = set?.targetDistanceM != null
+
+    // Hoisted so the header ✓ commits what the fields row holds. TIME is empty-until-typed (dimmed
+    // placeholder); the LOAD/REPS/DIST fields prefill their target (bright, editable).
+    var timeDigits by remember(set?.id) { mutableStateOf(secondsToDigits(set?.timeSec)) }
+    var reps by remember(set?.id) { mutableStateOf(intText(set?.reps ?: set?.targetReps)) }
+    var load by remember(set?.id) {
+        mutableStateOf(
+            kgPlain(
+                set?.loadKg ?: set?.targetLoadKg,
+                unit
+            )
+        )
+    }
+    var dist by remember(set?.id) {
+        mutableStateOf(
+            intText(
+                set?.distanceM ?: set?.targetDistanceM
+            )
+        )
+    }
+    val logged = set?.timeSec != null
+
+    Column(
+        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill)
+            .border(1.dp, GlassBorder, shape).padding(MaterialTheme.spacing.md),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+    ) {
+        // Header: icon + name + STATION n + ✓ confirm + ✕ remove.
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                stationIcon(item.segmentKey),
+                contentDescription = null,
+                tint = colors.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Text(
+                item.exerciseName,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                "STATION $stationNumber",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.outline
+            )
+
+            ConfirmChip(logged) {
+                if (set != null) {
+                    val secs = digitsToSeconds(timeDigits)
+                    onUpdate(
+                        set.copy(
+                            timeSec = secs.takeIf { it > 0 } ?: set.timeSec,
+                            reps = if (second == SecondField.REPS) reps.toIntOrNull() else set.reps,
+                            loadKg = if (second == SecondField.LOAD) load.toDoubleOrNull()
+                                ?.let { Units.toKg(it, unit) } else set.loadKg,
+                            distanceM = if (hasDist) dist.toIntOrNull() else set.distanceM,
+                        ),
+                    )
+                }
+            }
+            DeleteButton(onRemove)
+        }
+        HorizontalDivider(color = GlassBorder)
+
+        // Metric fields, equally divided.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+        ) {
+            MetricField(
+                "Time",
+                timeDigits,
+                { timeDigits = it.takeLast(6) },
+                placeholder = "0:00",
+                visualTransformation = ClockVisualTransformation,
+                modifier = Modifier.weight(1f)
+            )
+            when (second) {
+                SecondField.REPS -> MetricField(
+                    "Reps",
+                    reps,
+                    { reps = it },
+                    placeholder = "0",
+                    modifier = Modifier.weight(1f)
+                )
+
+                SecondField.LOAD -> MetricField(
+                    "Load ${Units.label(unit)}",
+                    load,
+                    { load = it },
+                    placeholder = "0",
+                    modifier = Modifier.weight(1f)
+                )
+
+                SecondField.NONE -> Unit
+            }
+            if (hasDist) MetricField(
+                "Dist (m)",
+                dist,
+                { dist = it },
+                placeholder = "0",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (standard != null) StandardView(standard)
+    }
+}
+
+private enum class SecondField { REPS, LOAD, NONE }
+
+/** Smaller confirm circle (station header). Red once the effort is logged. */
+@Composable
+private fun ConfirmChip(logged: Boolean, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        Modifier.size(24.dp).clip(CircleShape)
+            .background(if (logged) colors.primary else colors.surfaceContainerHigh)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            CadenceIcons.Check,
+            contentDescription = "Confirm",
+            tint = if (logged) colors.onPrimary else colors.onSurfaceVariant,
+            modifier = Modifier.size(14.dp),
+        )
+    }
+}
+
+/** Remove this exercise/station from the session. */
+@Composable
+private fun DeleteButton(onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        Modifier.size(24.dp).clip(CircleShape).clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            CadenceIcons.Delete,
+            contentDescription = "Remove",
+            tint = colors.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
+/** Per-station glyph (SledPush/Farmers/Sandbag have no bespoke icon → nearest sensible fallback). */
+private fun stationIcon(segmentKey: String?): androidx.compose.ui.graphics.vector.ImageVector =
+    when {
+        segmentKey == null -> CadenceIcons.Bolt
+        "ski" in segmentKey -> CadenceIcons.SkiErg
+        "sled" in segmentKey -> CadenceIcons.SledPull
+        "burpee" in segmentKey -> CadenceIcons.Burpee
+        "rowing" in segmentKey -> CadenceIcons.Rowing
+        "farmers" in segmentKey -> CadenceIcons.Dumbbell
+        "sandbag" in segmentKey || "lunge" in segmentKey -> CadenceIcons.LowerBody
+        "wall-ball" in segmentKey -> CadenceIcons.WallBall
+        else -> CadenceIcons.Bolt
+    }
+
+/** The reference "standard" as its own bordered, primary-tinted view with an info glyph. */
+@Composable
+private fun StandardView(standard: String) {
+    val colors = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.small
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(shape)
+            .background(colors.primary.copy(alpha = 0.06f))
+            .border(1.dp, colors.primary.copy(alpha = 0.25f), shape)
+            .padding(horizontal = MaterialTheme.spacing.smd, vertical = MaterialTheme.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+    ) {
+        Icon(
+            CadenceIcons.Info,
+            contentDescription = null,
+            tint = colors.primary,
+            modifier = Modifier.size(16.dp),
+        )
+        Text(
+            "Standard: $standard",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant
+        )
     }
 }
 
 @Composable
 private fun EsBadge() {
     val colors = MaterialTheme.colorScheme
-    Box(Modifier.clip(CircleShape).background(colors.surfaceContainerHighest).padding(horizontal = 6.dp, vertical = 1.dp)) {
+    Box(
+        Modifier.clip(CircleShape).background(colors.surfaceContainerHighest)
+            .padding(horizontal = MaterialTheme.spacing.xs, vertical = MaterialTheme.spacing.xs)
+    ) {
         Text("ES", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
     }
 }
 
-// ── Set rows (metric-aware, ghost target → actual) ────────────────────────────────────────────
+// ── Set rows (metric-aware, ghost target → actual) ──────────────────────────────────────────────
 
 @Composable
-private fun SetRow(capture: CaptureFields, set: SetEntry, unit: WeightUnit, onUpdate: (SetEntry) -> Unit) {
+private fun SetRow(
+    capture: CaptureFields,
+    set: SetEntry,
+    showSetLabel: Boolean,
+    unit: WeightUnit,
+    onUpdate: (SetEntry) -> Unit
+) {
     val colors = MaterialTheme.colorScheme
     val logged = isLogged(capture, set)
 
-    // Prefill from the actual if logged, else the ghost target. Keyed to the set id so each row owns
-    // stable input state and one row's edits don't disturb its siblings.
-    val (prefillA, prefillB) = remember(set.id) { prefills(capture, set, unit) }
-    var a by remember(set.id) { mutableStateOf(prefillA) }
-    var b by remember(set.id) { mutableStateOf(prefillB) }
-
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Set ${set.setNumber}", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant, modifier = Modifier.width(44.dp))
-        val fields = captureFieldLabels(capture, unit)
-        NumberField(value = a, onValueChange = { a = it }, placeholder = fields.first, modifier = Modifier.weight(1f))
-        if (fields.second != null) {
-            NumberField(value = b, onValueChange = { b = it }, placeholder = fields.second!!, modifier = Modifier.weight(1f))
-        } else {
-            Spacer(Modifier.weight(1f))
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)
+    ) {
+        if (showSetLabel) {
+            Text(
+                "SET ${set.setNumber}",
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.width(44.dp),
+            )
         }
-        // ✓ — filled primary when this set already holds a logged actual.
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(MaterialTheme.shapes.small)
-                .background(if (logged) colors.primary else colors.surfaceContainerHigh)
-                .clickable { buildActual(capture, set, a, b, unit)?.let(onUpdate) },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("✓", color = if (logged) colors.onPrimary else colors.onSurfaceVariant, fontWeight = FontWeight.Bold)
+        when (capture) {
+            CaptureFields.WeightReps -> {
+                var load by remember(set.id) {
+                    mutableStateOf(
+                        kgPlain(
+                            set.loadKg ?: set.targetLoadKg, unit
+                        )
+                    )
+                }
+                var reps by remember(set.id) { mutableStateOf(intText(set.reps ?: set.targetReps)) }
+                StepperField(
+                    load,
+                    { load = it },
+                    { load = stepText(load, it) },
+                    Modifier.weight(1f),
+                    caption = "Load (${Units.label(unit)})"
+                )
+                StepperField(
+                    reps,
+                    { reps = it },
+                    { reps = stepText(reps, it) },
+                    Modifier.weight(1f),
+                    caption = "Reps"
+                )
+                ConfirmButton(logged) {
+                    reps.toIntOrNull()?.let { r ->
+                        onUpdate(
+                            set.copy(
+                                reps = r,
+                                loadKg = load.toDoubleOrNull()?.let { Units.toKg(it, unit) })
+                        )
+                    }
+                }
+            }
+
+            CaptureFields.RepsOnly -> {
+                var reps by remember(set.id) { mutableStateOf(intText(set.reps ?: set.targetReps)) }
+                StepperField(
+                    reps,
+                    { reps = it },
+                    { reps = stepText(reps, it) },
+                    Modifier.weight(1f),
+                    caption = "Reps"
+                )
+                ConfirmButton(logged) { reps.toIntOrNull()?.let { onUpdate(set.copy(reps = it)) } }
+            }
+
+            CaptureFields.Duration -> {
+                var digits by remember(set.id) {
+                    mutableStateOf(
+                        secondsToDigits(
+                            set.timeSec ?: set.targetTimeSec
+                        )
+                    )
+                }
+                MetricField(
+                    "Time",
+                    digits,
+                    { digits = it.takeLast(6) },
+                    placeholder = "0:00",
+                    visualTransformation = ClockVisualTransformation,
+                    modifier = Modifier.weight(1f)
+                )
+                ConfirmButton(logged) {
+                    digitsToSeconds(digits).takeIf { it > 0 }
+                        ?.let { onUpdate(set.copy(timeSec = it)) }
+                }
+            }
+
+            CaptureFields.DistanceTime -> {
+                var digits by remember(set.id) {
+                    mutableStateOf(
+                        secondsToDigits(
+                            set.timeSec ?: set.targetTimeSec
+                        )
+                    )
+                }
+                var dist by remember(set.id) {
+                    mutableStateOf(
+                        intText(
+                            set.distanceM ?: set.targetDistanceM
+                        )
+                    )
+                }
+                MetricField(
+                    "Time",
+                    digits,
+                    { digits = it.takeLast(6) },
+                    placeholder = "0:00",
+                    visualTransformation = ClockVisualTransformation,
+                    modifier = Modifier.weight(1f)
+                )
+                MetricField(
+                    "Dist (m)",
+                    dist,
+                    { dist = it },
+                    placeholder = "0",
+                    modifier = Modifier.weight(1f)
+                )
+                ConfirmButton(logged) {
+                    val secs = digitsToSeconds(digits)
+                    if (secs > 0 || dist.toIntOrNull() != null) {
+                        onUpdate(
+                            set.copy(
+                                timeSec = secs.takeIf { it > 0 },
+                                distanceM = dist.toIntOrNull()
+                            )
+                        )
+                    }
+                }
+            }
+
+            CaptureFields.Calories -> {
+                var cal by remember(set.id) {
+                    mutableStateOf(
+                        intText(
+                            set.calories ?: set.targetCalories
+                        )
+                    )
+                }
+                MetricField(
+                    "Cal",
+                    cal,
+                    { cal = it },
+                    placeholder = "0",
+                    modifier = Modifier.weight(1f)
+                )
+                ConfirmButton(logged) {
+                    cal.toIntOrNull()?.let { onUpdate(set.copy(calories = it)) }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun AddSetRow(capture: CaptureFields, unit: WeightUnit, onAddSet: (Int?, Double?, Int?, Int?) -> Unit) {
-    if (capture is CaptureFields.Calories) return // addSet has no calories cell
+private fun ConfirmButton(logged: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    var a by remember { mutableStateOf("") }
-    var b by remember { mutableStateOf("") }
-    val fields = captureFieldLabels(capture, unit)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Spacer(Modifier.width(44.dp))
-        NumberField(value = a, onValueChange = { a = it }, placeholder = fields.first, modifier = Modifier.weight(1f))
-        if (fields.second != null) {
-            NumberField(value = b, onValueChange = { b = it }, placeholder = fields.second!!, modifier = Modifier.weight(1f))
-        } else {
-            Spacer(Modifier.weight(1f))
-        }
-        Box(
-            modifier = Modifier.size(44.dp).clip(MaterialTheme.shapes.small).background(colors.surfaceContainerHigh).clickable {
-                addFromInputs(capture, a, b, unit, onAddSet)
-                a = ""; b = ""
-            },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(CadenceIcons.Add, contentDescription = "Add set", tint = colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
-        }
+    Box(
+        modifier = Modifier.size(48.dp).clip(CircleShape)
+            .background(if (logged) colors.primary else colors.surfaceContainerHigh)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            CadenceIcons.Check,
+            contentDescription = "Confirm",
+            tint = if (logged) colors.onPrimary else colors.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 
 @Composable
-private fun AddExerciseButton(onClick: () -> Unit) {
+private fun AddSetButton(onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
-        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).border(1.dp, colors.outlineVariant.copy(alpha = 0.4f), MaterialTheme.shapes.medium).clickable(onClick = onClick).padding(vertical = 14.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(vertical = MaterialTheme.spacing.sm),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(CadenceIcons.Add, contentDescription = null, tint = colors.primary, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(8.dp))
-        Text("Add Exercise", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = colors.primary)
+        Icon(
+            CadenceIcons.Add,
+            contentDescription = null,
+            tint = colors.primary,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(Modifier.width(MaterialTheme.spacing.sm))
+        Text(
+            "Add Set".uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.primary
+        )
     }
 }
 
-// ── Finish CTA ────────────────────────────────────────────────────────────────────────────────
+// ── Glass metric input (label top-left, value with dimmed placeholder) ───────────────────────────
 
 @Composable
-private fun FinishCta(onFinish: () -> Unit, modifier: Modifier = Modifier) {
+private fun MetricField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String = "0",
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+) {
     val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = modifier.fillMaxWidth().background(Brush.verticalGradient(0f to Color.Transparent, 0.5f to colors.background, 1f to colors.background)).padding(top = 32.dp, bottom = 20.dp, start = Gutter, end = Gutter),
+    val shape = MaterialTheme.shapes.medium
+    Column(
+        modifier.clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape)
+            .padding(horizontal = MaterialTheme.spacing.smd, vertical = MaterialTheme.spacing.sm),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(56.dp).shadow(16.dp, CircleShape).clip(CircleShape).background(colors.primary).clickable(onClick = onFinish),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(CadenceIcons.Play, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(12.dp))
-            Spacer(Modifier.width(10.dp))
-            Text("Finish Session".uppercase(), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp, color = colors.onPrimary)
+        Text(
+            label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant
+        )
+        Spacer(Modifier.height(MaterialTheme.spacing.xs))
+        BasicTextField(
+            value = value,
+            onValueChange = { onValueChange(it.filter { c -> c.isDigit() }) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = colors.onSurface,
+                fontWeight = FontWeight.Bold
+            ),
+            cursorBrush = SolidColor(colors.primary),
+            visualTransformation = visualTransformation,
+            decorationBox = { inner ->
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    if (value.isEmpty()) {
+                        Text(
+                            placeholder,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.onSurfaceVariant.copy(alpha = 0.35f)
+                        )
+                    }
+                    inner()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+private val ClockVisualTransformation = VisualTransformation { text ->
+    val digits = text.text.filter { it.isDigit() }
+    val out = digitsToClock(digits)
+    TransformedText(
+        AnnotatedString(out),
+        object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = out.length
+            override fun transformedToOriginal(offset: Int): Int = digits.length
+        },
+    )
+}
+
+// ── Add-to-session sheet (Exercises + Stations) ─────────────────────────────────────────────────
+
+@Composable
+private fun AddToSessionSheet(
+    stations: List<StationOption>,
+    onBrowseExercises: () -> Unit,
+    onPickStation: (String) -> Unit,
+) {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.md)
+            .padding(bottom = MaterialTheme.spacing.xl),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+    ) {
+        Text(
+            "Add to session".uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.onSurfaceVariant
+        )
+
+        SheetRow(
+            title = "Browse exercises",
+            subtitle = "Search the full library",
+            leading = CadenceIcons.Dumbbell,
+            onClick = onBrowseExercises,
+        )
+
+        if (stations.isNotEmpty()) {
+            Spacer(Modifier.height(MaterialTheme.spacing.xs))
+            Text(
+                "Hyrox stations".uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.outline
+            )
+            stations.forEach { station ->
+                SheetRow(
+                    title = station.name,
+                    subtitle = station.standard,
+                    leading = stationIcon(station.segmentKey),
+                    onClick = { onPickStation(station.segmentKey) },
+                )
+            }
         }
     }
 }
 
-// ── Metric helpers ────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun SheetRow(
+    title: String,
+    subtitle: String,
+    leading: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.medium
+    Row(
+        Modifier.fillMaxWidth().clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape)
+            .clickable(onClick = onClick).padding(MaterialTheme.spacing.smd),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+    ) {
+        Box(
+            Modifier.size(36.dp).clip(CircleShape).background(colors.surfaceContainerHigh),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                leading,
+                contentDescription = null,
+                tint = colors.primary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface
+            )
+            if (subtitle.isNotBlank()) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+// ── Add / Complete CTAs ─────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun AddCta(onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)
+            .border(1.dp, colors.outlineVariant.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
+            .clickable(onClick = onClick).padding(vertical = MaterialTheme.spacing.smd),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            CadenceIcons.Add,
+            contentDescription = null,
+            tint = colors.primary,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.width(MaterialTheme.spacing.sm))
+        Text(
+            "Add Exercise or Station".uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.primary
+        )
+    }
+}
+
+@Composable
+private fun CompleteCta(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    PrimaryButton(
+        text = "Complete Session",
+        enabled = true,
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(MaterialTheme.spacing.md),
+    )
+}
+
+// ── Metric helpers ──────────────────────────────────────────────────────────────────────────────
 
 /** Whether a set already holds a logged actual (vs. a target-only ghost). */
 private fun isLogged(capture: CaptureFields, s: SetEntry): Boolean = when (capture) {
@@ -304,45 +963,41 @@ private fun isLogged(capture: CaptureFields, s: SetEntry): Boolean = when (captu
     CaptureFields.Calories -> s.calories != null
 }
 
-/** Placeholder labels for the (up to two) input cells of a capture type. */
-private fun captureFieldLabels(capture: CaptureFields, unit: WeightUnit): Pair<String, String?> = when (capture) {
-    CaptureFields.WeightReps -> "reps" to Units.label(unit)
-    CaptureFields.RepsOnly -> "reps" to null
-    CaptureFields.Duration -> "sec" to null
-    CaptureFields.DistanceTime -> "sec" to "m"
-    CaptureFields.Calories -> "cal" to null
-}
+private fun intText(v: Int?): String = v?.toString().orEmpty()
 
-/** Prefill the input cells from the actual if present, else the ghost target (display units). */
-private fun prefills(capture: CaptureFields, s: SetEntry, unit: WeightUnit): Pair<String, String> = when (capture) {
-    CaptureFields.WeightReps -> (s.reps ?: s.targetReps)?.toString().orEmpty() to kgPlain(s.loadKg ?: s.targetLoadKg, unit)
-    CaptureFields.RepsOnly -> (s.reps ?: s.targetReps)?.toString().orEmpty() to ""
-    CaptureFields.Duration -> (s.timeSec ?: s.targetTimeSec)?.toString().orEmpty() to ""
-    CaptureFields.DistanceTime -> (s.timeSec ?: s.targetTimeSec)?.toString().orEmpty() to (s.distanceM ?: s.targetDistanceM)?.toString().orEmpty()
-    CaptureFields.Calories -> (s.calories ?: s.targetCalories)?.toString().orEmpty() to ""
-}
-
-/** Build the edited set from the input strings, or null if the required cell is empty/invalid. */
-private fun buildActual(capture: CaptureFields, s: SetEntry, a: String, b: String, unit: WeightUnit): SetEntry? = when (capture) {
-    CaptureFields.WeightReps -> a.toIntOrNull()?.let { reps -> s.copy(reps = reps, loadKg = b.toDoubleOrNull()?.let { Units.toKg(it, unit) }) }
-    CaptureFields.RepsOnly -> a.toIntOrNull()?.let { s.copy(reps = it) }
-    CaptureFields.Duration -> a.toIntOrNull()?.let { s.copy(timeSec = it) }
-    CaptureFields.DistanceTime -> a.toIntOrNull()?.let { sec -> s.copy(timeSec = sec, distanceM = b.toIntOrNull()) }
-    CaptureFields.Calories -> a.toIntOrNull()?.let { s.copy(calories = it) }
-}
-
-private fun addFromInputs(capture: CaptureFields, a: String, b: String, unit: WeightUnit, onAddSet: (Int?, Double?, Int?, Int?) -> Unit) {
-    when (capture) {
-        CaptureFields.WeightReps -> a.toIntOrNull()?.let { onAddSet(it, b.toDoubleOrNull()?.let { kg -> Units.toKg(kg, unit) }, null, null) }
-        CaptureFields.RepsOnly -> a.toIntOrNull()?.let { onAddSet(it, null, null, null) }
-        CaptureFields.Duration -> a.toIntOrNull()?.let { onAddSet(null, null, it, null) }
-        CaptureFields.DistanceTime -> a.toIntOrNull()?.let { onAddSet(null, null, it, b.toIntOrNull()) }
-        CaptureFields.Calories -> Unit
-    }
-}
+/** Nudge a numeric text value by [delta], clamped at 0. Empty → treated as 0. */
+private fun stepText(current: String, delta: Int): String =
+    ((current.toIntOrNull() ?: 0) + delta).coerceAtLeast(0).toString()
 
 private fun kgPlain(kg: Double?, unit: WeightUnit): String {
     if (kg == null) return ""
     val v = Units.toDisplay(kg, unit)
     return if (v % 1.0 == 0.0) v.toInt().toString() else ((v * 10).toInt() / 10.0).toString()
 }
+
+/** Seconds → the raw digit buffer the ClockField edits (e.g. 150 → "230", 45 → "45"). */
+private fun secondsToDigits(sec: Int?): String {
+    if (sec == null || sec <= 0) return ""
+    val m = sec / 60
+    val s = sec % 60
+    return if (m == 0) s.toString() else "$m${s.toString().padStart(2, '0')}"
+}
+
+private fun digitsToSeconds(digits: String): Int {
+    val d = digits.filter { it.isDigit() }
+    if (d.isEmpty()) return 0
+    val ss = d.takeLast(2).toInt()
+    val mm = d.dropLast(2).ifEmpty { "0" }.toInt()
+    return mm * 60 + ss
+}
+
+private fun digitsToClock(digits: String): String {
+    val d = digits.filter { it.isDigit() }
+    if (d.isEmpty()) return ""
+    val ss = d.takeLast(2).padStart(2, '0')
+    val mm = d.dropLast(2).ifEmpty { "0" }
+    return "$mm:$ss"
+}
+
+private fun formatDateTime(millis: Long): String =
+    SimpleDateFormat("MMM d, yyyy · hh:mm a", Locale.getDefault()).format(Date(millis))

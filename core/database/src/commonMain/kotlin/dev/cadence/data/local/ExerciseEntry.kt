@@ -75,4 +75,9 @@ interface ExerciseEntryDao {
     /** Hard-remove every entry belonging to a session's blocks — used by the wholesale sync replace. */
     @Query("DELETE FROM exercise_entries WHERE blockId IN (SELECT id FROM blocks WHERE sessionId = :sessionId)")
     suspend fun deleteBySession(sessionId: String)
+
+    /** Soft-delete (tombstone) one entry — when the user removes an item from a live session; the
+     *  parent session is touched separately so the deletion re-syncs. */
+    @Query("UPDATE exercise_entries SET deletedAt = :now, updatedAt = :now WHERE id = :id")
+    suspend fun softDelete(id: String, now: Long)
 }

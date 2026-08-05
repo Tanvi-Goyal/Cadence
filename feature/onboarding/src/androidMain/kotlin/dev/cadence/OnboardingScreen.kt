@@ -300,55 +300,12 @@ private fun StepperField(
     onIncrement: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = MaterialTheme.colorScheme
     Column(modifier) {
         FieldLabel(label)
-        GlassCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.onSurface),
-                    cursorBrush = SolidColor(colors.primary),
-                    decorationBox = { inner ->
-                        if (value.isEmpty()) {
-                            Text(
-                                "0",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = colors.onSurfaceVariant.copy(alpha = 0.4f),
-                            )
-                        }
-                        inner()
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-//                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//                    StepChevron(up = true, onClick = onIncrement)
-//                    Spacer(Modifier.height(MaterialTheme.spacing.xs))
-//                    StepChevron(up = false, onClick = onDecrement)
-//                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StepChevron(up: Boolean, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        Modifier
-            .size(20.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = CadenceIcons.ChevronRight,
-            contentDescription = if (up) "Increment" else "Decrement",
-            tint = colors.onSurfaceVariant,
-            modifier = Modifier.size(12.dp).rotate(if (up) -90f else 90f),
+        dev.cadence.components.StepperField(
+            value = value,
+            onValueChange = onValueChange,
+            onStep = { if (it < 0) onDecrement() else onIncrement() },
         )
     }
 }

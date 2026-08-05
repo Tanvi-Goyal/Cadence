@@ -9,6 +9,7 @@ import dev.cadence.model.HyroxVariant
 import dev.cadence.model.PlannedSession
 import dev.cadence.model.Session
 import dev.cadence.model.SessionDetail
+import dev.cadence.model.SessionType
 import dev.cadence.model.SetEntry
 import dev.cadence.model.VolumePoint
 import kotlinx.coroutines.flow.Flow
@@ -77,6 +78,46 @@ interface SessionRepository {
     /** Adds an exercise to a session (a new [dev.cadence.data.local.LoggedItem]). */
     suspend fun addExercise(sessionId: String, exerciseId: String)
 
+    /**
+     * Adds an exercise to a real (non-template) session and **prefills its sets from the last time
+     * this exercise was logged** — the app's highest-value capture shortcut. The recreated sets carry
+     * only `target*` values (actuals null), so the UI renders them as editable ghosts to confirm (✓)
+     * or adjust. With no history it seeds no sets (identical to [addExercise] — the add-set row
+     * captures the first set). Distinct from [addExercise] so template building stays unaffected.
+     */
+    suspend fun addExercisePrefilled(sessionId: String, exerciseId: String)
+
+    /**
+     * Adds a Hyrox station (identified by its `event_segment` [segmentKey]) to a session, seeding a
+     * ghost **target** set from the station's division standard (weight/reps/distance for
+     * [divisionKey]) and tagging the entry with its [segmentKey]. Resolved from the seeded reference
+     * tables via [hyroxStations].
+     */
+    suspend fun addStation(sessionId: String, divisionKey: String, segmentKey: String)
+
+    /**
+     * The 8 Hyrox stations for [divisionKey] (division-accurate standards) — the "Stations" section of
+     * the add-to-session sheet. Thin filter over [hyroxFormat] (`kind == STATION`).
+     */
+    suspend fun hyroxStations(divisionKey: String): List<HyroxStepDef>
+
+    /**
+     * Per-station reference "standard" labels for the athlete's gender (both tiers) at [mode], keyed by
+     * `event_segment.id` — e.g. `"78kg (Pro) / 53kg (Open)"`. Gender is taken from [divisionKey]; both
+     * the Open and Pro standards are read so the Log Session card can show the full reference. Falls back
+     * to SINGLES standards when [mode] has none seeded. Stations with no meaningful standard are omitted.
+     */
+    suspend fun stationStandardLabels(divisionKey: String, mode: String): Map<String, String>
+
+    /** Updates a session's free-text [notes], touching it so the change re-syncs. */
+    suspend fun updateSessionNotes(sessionId: String, notes: String)
+
+    /**
+     * Removes an exercise/station ([entryId]) from a session — soft-deletes (tombstones) the entry and
+     * its sets and touches the parent session, all in one transaction, so the removal re-syncs.
+     */
+    suspend fun removeEntry(sessionId: String, entryId: String)
+
     /** Appends a set to a logged item. Strength uses reps/loadKg; conditioning uses timeSec/distanceM. */
     suspend fun addSet(
         sessionId: String,
@@ -137,8 +178,13 @@ interface SessionRepository {
     /** Records the elapsed split ([elapsedSec]) for the step at [stepIndex] onto its set. */
     suspend fun recordHyroxSplit(sessionId: String, stepIndex: Int, elapsedSec: Int)
 
-    /** Stamps a session finished (total time = `finishedAt − startedAt`), atomically re-syncing it. */
-    suspend fun finishSession(sessionId: String)
+    /**
+     * Stamps a session finished (total time = `finishedAt − startedAt`), atomically re-syncing it.
+     * When [derivedType] is non-null it is persisted as the session's [Session.type] in the same
+     * transaction — the Log Session screen passes the type auto-derived from what was logged (see
+     * [deriveSessionType]); the Hyrox timer passes null to leave its HYROX type untouched.
+     */
+    suspend fun finishSession(sessionId: String, derivedType: SessionType? = null)
 
     /** Inserts a sensible default plan + the exercise catalog if absent. */
     suspend fun ensureSeeded()

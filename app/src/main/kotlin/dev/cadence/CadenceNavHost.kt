@@ -2,9 +2,14 @@ package dev.cadence
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import dev.cadence.domain.SessionRepository
+import dev.cadence.model.SessionType
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 /**
  * App navigation (JetBrains Compose Navigation, kept native per the PRD). The four tabs
@@ -16,8 +21,18 @@ import androidx.navigation.compose.rememberNavController
 @Composable
 fun CadenceNavHost() {
     val nav = rememberNavController()
-    // The center Quick-Start (+) FAB in the bottom bar fires this ambient action on any tab.
-    CompositionLocalProvider(LocalQuickStart provides { nav.navigate(NewSession) }) {
+    val scope = rememberCoroutineScope()
+    val sessionRepository = koinInject<SessionRepository>()
+    // The center Quick-Start (+) FAB creates a fresh session and opens Log Session directly. The New
+    // Session type picker is retired from this path — session type auto-derives from what gets logged.
+    CompositionLocalProvider(
+        LocalQuickStart provides {
+            scope.launch {
+                val session = sessionRepository.createSession(SessionType.STRENGTH.name)
+                nav.navigate(LogWorkout(session.id))
+            }
+        },
+    ) {
 
     NavHost(
         navController = nav,
@@ -28,7 +43,7 @@ fun CadenceNavHost() {
         // Routes on the persisted onboarding flag: first-run → Onboarding, returning → Home.
         splashScreen(
             onDone = { onboardingComplete ->
-                val destination: Any = if (onboardingComplete) Onboarding else Onboarding
+                val destination: Any = if (onboardingComplete) Home else Onboarding
                 nav.navigate(destination) { popUpTo(Splash) { inclusive = true } }
             },
         )

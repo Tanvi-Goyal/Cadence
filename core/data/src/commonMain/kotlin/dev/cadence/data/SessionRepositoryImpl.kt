@@ -42,6 +42,7 @@ import dev.cadence.model.RaceMode
 import dev.cadence.model.SegmentKind
 import dev.cadence.model.Session
 import dev.cadence.model.SessionDetail
+import dev.cadence.model.SessionType as DomainSessionType
 import dev.cadence.model.SetEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -211,6 +212,150 @@ class SessionRepositoryImpl(
             connection.immediateTransaction {
                 blocks.insert(implicitBlock(sessionId, now)) // insert-if-absent (IGNORE on conflict)
                 entries.insert(entry)
+                touchSession(sessionId)
+            }
+        }
+    }
+
+    override suspend fun addExercisePrefilled(sessionId: String, exerciseId: String) {
+        val now = now()
+        val blockId = implicitBlockId(sessionId)
+        val nextOrder = entries.countForBlock(blockId)
+        val entryId = uuid.newId()
+        val entry = ExerciseEntry(
+            id = entryId,
+            blockId = blockId,
+            exerciseId = exerciseId,
+            orderIndex = nextOrder,
+            createdAt = now,
+            updatedAt = now,
+        )
+        // Read the last-performed sets (a bounded read, done before opening the writer lock) and
+        // recreate them as ghost TARGETS — actuals stay null so the UI renders them as editable
+        // prefills to confirm/adjust. No history → no seeded sets (the add-set row captures the first).
+        val ghostSets = setEntries.lastSetsForExercise(exerciseId, sessionId).mapIndexed { i, s ->
+            SetEntryEntity(
+                id = uuid.newId(),
+                exerciseEntryId = entryId,
+                setNumber = i + 1,
+                targetReps = s.reps,
+                targetLoadKg = s.loadKg,
+                targetTimeSec = s.timeSec,
+                targetDistanceM = s.distanceM,
+                targetCalories = s.calories,
+                createdAt = now,
+                updatedAt = now,
+            )
+        }
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                blocks.insert(implicitBlock(sessionId, now)) // insert-if-absent (IGNORE on conflict)
+                entries.insert(entry)
+                ghostSets.forEach { setEntries.insert(it) }
+                touchSession(sessionId)
+            }
+        }
+    }
+
+    override suspend fun addStation(sessionId: String, divisionKey: String, segmentKey: String) {
+        val step = hyroxStations(divisionKey).firstOrNull { it.segmentKey == segmentKey } ?: return
+        val now = now()
+        val blockId = implicitBlockId(sessionId)
+        val nextOrder = entries.countForBlock(blockId)
+        val entryId = uuid.newId()
+        val entry = ExerciseEntry(
+            id = entryId,
+            blockId = blockId,
+            exerciseId = step.exerciseId,
+            orderIndex = nextOrder,
+            segmentKey = step.segmentKey, // tags this entry as a Hyrox station (drives the Standard line + HYROX type)
+            createdAt = now,
+            updatedAt = now,
+        )
+        val set = SetEntryEntity(
+            id = uuid.newId(),
+            exerciseEntryId = entryId,
+            setNumber = 1,
+            targetReps = step.targetReps,
+            targetLoadKg = step.targetLoadKg,
+            targetDistanceM = step.targetDistanceM,
+            createdAt = now,
+            updatedAt = now,
+        )
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                blocks.insert(implicitBlock(sessionId, now))
+                entries.insert(entry)
+                setEntries.insert(set)
+                touchSession(sessionId)
+            }
+        }
+    }
+
+    override suspend fun hyroxStations(divisionKey: String): List<HyroxStepDef> =
+        hyroxFormat(divisionKey, HyroxVariant.FULL).filter { it.kind == HyroxStepKind.STATION }
+
+    override suspend fun stationStandardLabels(divisionKey: String, mode: String): Map<String, String> {
+        ensureSeeded()
+        val format = EventFormat.HYROX
+        // Gender drives which two divisions we compare (open + pro); tier choice doesn't narrow it.
+        val gender = if (divisionKey.startsWith("WOMEN")) "WOMEN" else "MEN"
+
+        // Only SINGLES standards are seeded today — fall back to it if the chosen mode has none.
+        suspend fun standards(div: String): Map<String, SegmentStandardEntity> =
+            eventRef.standardsFor(format, div, mode)
+                .ifEmpty { eventRef.standardsFor(format, div, RaceMode.SINGLES.name) }
+                .associateBy { it.segmentId }
+
+        val open = standards(gender)
+        val pro = standards("${gender}_PRO")
+        return (open.keys + pro.keys).mapNotNull { segId ->
+            standardLabel(pro[segId], open[segId])?.let { segId to it }
+        }.toMap()
+    }
+
+    /** "78kg (Pro) / 53kg (Open)" for loaded stations; "100 reps · …" for wall balls; distance otherwise. */
+    private fun standardLabel(pro: SegmentStandardEntity?, open: SegmentStandardEntity?): String? {
+        val reps = open?.targetReps ?: pro?.targetReps
+        if (reps != null) {
+            val balls = listOfNotNull(
+                pro?.loadKg?.let { "${plainKg(it)}kg (Pro)" },
+                open?.loadKg?.let { "${plainKg(it)}kg (Open)" },
+            )
+            return if (balls.isEmpty()) "$reps reps" else "$reps reps · ${balls.joinToString(" / ")} ball"
+        }
+        val proLoad = pro?.loadKg
+        val openLoad = open?.loadKg
+        if (proLoad != null || openLoad != null) {
+            val tiers = listOfNotNull(
+                proLoad?.let { "${plainKg(it)}kg (Pro)" },
+                openLoad?.let { "${plainKg(it)}kg (Open)" },
+            )
+            return tiers.joinToString(" / ")
+        }
+        val dist = open?.targetDistanceM ?: pro?.targetDistanceM
+        return dist?.let { "${it}m" }
+    }
+
+    private fun plainKg(kg: Double): String = if (kg % 1.0 == 0.0) kg.toInt().toString() else kg.toString()
+
+    override suspend fun updateSessionNotes(sessionId: String, notes: String) {
+        val current = sessions.getById(sessionId) ?: return
+        val now = now()
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                sessions.upsert(current.copy(notes = notes, updatedAt = now, syncStatus = SyncStatus.PENDING))
+                enqueueOutbox(sessionId, now)
+            }
+        }
+    }
+
+    override suspend fun removeEntry(sessionId: String, entryId: String) {
+        val now = now()
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                setEntries.softDeleteForEntry(entryId, now)
+                entries.softDelete(entryId, now)
                 touchSession(sessionId)
             }
         }
@@ -538,12 +683,22 @@ class SessionRepositoryImpl(
         }
     }
 
-    override suspend fun finishSession(sessionId: String) {
+    override suspend fun finishSession(sessionId: String, derivedType: DomainSessionType?) {
         val current = sessions.getById(sessionId) ?: return
         val now = now()
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
-                sessions.upsert(current.copy(finishedAt = now, updatedAt = now, syncStatus = SyncStatus.PENDING))
+                sessions.upsert(
+                    current.copy(
+                        finishedAt = now,
+                        type = derivedType?.name ?: current.type,
+                        // Keep the display name in step with the auto-derived type (the FAB creates the
+                        // session with a placeholder type/name before anything is logged).
+                        name = derivedType?.let { displayName(it.name) } ?: current.name,
+                        updatedAt = now,
+                        syncStatus = SyncStatus.PENDING,
+                    ),
+                )
                 enqueueOutbox(sessionId, now)
             }
         }

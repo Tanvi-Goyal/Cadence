@@ -16,6 +16,9 @@ data class LoggedItemUi(
     val sets: List<SetEntry>,
     val eachSide: Boolean = false,
     val note: String? = null,
+    /** Non-null when this entry is a Hyrox station (its `event_segment` id) — drives the STATION tag
+     *  + division "Standard" line on the Log Session card. Null for ordinary exercises. */
+    val segmentKey: String? = null,
 )
 
 /** A titled group of exercise cards — one per [dev.cadence.model.Block] — for the block-aware Log
@@ -56,6 +59,7 @@ private fun ExerciseEntryDetail.toLoggedItemUi(): LoggedItemUi = LoggedItemUi(
     sets = sets,
     eachSide = entry.eachSide,
     note = entry.note,
+    segmentKey = entry.segmentKey,
 )
 
 private fun sectionLabel(section: BlockSection): String = when (section) {

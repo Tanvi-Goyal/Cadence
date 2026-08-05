@@ -7,16 +7,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 
 @Composable
-fun GlassTextField(value: String, onValueChange: (String) -> Unit, placeholder: String) {
+fun GlassTextField(
+    value: String, onValueChange: (String) -> Unit,
+    placeholder: String,
+    style: TextStyle = MaterialTheme.typography.bodyLarge
+) {
     val colors = MaterialTheme.colorScheme
     GlassCard {
         Box {
             if (value.isEmpty()) {
                 Text(
                     placeholder,
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = style,
                     color = colors.onSurfaceVariant.copy(alpha = 0.5f),
                 )
             }
@@ -24,7 +29,7 @@ fun GlassTextField(value: String, onValueChange: (String) -> Unit, placeholder: 
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onSurface),
+                textStyle = style.copy(color = colors.onSurface),
                 cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.primary),
                 modifier = Modifier.fillMaxWidth(),
             )
