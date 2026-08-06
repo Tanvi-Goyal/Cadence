@@ -32,7 +32,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(projects.core.designsystem) // MindSetIcons + MaterialTheme.spacing
+    implementation(projects.core.designsystem) // MindSetTheme + MaterialTheme.spacing tokens
     implementation(projects.core.model)         // Session / SessionType for shared session UI
     implementation(projects.core.domain)        // Units / WeightUnit formatting
     implementation(libs.compose.runtime)

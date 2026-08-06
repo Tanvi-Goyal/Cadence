@@ -19,6 +19,8 @@ import com.mindset.domain.Units
 import com.mindset.domain.WeightUnit
 import com.mindset.icons.Bolt
 import com.mindset.icons.Dumbbell
+import com.mindset.icons.Lightning
+import com.mindset.icons.Run
 import com.mindset.model.Session
 import com.mindset.model.SessionType
 import java.text.SimpleDateFormat

@@ -48,6 +48,7 @@ import com.mindset.icons.Menu
 import com.mindset.icons.NavAccount
 import com.mindset.icons.Ruler
 import com.mindset.icons.Shield
+import com.mindset.icons.Sync
 import com.mindset.icons.Watch
 import com.mindset.domain.ThemeMode
 import com.mindset.domain.WeightUnit
