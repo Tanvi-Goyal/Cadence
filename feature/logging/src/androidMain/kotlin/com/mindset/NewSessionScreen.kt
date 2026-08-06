@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,29 +44,29 @@ fun NewSessionScreen(
 ) {
     var selected by remember { mutableStateOf(SessionType.STRENGTH.name) }
     MindSetTheme {
-        Scaffold(containerColor = Background) { padding ->
+        Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Background)
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(padding)
                     .padding(20.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "‹",
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 28.sp,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                     )
                     Spacer(Modifier.size(12.dp))
                     Column {
-                        Text("New session", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text("Pick a focus to start", color = TextSecondary, fontSize = 13.sp)
+                        Text("New session", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text("Pick a focus to start", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                     }
                 }
                 Spacer(Modifier.height(24.dp))
-                Text("SESSION TYPE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text("SESSION TYPE", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(12.dp))
                 // 2×2 grid of type cards.
                 typeOptions.chunked(2).forEach { rowItems ->
@@ -84,7 +85,7 @@ fun NewSessionScreen(
                 Spacer(Modifier.weight(1f))
                 Button(
                     onClick = { viewModel.create(selected, onCreated) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                 ) {

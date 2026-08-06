@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,11 +68,11 @@ fun TemplateBuilderScreen(
     }
     MindSetTheme {
         Scaffold(
-            containerColor = Background,
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
                 Button(
                     onClick = onDone,
-                    colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(20.dp).height(56.dp),
                 ) {
@@ -80,7 +81,7 @@ fun TemplateBuilderScreen(
             },
         ) { padding ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize().background(Background),
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 contentPadding = PaddingValues(
                     start = 20.dp,
                     end = 20.dp,
@@ -93,7 +94,7 @@ fun TemplateBuilderScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "‹",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 28.sp,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                         )
@@ -101,11 +102,11 @@ fun TemplateBuilderScreen(
                         Column {
                             Text(
                                 state.templateName.ifEmpty { "Template" },
-                                color = TextPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                             )
-                            Text("Prescription — targets to hit", color = TextSecondary, fontSize = 13.sp)
+                            Text("Prescription — targets to hit", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                         }
                     }
                 }
@@ -121,12 +122,12 @@ fun TemplateBuilderScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, TextSecondary.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
                             .clickable(onClick = onAddExercise)
                             .padding(vertical = 16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("+ Add exercise", color = TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        Text("+ Add exercise", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -145,11 +146,11 @@ private fun TargetExerciseCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(16.dp),
     ) {
-        Text(item.exerciseName, color = TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-        Text("${item.sets.size} target sets", color = TextSecondary, fontSize = 12.sp)
+        Text(item.exerciseName, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+        Text("${item.sets.size} target sets", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
         item.sets.forEach { set -> TargetRow(set, isStrength) }
         Spacer(Modifier.height(8.dp))
@@ -165,7 +166,7 @@ private fun TargetRow(set: SetEntry, isStrength: Boolean) {
     } else {
         "Set ${set.setNumber}:  ${set.targetTimeSec ?: 0}s · ${set.targetDistanceM ?: 0} m"
     }
-    Text(text, color = TextPrimary, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
+    Text(text, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
 }
 
 @Composable
@@ -193,7 +194,7 @@ private fun AddTargetRow(
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .background(Accent)
+                .background(MaterialTheme.colorScheme.primary)
                 .clickable {
                     if (isStrength) {
                         val reps = first.toIntOrNull()
@@ -211,7 +212,7 @@ private fun AddTargetRow(
                 }
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            Text("Add", color = OnAccent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("Add", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

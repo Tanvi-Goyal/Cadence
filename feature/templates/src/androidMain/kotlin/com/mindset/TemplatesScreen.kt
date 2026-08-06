@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,9 +47,9 @@ fun TemplatesScreen(
 ) {
     val templates by viewModel.uiState.collectAsStateWithLifecycle()
     MindSetTheme {
-        Scaffold(containerColor = Background) { padding ->
+        Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize().background(Background),
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 contentPadding = PaddingValues(
                     start = 20.dp,
                     end = 20.dp,
@@ -61,12 +62,12 @@ fun TemplatesScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "‹",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 28.sp,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                         )
                         Spacer(Modifier.size(12.dp))
-                        Text("Templates", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text("Templates", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 item {
@@ -74,19 +75,19 @@ fun TemplatesScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, TextSecondary.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
                             .clickable(onClick = onNewTemplate)
                             .padding(vertical = 16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("+ New template", color = TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        Text("+ New template", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                     }
                 }
                 if (templates.isEmpty()) {
                     item {
                         Text(
                             "No templates yet. Build one to start it any day.",
-                            color = TextSecondary,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(top = 8.dp),
                         )
@@ -111,7 +112,7 @@ private fun TemplateRow(template: TemplateUi, onEdit: () -> Unit, onStart: () ->
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = onEdit)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -120,24 +121,24 @@ private fun TemplateRow(template: TemplateUi, onEdit: () -> Unit, onStart: () ->
             modifier = Modifier
                 .size(40.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(SurfaceHi),
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center,
         ) {
-            Text(typeBadge(template.type), color = Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(typeBadge(template.type), color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.size(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(template.name, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            Text("Tap to edit", color = TextSecondary, fontSize = 13.sp)
+            Text(template.name, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text("Tap to edit", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         }
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .background(Accent)
+                .background(MaterialTheme.colorScheme.primary)
                 .clickable(onClick = onStart)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
-            Text("Start", color = OnAccent, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("Start", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

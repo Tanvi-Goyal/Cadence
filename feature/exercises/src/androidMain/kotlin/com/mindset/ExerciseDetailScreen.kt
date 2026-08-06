@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,11 +50,11 @@ fun ExerciseDetailScreen(
     val muscleDiagram by viewModel.muscleDiagram.collectAsStateWithLifecycle()
     MindSetTheme {
         Scaffold(
-            containerColor = Background,
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
                 Button(
                     onClick = onAdd,
-                    colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(20.dp).height(56.dp),
                 ) {
@@ -63,7 +64,7 @@ fun ExerciseDetailScreen(
         ) { padding ->
             val ex = exercise
             LazyColumn(
-                modifier = Modifier.fillMaxSize().background(Background),
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     start = 20.dp, end = 20.dp,
                     top = padding.calculateTopPadding() + 12.dp,
@@ -75,12 +76,12 @@ fun ExerciseDetailScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             "‹",
-                            color = TextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 28.sp,
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                         )
                         Spacer(Modifier.size(12.dp))
-                        Text(ex?.name ?: "Exercise", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(ex?.name ?: "Exercise", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 if (ex != null) {
@@ -90,7 +91,7 @@ fun ExerciseDetailScreen(
                                 model = url,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
-                                    .clip(RoundedCornerShape(16.dp)).background(Surface),
+                                    .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainer),
                             )
                         }
                     }
@@ -101,7 +102,7 @@ fun ExerciseDetailScreen(
                             Column {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().height(220.dp)
-                                        .clip(RoundedCornerShape(16.dp)).background(SurfaceHi).padding(12.dp),
+                                        .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     // Base body silhouette + highlighted-muscle overlay, layered
@@ -113,14 +114,14 @@ fun ExerciseDetailScreen(
                                 }
                                 Text(
                                     "Muscle diagram: wger.de · CC-BY-SA",
-                                    color = TextSecondary, fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
                                     modifier = Modifier.padding(top = 4.dp),
                                 )
                             }
                         }
                     }
                     if (ex.instructions.isNotEmpty()) {
-                        item { Text("Instructions", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
+                        item { Text("Instructions", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
                         itemsIndexedSteps(ex.instructions)
                     }
                 }
@@ -132,8 +133,8 @@ fun ExerciseDetailScreen(
 private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedSteps(steps: List<String>) {
     items(steps.size) { i ->
         Row(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-            Text("${i + 1}. ", color = Accent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text(steps[i], color = TextSecondary, fontSize = 14.sp)
+            Text("${i + 1}. ", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(steps[i], color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
         }
     }
 }
@@ -158,9 +159,9 @@ private fun MuscleChips(ex: Exercise) {
 @Composable
 private fun Pill(label: String, filled: Boolean) {
     Box(
-        modifier = Modifier.clip(CircleShape).background(if (filled) Accent else SurfaceHi)
+        modifier = Modifier.clip(CircleShape).background(if (filled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
-        Text(label, color = if (filled) OnAccent else TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = if (filled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
 }

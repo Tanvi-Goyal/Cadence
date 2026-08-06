@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -41,8 +42,8 @@ fun TypeCard(option: TypeOption, selected: Boolean, onClick: () -> Unit, modifie
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
-            .border(2.dp, if (selected) Accent else Color.Transparent, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .border(2.dp, if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(16.dp),
     ) {
@@ -50,13 +51,13 @@ fun TypeCard(option: TypeOption, selected: Boolean, onClick: () -> Unit, modifie
             modifier = Modifier
                 .size(36.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(if (selected) Accent else SurfaceHi),
+                .background(if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center,
         ) {
-            Text(option.badge, color = if (selected) OnAccent else Accent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(option.badge, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(12.dp))
-        Text(option.title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Text(option.subtitle, color = TextSecondary, fontSize = 12.sp)
+        Text(option.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        Text(option.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
 }

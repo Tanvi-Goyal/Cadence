@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,23 +43,23 @@ fun StatsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MindSetTheme {
         Scaffold(
-            containerColor = Background,
+            containerColor = MaterialTheme.colorScheme.background,
             bottomBar = { MindSetBottomBar(current = Tab.Stations, onTab = onTab) },
         ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Background)
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(padding)
                     .padding(20.dp),
             ) {
-                Text("Trends", color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text("Trends", color = MaterialTheme.colorScheme.onSurface, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
-                Text("Volume per session", color = TextSecondary, fontSize = 13.sp)
+                Text("Volume per session", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                 Spacer(Modifier.height(16.dp))
 
                 if (state.exercises.isEmpty()) {
-                    Text("Log some sets to see trends.", color = TextSecondary, fontSize = 14.sp)
+                    Text("Log some sets to see trends.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                     return@Column
                 }
 
@@ -68,7 +69,7 @@ fun StatsScreen(
                 if (state.points.size < 2) {
                     Text(
                         "Log this exercise in at least 2 sessions to chart a trend.",
-                        color = TextSecondary,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                     )
                 } else {
@@ -89,12 +90,12 @@ private fun ExerciseSelector(state: StatsUiState, onSelect: (String) -> Unit) {
             val active = ex.id == state.selectedExerciseId
             Text(
                 ex.name,
-                color = if (active) OnAccent else TextPrimary,
+                color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (active) Accent else Surface)
+                    .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer)
                     .clickable { onSelect(ex.id) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
             )
@@ -109,8 +110,8 @@ private fun ExerciseSelector(state: StatsUiState, onSelect: (String) -> Unit) {
 @Composable
 private fun VolumeChart(points: List<VolumePoint>, modifier: Modifier = Modifier) {
     val max = points.maxOf { it.volume }.coerceAtLeast(1.0)
-    val barColor = Accent // read the token in composable scope; the Canvas lambda is a DrawScope
-    Box(modifier = modifier.clip(RoundedCornerShape(16.dp)).background(Surface).padding(16.dp)) {
+    val barColor = MaterialTheme.colorScheme.primary // read the token in composable scope; the Canvas lambda is a DrawScope
+    Box(modifier = modifier.clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(16.dp)) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val n = points.size
             val gap = 12.dp.toPx()

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -46,45 +47,45 @@ fun NewTemplateScreen(
     var name by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf(SessionType.STRENGTH.name) }
     MindSetTheme {
-        Scaffold(containerColor = Background) { padding ->
+        Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Background)
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(padding)
                     .padding(20.dp),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "‹",
-                        color = TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontSize = 28.sp,
                         modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                     )
                     Spacer(Modifier.size(12.dp))
                     Column {
-                        Text("New template", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text("A plan you can start any day", color = TextSecondary, fontSize = 13.sp)
+                        Text("New template", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text("A plan you can start any day", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                     }
                 }
                 Spacer(Modifier.height(24.dp))
-                Text("NAME", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text("NAME", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    placeholder = { Text("e.g. Upper A", color = TextSecondary) },
+                    placeholder = { Text("e.g. Upper A", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Surface,
-                        unfocusedContainerColor = Surface,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
+                        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                     ),
                 )
                 Spacer(Modifier.height(24.dp))
-                Text("SESSION TYPE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text("SESSION TYPE", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(12.dp))
                 typeOptions.chunked(2).forEach { rowItems ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -106,7 +107,7 @@ fun NewTemplateScreen(
                         val finalName = trimmed.ifEmpty { defaultTemplateName(selected) }
                         viewModel.createTemplate(finalName, selected, onCreated)
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Accent, contentColor = OnAccent),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                 ) {
