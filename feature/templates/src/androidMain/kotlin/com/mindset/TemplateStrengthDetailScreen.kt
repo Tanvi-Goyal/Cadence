@@ -61,7 +61,7 @@ import org.koin.core.parameter.parametersOf
 
 /*
  * Template Detail — Strength (DB-backed). Renders a seeded program day observed from the DB onto the
- * Kinetic design: hero + focus-area chips + session-goal card + warm-up card + the exercise sections
+ * Obsidian design: hero + focus-area chips + session-goal card + warm-up card + the exercise sections
  * (main / accessory / conditioning) + an expandable cool-down. START WORKOUT deep-copies the template
  * into a live session (the VM) and opens Log Workout.
  */

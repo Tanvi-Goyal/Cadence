@@ -166,7 +166,7 @@ fun LoginScreen(
 
             Text(
                 "By continuing, you agree to MindSet's Terms of Service and Privacy Policy. " +
-                    "Kinetic Precision data engine v4.8.2",
+                    "Obsidian Performance data engine v4.8.2",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center,

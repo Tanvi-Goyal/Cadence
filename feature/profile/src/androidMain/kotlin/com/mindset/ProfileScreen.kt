@@ -57,7 +57,7 @@ import org.koin.compose.viewmodel.koinViewModel
 /*
  * Profile / Settings (Figma "Profile"). A profile header (avatar + name + tier), a 3-stat row, and
  * three grouped setting sections (Preferences / Integrations / Account & Security) over a version
- * footer, on the Kinetic Precision dark theme.
+ * footer, on the Obsidian Performance dark theme.
  *
  * Two settings are real (wired to [PreferencesViewModel]): the Dark Mode toggle → themeMode and the
  * Units row → weightUnit. Everything else (avatar/name/tier, stats, integrations, account actions) is
@@ -118,20 +118,6 @@ fun ProfileScreen(
                                     viewModel.onWeightUnitChange(
                                         if (prefs.weightUnit == WeightUnit.KG) WeightUnit.LB else WeightUnit.KG,
                                     )
-                                },
-                            )
-                            RowDivider()
-                            // TEMPORARY: in-memory design-system toggle (not persisted; resets to Obsidian
-                            // on relaunch). Drives LocalThemeVariant to compare Obsidian vs Kinetic. This
-                            // gets a styled home when the Profile screen is redesigned.
-                            val setVariant = LocalSetThemeVariant.current
-                            ToggleRow(
-                                icon = MindSetIcons.DarkMode,
-                                title = "Obsidian Theme",
-                                subtitle = "Toggle off for the original Kinetic look",
-                                checked = LocalThemeVariant.current == ThemeVariant.OBSIDIAN,
-                                onCheckedChange = { on ->
-                                    setVariant(if (on) ThemeVariant.OBSIDIAN else ThemeVariant.KINETIC)
                                 },
                             )
                         }
@@ -406,7 +392,7 @@ private fun Footer(onOpenCredits: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            "Kinetic Precision v4.8.2".uppercase(),
+            "Obsidian Performance v4.8.2".uppercase(),
             style = MaterialTheme.typography.labelMedium,
             letterSpacing = 1.5.sp,
             color = colors.onSurfaceVariant,

@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 /*
- * :core:designsystem — the "Kinetic Precision" theme (color/type/shape/spacing + Inter fonts) and the
+ * :core:designsystem — the "Obsidian Performance" theme (color/type/shape/spacing + Inter fonts) and the
  * reusable Compose primitives. Android-only (the iOS app is a SwiftUI shell), so this is a plain
  * com.android.library + Compose rather than a KMP module.
  */

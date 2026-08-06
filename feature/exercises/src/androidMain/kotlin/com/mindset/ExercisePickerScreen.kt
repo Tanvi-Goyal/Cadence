@@ -54,7 +54,7 @@ import org.koin.compose.viewmodel.koinViewModel
 
 /*
  * Exercise picker — searchable, filterable list reached as a push from Log Workout / the Template
- * Builder. Restyled to the Kinetic Precision system: a pinned translucent glass header (a frosted
+ * Builder. Restyled to the Obsidian Performance system: a pinned translucent glass header (a frosted
  * search field + muscle / equipment selector chips, matching the Hyrox sim) floats over a scrolling
  * list of bordered exercise cards. The list re-queries as the query or a filter changes.
  */

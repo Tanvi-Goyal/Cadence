@@ -25,12 +25,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 /*
- * Kinetic Precision design-system primitives — the small, reusable pieces every screen composes
+ * Obsidian Performance design-system primitives — the small, reusable pieces every screen composes
  * from. They read only from MaterialTheme (colorScheme / typography / spacing), so they inherit the
  * theme automatically. See docs/design.md for the token rationale.
  */
 
 /** Uppercase, tracked, muted section heading (design.md "Functional Labels"). e.g. "UP NEXT". */
+// todo:: to  be deleted
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     Text(
