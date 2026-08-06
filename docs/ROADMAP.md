@@ -1,12 +1,12 @@
-# Cadence — Roadmap to Hyrox Mumbai (Sept 2026) & Beyond
+# MindSet — Roadmap to Hyrox Mumbai (Sept 2026) & Beyond
 
 **Status:** Active · **Owner:** Tanvi Goyal · **Supersedes planning in:** [PRD v0.1](PRD.md) (baseline stale — see below) · **Merges:** PRD v2 + competitor / Hyrox / backend research.
 
-Cadence is an offline-first KMP training tracker. This roadmap turns the portfolio slice into Tanvi's daily-driver app and a beta for friends + HyFit training partners.
+MindSet is an offline-first KMP training tracker. This roadmap turns the portfolio slice into Tanvi's daily-driver app and a beta for friends + HyFit training partners.
 
 **Binding constraint:** Tanvi is user #1, training 5×/week at HyFit for **Hyrox Mumbai, September 2026**. Friends + HyFit partners are users #2–N within ~8 weeks. Auth, multi-device sync, and the Hyrox race-sim/pacing tools are pulled *forward* so race tools get dogfooded before September.
 
-**Product bet — template-first capture:** hybrid athletes train from prescribed structure (whiteboard, program PDF, own plan). Cadence captures the structure once and makes filling in results near-instant. A "class template" and a "self-written program template" are the same object.
+**Product bet — template-first capture:** hybrid athletes train from prescribed structure (whiteboard, program PDF, own plan). MindSet captures the structure once and makes filling in results near-instant. A "class template" and a "self-written program template" are the same object.
 
 **Positioning:** the only offline-first app treating strength, running, and conditioning as equal citizens, capturing whatever plan you already train from, with race-grade Hyrox tools — for markets (like India) where the gym has no API, the Wi-Fi is bad, and the workout is on a whiteboard.
 

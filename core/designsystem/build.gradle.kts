@@ -15,7 +15,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.cadence.designsystem"
+    namespace = "com.mindset.designsystem"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {

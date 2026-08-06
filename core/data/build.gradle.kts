@@ -1,12 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.data"
+        namespace = "com.mindset.data"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {

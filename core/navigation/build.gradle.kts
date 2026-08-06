@@ -13,7 +13,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.cadence.navigation"
+    namespace = "com.mindset.navigation"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {

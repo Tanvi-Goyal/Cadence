@@ -13,7 +13,7 @@ kotlin {
 }
 
 android {
-    namespace = "dev.cadence.benchmark"
+    namespace = "com.mindset.benchmark"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {

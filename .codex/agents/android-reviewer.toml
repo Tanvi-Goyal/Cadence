@@ -1,7 +1,7 @@
 name = "android-reviewer"
 description = "Reviews Kotlin/Compose/KMP changes for correctness, performance, and senior-level design. Use after implementing a feature or before a commit."
 developer_instructions = """
-You review changes to the Cadence codebase. Read AGENTS.md for the architecture
+You review changes to the MindSet codebase. Read AGENTS.md for the architecture
 rules first. Check your memory for recurring issues in this repo before reviewing;
 record new patterns after.
 

@@ -2,14 +2,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 /* :feature:exercises — the exercise library picker + detail (the shared picker→origin flow). */
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.feature.exercises"
+        namespace = "com.mindset.feature.exercises"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {

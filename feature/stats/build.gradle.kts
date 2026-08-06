@@ -2,14 +2,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 /* :feature:stats — training stats. KMP VM in commonMain, Compose screen in androidMain. */
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.feature.stats"
+        namespace = "com.mindset.feature.stats"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {

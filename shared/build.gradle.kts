@@ -20,7 +20,7 @@ kotlin {
     }
 
     androidLibrary {
-        namespace = "dev.cadence.shared"
+        namespace = "com.mindset.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -55,7 +55,7 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             // `api` so consumers (composeApp today, the iOS umbrella later) see these leaf modules
-            // transitively — the moved packages (`dev.cadence.model`/`common`) keep their names, so
+            // transitively — the moved packages (`com.mindset.model`/`common`) keep their names, so
             // no import in :shared or :composeApp changes.
             api(projects.core.model)
             api(projects.core.common)

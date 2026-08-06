@@ -2,14 +2,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 /* :feature:history — session history list + session detail. */
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.feature.history"
+        namespace = "com.mindset.feature.history"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
@@ -29,7 +29,7 @@ kotlin {
             implementation(libs.compose.runtime)
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)          // SessionRow / formatVolume / relativeDate / CadenceBottomBar
+            implementation(projects.core.ui)          // SessionRow / formatVolume / relativeDate / MindSetBottomBar
             implementation(projects.core.designsystem)
             implementation(projects.core.navigation)   // SessionDetail typed route
             implementation(libs.compose.foundation)

@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
     alias(libs.plugins.room)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization) // Exercise stores list columns as JSON
@@ -9,7 +9,7 @@ plugins {
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.database"
+        namespace = "com.mindset.database"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
@@ -50,9 +50,9 @@ room3 {
 }
 
 // MigrationTest reads the exported schema JSON at runtime; env vars only cross into the iOS
-// simulator when prefixed with `SIMCTL_CHILD_`, so the test reads `CADENCE_SCHEMA_DIR`.
+// simulator when prefixed with `SIMCTL_CHILD_`, so the test reads `MINDSET_SCHEMA_DIR`.
 tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
-    environment("SIMCTL_CHILD_CADENCE_SCHEMA_DIR", "$projectDir/schemas")
+    environment("SIMCTL_CHILD_MINDSET_SCHEMA_DIR", "$projectDir/schemas")
 }
 
 // Room's compiler runs as a KSP processor per target (android + both iOS).

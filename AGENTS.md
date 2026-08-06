@@ -1,4 +1,4 @@
-# AGENTS.md — Cadence
+# AGENTS.md — MindSet
 
 Cross-platform training tracker. Offline-first. KMP for shared logic; native UI
 (Jetpack Compose on Android, a thin SwiftUI shell on iOS). This is a portfolio

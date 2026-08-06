@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Cadence are recorded here. Format loosely follows
+All notable changes to MindSet are recorded here. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); the project is pre-1.0 so versions are milestones,
 not published releases.
 
@@ -16,7 +16,7 @@ The persistence layer was rebuilt to the HLD/LLD-v1 model behind a real, tested 
 - First-class `Modality` (STRENGTH / CONDITIONING / RUN / MOBILITY) and a 5-value `MetricType`
   (WEIGHT_REPS / REPS_ONLY / DISTANCE_TIME / DURATION / CALORIES) on exercises, driving the
   polymorphic `CaptureFields` logging cells.
-- Pure-Kotlin domain models in `dev.cadence.model`, mapped to Room entities at a single seam
+- Pure-Kotlin domain models in `com.mindset.model`, mapped to Room entities at a single seam
   (`Mappers.kt`) so the UI/domain never touch Room types.
 - Hand-rolled **UUIDv7** generator (`:core:common` seam) — time-ordered client ids.
 - `PersonalRecord` cache + pure `detectPrs` (Epley e1RM, max weight/reps, best-time-per-distance,

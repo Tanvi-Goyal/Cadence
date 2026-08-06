@@ -1,4 +1,4 @@
-rootProject.name = "Cadence"
+rootProject.name = "MindSet"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {

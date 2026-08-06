@@ -1,14 +1,14 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.feature.onboarding"
+        namespace = "com.mindset.feature.onboarding"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
@@ -27,8 +27,8 @@ kotlin {
             implementation(libs.compose.runtime) // required on iOS compilations too
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)           // BrandLockup, CadenceIcons
-            implementation(projects.core.designsystem) // CadenceTheme + tokens
+            implementation(projects.core.ui)           // BrandLockup, MindSetIcons
+            implementation(projects.core.designsystem) // MindSetTheme + tokens
             implementation(projects.core.navigation)   // typed routes
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

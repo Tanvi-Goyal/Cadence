@@ -13,7 +13,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.cadence.ui"
+    namespace = "com.mindset.ui"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
@@ -32,7 +32,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(projects.core.designsystem) // CadenceIcons + MaterialTheme.spacing
+    implementation(projects.core.designsystem) // MindSetIcons + MaterialTheme.spacing
     implementation(projects.core.model)         // Session / SessionType for shared session UI
     implementation(projects.core.domain)        // Units / WeightUnit formatting
     implementation(libs.compose.runtime)

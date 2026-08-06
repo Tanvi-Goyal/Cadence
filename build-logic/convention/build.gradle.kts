@@ -2,7 +2,7 @@ plugins {
     `kotlin-dsl`
 }
 
-group = "dev.cadence.buildlogic"
+group = "com.mindset.buildlogic"
 
 dependencies {
     // Plugin implementations the convention plugins apply/configure need on their compile classpath.
@@ -13,9 +13,9 @@ dependencies {
 
 gradlePlugin {
     plugins {
-        register("cadenceKmpLibrary") {
-            id = "cadence.kmp.library"
-            implementationClass = "dev.cadence.buildlogic.CadenceKmpLibraryConventionPlugin"
+        register("mindsetKmpLibrary") {
+            id = "mindset.kmp.library"
+            implementationClass = "com.mindset.buildlogic.MindSetKmpLibraryConventionPlugin"
         }
     }
 }
