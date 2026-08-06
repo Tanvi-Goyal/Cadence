@@ -1,5 +1,8 @@
-package dev.cadence.domain
+package dev.cadence.domain.repository
 
+import dev.cadence.domain.ThemeMode
+import dev.cadence.domain.UserPreferences
+import dev.cadence.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
 
 /**

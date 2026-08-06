@@ -1,11 +1,7 @@
 package dev.cadence.data.local
 
-import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
-import androidx.room3.Query
-import androidx.room3.Upsert
-import kotlinx.coroutines.flow.Flow
 
 /**
  * A planned/next session shown on the Home "Today" card. Deliberately LOCAL-ONLY — plans are not
@@ -20,16 +16,3 @@ data class PlannedSession(
     val targetDurationMin: Int,
     val focus: String,
 )
-
-@Dao
-interface PlannedSessionDao {
-    /** The current plan (at most one for v1), observed by Home. */
-    @Query("SELECT * FROM planned_sessions LIMIT 1")
-    fun observeCurrent(): Flow<PlannedSession?>
-
-    @Query("SELECT * FROM planned_sessions LIMIT 1")
-    suspend fun getCurrent(): PlannedSession?
-
-    @Upsert
-    suspend fun upsert(plan: PlannedSession)
-}

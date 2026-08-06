@@ -9,7 +9,7 @@ import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.OutboxEntry
 import dev.cadence.data.local.RaceGoalEntity
 import dev.cadence.data.local.SyncStatus
-import dev.cadence.domain.RaceGoalRepository
+import dev.cadence.domain.repository.RaceGoalRepository
 import dev.cadence.model.RaceGoal
 import dev.cadence.model.RaceGoalStatus
 import dev.cadence.model.RaceMode

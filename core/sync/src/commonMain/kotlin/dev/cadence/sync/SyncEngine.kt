@@ -9,12 +9,12 @@ import dev.cadence.contracts.SetDto
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.Block
 import dev.cadence.data.local.ExerciseEntry
-import dev.cadence.data.local.OutboxDao
+import dev.cadence.data.local.dao.OutboxDao
 import dev.cadence.data.local.Session
-import dev.cadence.data.local.SessionDao
+import dev.cadence.data.local.dao.SessionDao
 import dev.cadence.data.local.SetEntry
 import dev.cadence.data.local.SyncMeta
-import dev.cadence.data.local.SyncMetaDao
+import dev.cadence.data.local.dao.SyncMetaDao
 import dev.cadence.data.local.SyncMetaKeys
 import dev.cadence.data.local.SyncStatus
 import dev.cadence.data.remote.SyncApi

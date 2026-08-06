@@ -1,10 +1,7 @@
 package dev.cadence.data.local
 
-import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
-import androidx.room3.Query
-import androidx.room3.Upsert
 
 /**
  * A tiny key/value table for sync bookkeeping — currently just the pull cursor. Reuses Room
@@ -16,15 +13,6 @@ data class SyncMeta(
     @PrimaryKey val key: String,
     val value: String,
 )
-
-@Dao
-interface SyncMetaDao {
-    @Query("SELECT value FROM sync_meta WHERE key = :key")
-    suspend fun get(key: String): String?
-
-    @Upsert
-    suspend fun set(meta: SyncMeta)
-}
 
 /** Well-known keys for [SyncMeta]. */
 object SyncMetaKeys {

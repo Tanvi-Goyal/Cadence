@@ -14,21 +14,4 @@ data class AthleteProfile(
     val fullName: String = "",
     val bodyweightKg: Double? = null,
     val heightCm: Double? = null,
-    val defaultDivisionKey: String = "MEN",
-    val defaultMode: String? = null,
-    val onboardingComplete: Boolean = false,
 )
-
-/**
- * Reads and writes the device-local [AthleteProfile]. The UI observes it as a [Flow] and never sees
- * storage details; [observe] falls back to defaults when Onboarding hasn't run yet.
- */
-interface AthleteProfileRepository {
-    fun observe(): Flow<AthleteProfile>
-
-    /** Persists the whole profile (Onboarding "complete"). */
-    suspend fun save(profile: AthleteProfile)
-
-    /** Flips just the onboarding flag, preserving the rest of the profile. */
-    suspend fun setOnboardingComplete(complete: Boolean)
-}

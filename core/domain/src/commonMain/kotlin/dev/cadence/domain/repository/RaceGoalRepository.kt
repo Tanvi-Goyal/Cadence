@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalTime::class)
 
-package dev.cadence.domain
+package dev.cadence.domain.repository
 
 import dev.cadence.model.RaceGoal
 import dev.cadence.model.RaceGoalStatus

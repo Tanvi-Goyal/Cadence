@@ -7,7 +7,7 @@ import androidx.paging.map
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
 import dev.cadence.common.UuidGenerator
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.Block
 import dev.cadence.data.local.Exercise as ExerciseEntity

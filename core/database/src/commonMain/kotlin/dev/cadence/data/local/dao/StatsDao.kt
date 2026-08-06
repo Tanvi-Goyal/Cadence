@@ -1,4 +1,4 @@
-package dev.cadence.data.local
+package dev.cadence.data.local.dao
 
 import androidx.room3.Dao
 import androidx.room3.Query

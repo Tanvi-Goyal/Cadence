@@ -1,4 +1,4 @@
-package dev.cadence.domain
+package dev.cadence.domain.repository
 
 import dev.cadence.model.PersonalRecord
 import kotlinx.coroutines.flow.Flow

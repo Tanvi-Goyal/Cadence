@@ -2,7 +2,7 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import kotlinx.coroutines.launch
 
 /** New Session screen: creates a session of the chosen type, then hands back its id to navigate. */

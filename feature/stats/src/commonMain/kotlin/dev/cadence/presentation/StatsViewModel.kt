@@ -2,7 +2,7 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.model.ExerciseRef
 import dev.cadence.model.VolumePoint
 import kotlinx.coroutines.ExperimentalCoroutinesApi

@@ -1,7 +1,7 @@
 package dev.cadence.data
 
 import dev.cadence.data.local.AppDatabase
-import dev.cadence.domain.PersonalRecordRepository
+import dev.cadence.domain.repository.PersonalRecordRepository
 import dev.cadence.model.PersonalRecord
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

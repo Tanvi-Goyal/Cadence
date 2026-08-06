@@ -23,7 +23,6 @@ object EventSeed {
     /** Bump to re-seed the event reference tables on existing installs. */
     const val VERSION = 1
 
-    /** Per-division load slots (which station weight varies by division). */
     private object Load {
         const val SLED_PUSH = "SLED_PUSH"
         const val SLED_PULL = "SLED_PULL"

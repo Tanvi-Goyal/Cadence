@@ -3,7 +3,7 @@ package dev.cadence.presentation
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.model.BlockDetail
 import dev.cadence.model.BlockSection
 import dev.cadence.model.ConditioningFormat

@@ -2,7 +2,7 @@ package dev.cadence.data
 
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.PreferencesEntity
-import dev.cadence.domain.PreferencesRepository
+import dev.cadence.domain.repository.PreferencesRepository
 import dev.cadence.domain.ThemeMode
 import dev.cadence.domain.UserPreferences
 import dev.cadence.domain.WeightUnit

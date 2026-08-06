@@ -20,32 +20,13 @@ data class RaceGoalEntity(
     @PrimaryKey val id: String,
     val formatKey: String,
     val divisionKey: String,
-    val mode: String,                    // dev.cadence.model.RaceMode name
-    val targetDate: Long? = null,        // race-day epoch millis (null = open-ended goal)
+    val mode: String,
+    val targetDate: Long? = null,
     val city: String? = null,
     val goalTimeSec: Int? = null,
-    val status: String,                  // dev.cadence.model.RaceGoalStatus name
+    val status: String,
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,
     val syncStatus: String = SyncStatus.PENDING,
 )
-
-@Dao
-interface RaceGoalDao {
-    /** Next race being trained for: soonest dated UPCOMING goal; open-ended (null date) goals sort last. */
-    @Query(
-        "SELECT * FROM race_goal WHERE status = 'UPCOMING' AND deletedAt IS NULL " +
-            "ORDER BY targetDate IS NULL, targetDate LIMIT 1",
-    )
-    fun observeUpcoming(): Flow<RaceGoalEntity?>
-
-    @Query("SELECT * FROM race_goal WHERE deletedAt IS NULL ORDER BY targetDate IS NULL, targetDate DESC")
-    fun observeAll(): Flow<List<RaceGoalEntity>>
-
-    @Query("SELECT * FROM race_goal WHERE id = :id")
-    suspend fun getById(id: String): RaceGoalEntity?
-
-    @Upsert
-    suspend fun upsert(goal: RaceGoalEntity)
-}

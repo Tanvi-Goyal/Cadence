@@ -1,11 +1,7 @@
 package dev.cadence.data.local
 
-import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
-import androidx.room3.Query
-import androidx.room3.Upsert
-import kotlinx.coroutines.flow.Flow
 
 /**
  * Single-row table holding the user's preferences. Device-local — like [Exercise] and [SyncMeta] it
@@ -22,13 +18,4 @@ data class PreferencesEntity(
         /** There is only ever one preferences row. */
         const val SINGLETON_ID = 0
     }
-}
-
-@Dao
-interface PreferencesDao {
-    @Query("SELECT * FROM preferences WHERE id = 0")
-    fun observe(): Flow<PreferencesEntity?>
-
-    @Upsert
-    suspend fun upsert(preferences: PreferencesEntity)
 }

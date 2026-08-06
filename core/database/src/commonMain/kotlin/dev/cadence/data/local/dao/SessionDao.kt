@@ -1,4 +1,4 @@
-package dev.cadence.data.local
+package dev.cadence.data.local.dao
 
 import androidx.paging.PagingSource
 import androidx.room3.Dao
@@ -7,6 +7,7 @@ import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Upsert
 import androidx.room3.paging.PagingSourceDaoReturnTypeConverter
+import dev.cadence.data.local.Session
 import kotlinx.coroutines.flow.Flow
 
 /**

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 12,
-    "identityHash": "15457ea26f1319e23e925c0dd59d3f70",
+    "identityHash": "5ff84467788836e53705ff51ac630621",
     "entities": [
       {
         "tableName": "sessions",
@@ -843,7 +843,7 @@
       },
       {
         "tableName": "athlete_profile",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `fullName` TEXT NOT NULL, `bodyweightKg` REAL, `heightCm` REAL, `defaultDivisionKey` TEXT NOT NULL, `defaultMode` TEXT, `onboardingComplete` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `fullName` TEXT NOT NULL, `bodyweightKg` REAL, `heightCm` REAL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -866,23 +866,6 @@
             "fieldPath": "heightCm",
             "columnName": "heightCm",
             "affinity": "REAL"
-          },
-          {
-            "fieldPath": "defaultDivisionKey",
-            "columnName": "defaultDivisionKey",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "defaultMode",
-            "columnName": "defaultMode",
-            "affinity": "TEXT"
-          },
-          {
-            "fieldPath": "onboardingComplete",
-            "columnName": "onboardingComplete",
-            "affinity": "INTEGER",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -1294,7 +1277,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '15457ea26f1319e23e925c0dd59d3f70')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5ff84467788836e53705ff51ac630621')"
     ]
   }
 }

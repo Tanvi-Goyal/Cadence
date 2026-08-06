@@ -7,7 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
-import dev.cadence.domain.AthleteProfileRepository
+import dev.cadence.domain.repository.AthleteProfileRepository
 import kotlinx.coroutines.flow.map
 import org.koin.compose.koinInject
 

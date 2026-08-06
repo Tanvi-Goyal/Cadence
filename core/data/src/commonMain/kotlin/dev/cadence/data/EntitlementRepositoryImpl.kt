@@ -3,7 +3,7 @@ package dev.cadence.data
 import dev.cadence.data.local.AppDatabase
 import dev.cadence.data.local.EntitlementEntity
 import dev.cadence.domain.Entitlement
-import dev.cadence.domain.EntitlementRepository
+import dev.cadence.domain.repository.EntitlementRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

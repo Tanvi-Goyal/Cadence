@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.cadence.model.MuscleDiagram
 import dev.cadence.domain.MuscleImageProvider
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.model.Exercise
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

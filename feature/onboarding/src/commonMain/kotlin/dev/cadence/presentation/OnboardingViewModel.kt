@@ -5,8 +5,8 @@ package dev.cadence.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.cadence.domain.AthleteProfile
-import dev.cadence.domain.AthleteProfileRepository
-import dev.cadence.domain.RaceGoalRepository
+import dev.cadence.domain.repository.AthleteProfileRepository
+import dev.cadence.domain.repository.RaceGoalRepository
 import dev.cadence.model.EventFormat
 import dev.cadence.model.RaceMode
 import kotlinx.coroutines.flow.MutableStateFlow

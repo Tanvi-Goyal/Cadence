@@ -1,11 +1,7 @@
 package dev.cadence.data.local
 
-import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
-import androidx.room3.Query
-import androidx.room3.Upsert
-import kotlinx.coroutines.flow.Flow
 
 /**
  * Single-row table holding the user's subscription entitlement. Device-local (no sync fields). For v1
@@ -21,13 +17,4 @@ data class EntitlementEntity(
         /** There is only ever one entitlement row. */
         const val SINGLETON_ID = 0
     }
-}
-
-@Dao
-interface EntitlementDao {
-    @Query("SELECT * FROM entitlement WHERE id = 0")
-    fun observe(): Flow<EntitlementEntity?>
-
-    @Upsert
-    suspend fun upsert(entitlement: EntitlementEntity)
 }

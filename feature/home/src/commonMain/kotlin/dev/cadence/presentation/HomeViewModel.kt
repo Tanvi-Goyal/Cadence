@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.cadence.domain.ActiveWorkout
 import dev.cadence.domain.ActiveWorkoutController
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.domain.personalBestSessionIds
 import dev.cadence.domain.trainingStreakDays
 import dev.cadence.model.PlannedSession

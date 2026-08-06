@@ -4,7 +4,7 @@ package dev.cadence.data
 
 import dev.cadence.domain.ActiveWorkout
 import dev.cadence.domain.ActiveWorkoutController
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.model.HyroxStepDef
 import dev.cadence.model.HyroxVariant
 import kotlinx.coroutines.CoroutineScope

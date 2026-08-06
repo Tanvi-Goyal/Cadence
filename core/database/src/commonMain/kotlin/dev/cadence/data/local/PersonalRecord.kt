@@ -1,13 +1,8 @@
 package dev.cadence.data.local
 
-import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.Index
-import androidx.room3.Insert
-import androidx.room3.OnConflictStrategy
 import androidx.room3.PrimaryKey
-import androidx.room3.Query
-import kotlinx.coroutines.flow.Flow
 
 /**
  * A cached personal record (new in v8). Cached for a fast PB screen + completion toast but always
@@ -37,15 +32,3 @@ data class PersonalRecord(
     val updatedAt: Long,
     val deletedAt: Long? = null,
 )
-
-@Dao
-interface PersonalRecordDao {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(record: PersonalRecord)
-
-    @Query("SELECT * FROM personal_records WHERE exerciseId = :exerciseId AND deletedAt IS NULL")
-    fun observeForExercise(exerciseId: String): Flow<List<PersonalRecord>>
-
-    @Query("SELECT * FROM personal_records WHERE exerciseId = :exerciseId AND deletedAt IS NULL")
-    suspend fun getForExercise(exerciseId: String): List<PersonalRecord>
-}

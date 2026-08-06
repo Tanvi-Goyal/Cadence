@@ -6,8 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import dev.cadence.domain.EntitlementRepository
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.EntitlementRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.domain.longestStreakDays
 import dev.cadence.domain.personalBestSessionIds
 import dev.cadence.domain.trainingStreakDays

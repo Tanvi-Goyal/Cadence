@@ -1,4 +1,4 @@
-package dev.cadence.domain
+package dev.cadence.domain.repository
 
 import androidx.paging.PagingData
 import dev.cadence.model.Exercise

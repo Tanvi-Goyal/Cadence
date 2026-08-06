@@ -9,13 +9,13 @@ import dev.cadence.data.PreferencesRepositoryImpl
 import dev.cadence.data.RaceGoalRepositoryImpl
 import dev.cadence.data.SessionRepositoryImpl
 import dev.cadence.domain.ActiveWorkoutController
-import dev.cadence.domain.AthleteProfileRepository
-import dev.cadence.domain.EntitlementRepository
+import dev.cadence.domain.repository.AthleteProfileRepository
+import dev.cadence.domain.repository.EntitlementRepository
 import dev.cadence.domain.MuscleImageProvider
-import dev.cadence.domain.PersonalRecordRepository
-import dev.cadence.domain.PreferencesRepository
-import dev.cadence.domain.RaceGoalRepository
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.PersonalRecordRepository
+import dev.cadence.domain.repository.PreferencesRepository
+import dev.cadence.domain.repository.RaceGoalRepository
+import dev.cadence.domain.repository.SessionRepository
 import org.koin.dsl.bind
 import org.koin.dsl.module
 

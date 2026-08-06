@@ -2,9 +2,9 @@ package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.cadence.domain.AthleteProfileRepository
+import dev.cadence.domain.repository.AthleteProfileRepository
 import dev.cadence.domain.LogSectionUi
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.domain.deriveSessionType
 import dev.cadence.domain.toLogSections
 import dev.cadence.model.HyroxStepDef

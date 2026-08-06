@@ -1,11 +1,8 @@
 package dev.cadence.data.local
 
-import androidx.room3.Dao
 import androidx.room3.Entity
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
-import androidx.room3.Query
-import androidx.room3.Upsert
 
 /**
  * Event-format reference data (iteration 3) — the verified race format as DATA, generalized past Hyrox
@@ -22,7 +19,7 @@ import androidx.room3.Upsert
  */
 @Entity(tableName = "event_format")
 data class EventFormatEntity(
-    @PrimaryKey val formatKey: String,   // e.g. "HYROX"
+    @PrimaryKey val formatKey: String,
     val name: String,
     val description: String = "",
 )
@@ -70,35 +67,3 @@ data class SegmentStandardEntity(
     val targetDistanceM: Int? = null,    // division-specific distance override
     val targetHeightM: Double? = null,   // wall-ball target height (2.7 / 3.0)
 )
-
-@Dao
-interface EventRefDao {
-    @Query("SELECT COUNT(*) FROM event_segment")
-    suspend fun segmentCount(): Int
-
-    @Upsert suspend fun upsertFormats(rows: List<EventFormatEntity>)
-
-    @Upsert suspend fun upsertSegments(rows: List<EventSegmentEntity>)
-
-    @Upsert suspend fun upsertDivisions(rows: List<EventDivisionEntity>)
-
-    @Upsert suspend fun upsertStandards(rows: List<SegmentStandardEntity>)
-
-    @Query("SELECT * FROM event_format")
-    suspend fun formats(): List<EventFormatEntity>
-
-    @Query("SELECT * FROM event_segment WHERE formatKey = :formatKey ORDER BY orderIndex")
-    suspend fun segmentsForFormat(formatKey: String): List<EventSegmentEntity>
-
-    @Query("SELECT * FROM event_division WHERE formatKey = :formatKey ORDER BY orderIndex")
-    suspend fun divisionsForFormat(formatKey: String): List<EventDivisionEntity>
-
-    @Query(
-        "SELECT * FROM segment_standard WHERE formatKey = :formatKey AND divisionKey = :divisionKey AND mode = :mode",
-    )
-    suspend fun standardsFor(
-        formatKey: String,
-        divisionKey: String,
-        mode: String,
-    ): List<SegmentStandardEntity>
-}

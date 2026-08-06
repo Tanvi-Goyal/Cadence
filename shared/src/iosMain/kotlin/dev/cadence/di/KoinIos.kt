@@ -3,7 +3,7 @@ package dev.cadence.di
 import dev.cadence.FlowSubscription
 import dev.cadence.model.MuscleDiagram
 import dev.cadence.domain.MuscleImageProvider
-import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.repository.SessionRepository
 import dev.cadence.model.Exercise
 import dev.cadence.presentation.HistoryViewModel
 import dev.cadence.presentation.HomeViewModel
