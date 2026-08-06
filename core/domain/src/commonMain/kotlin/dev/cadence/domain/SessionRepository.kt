@@ -56,6 +56,13 @@ interface SessionRepository {
         muscle: String? = null,
     ): Flow<PagingData<Exercise>>
 
+    /**
+     * The reverse-chronological session feed as a Paging 3 stream — the History (Pro) list. [type]
+     * narrows by [SessionType] (null = all live, non-template sessions). Backed by a Room PagingSource
+     * so the UI only materializes a window; collected in the UI as `LazyPagingItems`.
+     */
+    fun pagedSessions(type: SessionType? = null): Flow<PagingData<Session>>
+
     /** The full seeded catalog as a lookup, for resolving `exerciseId` → name/metric in the UI. */
     suspend fun exercisesById(): Map<String, Exercise>
 

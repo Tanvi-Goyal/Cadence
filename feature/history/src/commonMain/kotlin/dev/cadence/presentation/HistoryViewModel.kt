@@ -1,17 +1,25 @@
-@file:OptIn(ExperimentalTime::class)
+@file:OptIn(ExperimentalTime::class, ExperimentalCoroutinesApi::class)
 
 package dev.cadence.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import dev.cadence.domain.EntitlementRepository
 import dev.cadence.domain.SessionRepository
+import dev.cadence.domain.longestStreakDays
 import dev.cadence.domain.personalBestSessionIds
 import dev.cadence.domain.trainingStreakDays
 import dev.cadence.model.Session
+import dev.cadence.model.SessionType
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
@@ -25,28 +33,37 @@ data class HistoryRow(
 /** The workout-type filter behind the History header's filter control. */
 enum class HistoryFilter { ALL, STRENGTH, CONDITIONING, HYROX, MIXED }
 
-/** Immutable UI state for the History tab. */
+private fun HistoryFilter.toSessionType(): SessionType? =
+    if (this == HistoryFilter.ALL) null else SessionType.valueOf(name)
+
+/** Immutable UI state for the History tab (free + pro variants gate on [isPro]). */
 data class HistoryUiState(
-    /** The feed, already narrowed by [filter]. */
-    val rows: List<HistoryRow> = emptyList(),
+    /** Entitlement gate — free (paywall) vs pro (full paged history). */
+    val isPro: Boolean = false,
     val filter: HistoryFilter = HistoryFilter.ALL,
     val streakDays: Int = 0,
-    /** UTC epoch-days that had ≥1 session — drives the week-strip highlighting. */
+    val longestStreakDays: Int = 0,
+    /** UTC epoch-days that had ≥1 session — drives the streak-calendar highlighting. */
     val trainedEpochDays: Set<Long> = emptySet(),
     val todayEpochDay: Long = 0,
-    /** The most-recent personal-best session (unfiltered), spotlighted as the best-effort card. */
-    val bestEffort: HistoryRow? = null,
+    /** Whole-history volume + PB lookups, keyed by session id — used to render both tiers' rows. */
+    val volumes: Map<String, Double> = emptyMap(),
+    val pbSessionIds: Set<String> = emptySet(),
+    /** Free tier only: last-30-days sessions (non-paged). */
+    val freeRows: List<HistoryRow> = emptyList(),
 )
 
 private const val DAY_MS = 86_400_000L
+private const val THIRTY_DAYS_MS = 30 * DAY_MS
 
 /**
- * Backs the History tab — reactive from the DB (never the network). Reuses the same session + volume
- * flows Home uses, plus a workout-type filter, the shared training-streak computation, and the shared
- * personal-best detection for the best-effort spotlight.
+ * Backs the History tab — reactive from the DB (never the network). The whole-history read powers the
+ * streak calendar, PB detection, volumes and the free-tier 30-day list; the Pro list is a separate
+ * Paging 3 stream ([pagedSessions]) so the visible list stays cheap for large histories.
  */
 class HistoryViewModel(
-    repository: SessionRepository,
+    private val repository: SessionRepository,
+    entitlements: EntitlementRepository,
 ) : ViewModel() {
 
     private val filter = MutableStateFlow(HistoryFilter.ALL)
@@ -55,30 +72,35 @@ class HistoryViewModel(
         combine(
             repository.observeSessions(),
             repository.observeVolumesBySession(),
+            entitlements.observe(),
             filter,
-        ) { sessions, volumes, activeFilter ->
+        ) { sessions, volumes, entitlement, activeFilter ->
             val now = Clock.System.now().toEpochMilliseconds()
-            val allRows = sessions.map { HistoryRow(it, volumes[it.id] ?: 0.0) }
-            val pbIds = personalBestSessionIds(sessions, volumes)
+            val trainedEpochDays = sessions.map { it.startedAt.toEpochMilliseconds() / DAY_MS }.toSet()
             HistoryUiState(
-                rows = if (activeFilter == HistoryFilter.ALL) {
-                    allRows
-                } else {
-                    allRows.filter { it.session.type.name == activeFilter.name }
-                },
+                isPro = entitlement.isPro,
                 filter = activeFilter,
                 streakDays = trainingStreakDays(sessions.map { it.startedAt.toEpochMilliseconds() }, now),
-                trainedEpochDays = sessions.map { it.startedAt.toEpochMilliseconds() / DAY_MS }.toSet(),
+                longestStreakDays = longestStreakDays(trainedEpochDays),
+                trainedEpochDays = trainedEpochDays,
                 todayEpochDay = now / DAY_MS,
-                // sessions are newest-first (SessionDao ORDER BY startedAt DESC), so the first PB match
-                // is the most recent one.
-                bestEffort = allRows.firstOrNull { it.session.id in pbIds },
+                volumes = volumes,
+                pbSessionIds = personalBestSessionIds(sessions, volumes),
+                freeRows = sessions
+                    .filter { it.startedAt.toEpochMilliseconds() >= now - THIRTY_DAYS_MS }
+                    .map { HistoryRow(it, volumes[it.id] ?: 0.0) },
             )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = HistoryUiState(),
         )
+
+    /** The Pro reverse-chronological list, paged and re-fetched whenever the filter changes. */
+    val pagedSessions: Flow<PagingData<Session>> =
+        filter
+            .flatMapLatest { active -> repository.pagedSessions(active.toSessionType()) }
+            .cachedIn(viewModelScope)
 
     /** Intent: narrow the feed to a workout type (or [HistoryFilter.ALL] to clear). */
     fun onFilterSelected(newFilter: HistoryFilter) {

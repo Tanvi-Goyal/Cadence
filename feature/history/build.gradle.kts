@@ -21,6 +21,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.domain) // SessionRepository + LoggedItemUi/toLoggedItemUis + model
             implementation(libs.androidx.lifecycle.viewmodel)
+            implementation(libs.androidx.paging.common) // HistoryViewModel: PagingData / cachedIn
             implementation(libs.kotlinx.coroutines.core)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
@@ -36,6 +37,7 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.androidx.navigation.compose)
+            implementation(libs.androidx.paging.compose)   // collectAsLazyPagingItems (Pro list)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose.viewmodel)
         }

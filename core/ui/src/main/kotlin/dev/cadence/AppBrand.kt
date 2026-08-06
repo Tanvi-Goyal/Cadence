@@ -21,6 +21,25 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.cadence.ui.R
 
+/**
+ * The MIND[SET] wordmark — "MIND"/"SET" in white, the brackets tinted `primary`. Shared by the vertical
+ * [AppBrand] lockup and the horizontal [dev.cadence.components.CadenceTopBar] so the two never diverge.
+ */
+@Composable
+fun CadenceWordmark(
+    modifier: Modifier = Modifier,
+    style: TextStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val appName = buildAnnotatedString {
+        withStyle(SpanStyle(color = Color.White)) { append("MIND") }
+        withStyle(SpanStyle(color = primary)) { append("[") }
+        withStyle(SpanStyle(color = Color.White)) { append("SET") }
+        withStyle(SpanStyle(color = primary)) { append("]") }
+    }
+    Text(text = appName, style = style, modifier = modifier)
+}
+
 @Composable
 fun AppBrand(
     modifier: Modifier = Modifier,
@@ -31,15 +50,6 @@ fun AppBrand(
         fontWeight = FontWeight.Bold,
     ),
 ) {
-    val primary = MaterialTheme.colorScheme.primary
-
-    val appName = buildAnnotatedString {
-        withStyle(SpanStyle(color = Color.White)) { append("MIND") }
-        withStyle(SpanStyle(color = primary)) { append("[") }
-        withStyle(SpanStyle(color = Color.White)) { append("SET") }
-        withStyle(SpanStyle(color = primary)) { append("]") }
-    }
-
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Image(
             painter = painterResource(R.drawable.brand_logo),
@@ -49,7 +59,7 @@ fun AppBrand(
 
         if (showWordmark) {
             Spacer(Modifier.height(gap))
-            Text(text = appName, style = wordmarkStyle)
+            CadenceWordmark(style = wordmarkStyle)
         }
     }
 }

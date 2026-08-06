@@ -7,10 +7,11 @@ import androidx.navigation.toRoute
 /** The History tab (string-routed). */
 fun NavGraphBuilder.historyScreen(
     onOpenDetail: (String) -> Unit,
+    onOpenProfile: () -> Unit,
     onTab: (Tab) -> Unit,
 ) {
     composable<History> {
-        HistoryScreen(onOpenDetail = onOpenDetail, onTab = onTab)
+        HistoryScreen(onOpenDetail = onOpenDetail, onOpenProfile = onOpenProfile, onTab = onTab)
     }
 }
 

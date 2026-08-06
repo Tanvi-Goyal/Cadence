@@ -11,20 +11,12 @@ import dev.cadence.model.SessionType
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-/**
- * App navigation (JetBrains Compose Navigation, kept native per the PRD). The four tabs
- * (Home/History/Stats/Profile) are top-level destinations reached via [switchTab]; the arg-carrying
- * pushes (New Session, Log Workout, the shared Exercise Picker/Detail, Session Detail, Templates) are
- * type-safe `@Serializable` routes (see NavRoutes.kt) so args are compile-checked. The graph mixes the
- * string tab destinations with the typed pushes — navigation-compose supports both together.
- */
 @Composable
 fun CadenceNavHost() {
     val nav = rememberNavController()
     val scope = rememberCoroutineScope()
     val sessionRepository = koinInject<SessionRepository>()
-    // The center Quick-Start (+) FAB creates a fresh session and opens Log Session directly. The New
-    // Session type picker is retired from this path — session type auto-derives from what gets logged.
+
     CompositionLocalProvider(
         LocalQuickStart provides {
             scope.launch {
@@ -39,8 +31,6 @@ fun CadenceNavHost() {
         startDestination = Splash
     ) {
 
-        // ---- Splash (app entry; holds briefly, then advances and pops itself) ----
-        // Routes on the persisted onboarding flag: first-run → Onboarding, returning → Home.
         splashScreen(
             onDone = { onboardingComplete ->
                 val destination: Any = if (onboardingComplete) Home else Onboarding
@@ -52,14 +42,6 @@ fun CadenceNavHost() {
             onComplete = { nav.navigate(Home) { popUpTo(Onboarding) { inclusive = true } } },
         )
 
-        // ---- Auth (design-static — any sign-in action enters the app) ----
-        loginScreen(
-            onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
-            onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
-            onForgotPassword = {},
-        )
-
-        // ---- Bottom-nav tabs (typed routes; no args) ----
         homeScreen(
             onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
             onNewSession = { nav.navigate(NewSession) },
@@ -70,8 +52,15 @@ fun CadenceNavHost() {
             onTab = nav::switchTab,
         )
 
+        loginScreen(
+            onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+            onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+            onForgotPassword = {},
+        )
+
         historyScreen(
             onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
+            onOpenProfile = { nav.switchTab(Tab.Profile) },
             onTab = nav::switchTab,
         )
 
@@ -81,7 +70,6 @@ fun CadenceNavHost() {
 
         creditsScreen(onBack = { nav.popBackStack() })
 
-        // ---- Full-screen pushes (type-safe routes) ----
         newSessionScreen(
             onBack = { nav.popBackStack() },
             onCreated = { id ->
@@ -110,9 +98,6 @@ fun CadenceNavHost() {
 
         exerciseDetailScreen(
             onAdd = { exerciseId, target ->
-                // Hand the pick back to whichever screen launched the picker (Log Workout or the
-                // Template Builder, 2 back) and return to it. getBackStackEntry<T>() matches the
-                // single entry of that route type on the stack, regardless of its arg value.
                 val origin = when (target) {
                     PickerTarget.LOG -> nav.getBackStackEntry<LogWorkout>()
                     PickerTarget.BUILDER -> nav.getBackStackEntry<TemplateBuilder>()
@@ -128,22 +113,15 @@ fun CadenceNavHost() {
 
         sessionDetailScreen(onBack = { nav.popBackStack() })
 
-        // ---- Templates (D2) ----
         templatesScreen(
             onBack = { nav.popBackStack() },
             onNewTemplate = { nav.navigate(NewTemplate) },
-            // A Library card now opens the read-only Template Detail (not the builder). The Hyrox sims
-            // use the station-list variant; the strength blocks use the exercise-list variant; everything
-            // else uses the workout-protocol variant. This id branch is a temporary shim until a real
-            // template "kind" drives the layout choice.
             onEditTemplate = { id -> nav.openTemplateDetail(id) },
             onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
         )
 
         templateDetailScreen(
             onBack = { nav.popBackStack() },
-            // Placeholder until the data pass: begin a fresh workout. Real behavior = instantiate this
-            // template (deep copy) → open Log Workout.
             onStart = { nav.navigate(NewSession) },
             onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
         )
@@ -173,12 +151,6 @@ fun CadenceNavHost() {
     }
 }
 
-/**
- * Open a template's read-only detail screen. The Hyrox sims use the station-list variant; the strength
- * blocks use the exercise-list variant; everything else uses the workout-protocol variant. This id
- * branch is a temporary shim (shared by the Templates library and the Home quick-start chips) until a
- * real template "kind" drives the layout choice.
- */
 private fun NavController.openTemplateDetail(id: String) {
     when {
         id == "full-hyrox-simulation" || id == "half-hyrox-sim" -> navigate(TemplateHyroxDetail(id))
@@ -196,8 +168,6 @@ private fun NavController.switchTab(tab: Tab) {
     val route: Any = when (tab) {
         Tab.Home -> Home
         Tab.History -> History
-        // Interim: the Stations tab reuses the existing Stats screen until the Hyrox station board
-        // (Figma 0:876) is built — its analytics fold into Stations/Profile then.
         Tab.Stations -> Stats
         Tab.Profile -> Profile
     }

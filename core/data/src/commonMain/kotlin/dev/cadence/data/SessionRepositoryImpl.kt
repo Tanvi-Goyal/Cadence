@@ -182,6 +182,10 @@ class SessionRepositoryImpl(
         Pager(PagingConfig(pageSize = 30)) { exercises.search(query, equipment, muscle) }
             .flow.map { page -> page.map { it.toDomain() } }
 
+    override fun pagedSessions(type: DomainSessionType?): Flow<PagingData<Session>> =
+        Pager(PagingConfig(pageSize = 20)) { sessions.pagedSessions(type?.name) }
+            .flow.map { page -> page.map { it.toDomain() } }
+
     override suspend fun exercisesById(): Map<String, Exercise> =
         exercises.getAll().associate { it.id to it.toDomain() }
 

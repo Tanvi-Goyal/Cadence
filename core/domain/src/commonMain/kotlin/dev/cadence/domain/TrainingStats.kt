@@ -28,6 +28,26 @@ fun trainingStreakDays(sessionStartMillis: List<Long>, nowMillis: Long): Int {
 }
 
 /**
+ * The longest run of consecutive UTC epoch-days that had ≥1 session — the History (Pro) "best streak"
+ * stat. Pure over the already-bucketed [trainedEpochDays] set; each run is counted once from its start
+ * (a day with no predecessor in the set). 0 when empty.
+ */
+fun longestStreakDays(trainedEpochDays: Set<Long>): Int {
+    var longest = 0
+    for (day in trainedEpochDays) {
+        if (day - 1 in trainedEpochDays) continue // not the start of a run
+        var length = 1
+        var cursor = day + 1
+        while (cursor in trainedEpochDays) {
+            length++
+            cursor++
+        }
+        if (length > longest) longest = length
+    }
+    return longest
+}
+
+/**
  * Session ids that set a new all-time strength-volume high at the time they happened: walking sessions
  * oldest→newest, a session qualifies when its volume (> 0) strictly exceeds every earlier session's.
  * This is the session-level "PB" — the Home "Recent" tag and the History best-effort spotlight both use
