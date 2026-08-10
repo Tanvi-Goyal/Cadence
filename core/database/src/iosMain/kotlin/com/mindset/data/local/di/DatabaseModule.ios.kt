@@ -7,7 +7,8 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /** iOS DB seam: the Room builder (file path, no Context) + exercise-catalog reader. */
-actual val databasePlatformModule: Module = module {
-    single { iosDatabaseBuilder() }
-    single<ExerciseAssetReader> { iosExerciseAssetReader() }
-}
+actual val databasePlatformModule: Module =
+    module {
+        single { iosDatabaseBuilder() }
+        single<ExerciseAssetReader> { iosExerciseAssetReader() }
+    }

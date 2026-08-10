@@ -9,7 +9,6 @@ import kotlin.test.assertEquals
  * edit is caught, and asserts every metric resolves.
  */
 class CaptureFieldsTest {
-
     @Test
     fun maps_each_metric_to_its_fields() {
         assertEquals(CaptureFields.WeightReps, CaptureFields.of(MetricType.WEIGHT_REPS))

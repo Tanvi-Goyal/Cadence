@@ -25,27 +25,31 @@ data class SessionDetailUiState(
  * Read-only view of a past session ([sessionId]) — reuses the same hydrated read as Log Workout but
  * exposes no mutations. Parameterized by sessionId (resolved via Koin `parametersOf`).
  */
-class SessionDetailViewModel(
-    private val repository: SessionRepository,
-    private val sessionId: String,
-) : ViewModel() {
-
+class SessionDetailViewModel(private val repository: SessionRepository, private val sessionId: String) : ViewModel() {
     val uiState: StateFlow<SessionDetailUiState> =
-        repository.observeSessionDetail(sessionId).map { detail ->
-            val itemUis = detail.toLoggedItemUis()
-            val volume = itemUis.sumOf { item ->
-                item.sets.sumOf { (it.reps ?: 0) * (it.loadKg ?: 0.0) }
-            }
-            SessionDetailUiState(
-                name = detail?.session?.name.orEmpty(),
-                type = detail?.session?.type?.name.orEmpty(),
-                startedAt = detail?.session?.startedAt?.toEpochMilliseconds() ?: 0L,
-                totalVolumeKg = volume,
-                items = itemUis,
+        repository
+            .observeSessionDetail(sessionId)
+            .map { detail ->
+                val itemUis = detail.toLoggedItemUis()
+                val volume =
+                    itemUis.sumOf { item ->
+                        item.sets.sumOf { (it.reps ?: 0) * (it.loadKg ?: 0.0) }
+                    }
+                SessionDetailUiState(
+                    name = detail?.session?.name.orEmpty(),
+                    type =
+                    detail
+                        ?.session
+                        ?.type
+                        ?.name
+                        .orEmpty(),
+                    startedAt = detail?.session?.startedAt?.toEpochMilliseconds() ?: 0L,
+                    totalVolumeKg = volume,
+                    items = itemUis,
+                )
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = SessionDetailUiState(),
             )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = SessionDetailUiState(),
-        )
 }

@@ -9,8 +9,14 @@ plugins {
 kotlin {
     androidLibrary {
         namespace = "com.mindset.feature.onboarding"
-        compileSdk = libs.versions.android.compileSdk.get().toInt()
-        minSdk = libs.versions.android.minSdk.get().toInt()
+        compileSdk =
+            libs.versions.android.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
         compilerOptions {
             jvmTarget = JvmTarget.JVM_11
         }
@@ -27,16 +33,16 @@ kotlin {
             implementation(libs.compose.runtime) // required on iOS compilations too
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)           // BrandLockup, MindSetIcons
+            implementation(projects.core.ui) // BrandLockup, MindSetIcons
             implementation(projects.core.designsystem) // MindSetTheme + tokens
-            implementation(projects.core.navigation)   // typed routes
+            implementation(projects.core.navigation) // typed routes
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
-            implementation(libs.androidx.lifecycle.runtimeCompose)  // collectAsStateWithLifecycle
-            implementation(libs.androidx.navigation.compose)         // NavGraphBuilder / composable
+            implementation(libs.androidx.lifecycle.runtimeCompose) // collectAsStateWithLifecycle
+            implementation(libs.androidx.navigation.compose) // NavGraphBuilder / composable
             implementation(project.dependencies.platform(libs.koin.bom))
-            implementation(libs.koin.compose.viewmodel)              // koinViewModel()
+            implementation(libs.koin.compose.viewmodel) // koinViewModel()
         }
     }
 }

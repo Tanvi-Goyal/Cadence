@@ -36,16 +36,16 @@ kotlin {
             implementation(libs.compose.runtime)
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)          // MindSetBottomBar, Tab
+            implementation(projects.core.ui) // MindSetBottomBar, Tab
             implementation(projects.core.designsystem) // MindSetTheme + color tokens
-            implementation(projects.core.navigation)   // Credits typed route
+            implementation(projects.core.navigation) // Credits typed route
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.androidx.lifecycle.runtimeCompose) // collectAsStateWithLifecycle
-            implementation(libs.androidx.navigation.compose)        // NavGraphBuilder / composable
+            implementation(libs.androidx.navigation.compose) // NavGraphBuilder / composable
             implementation(project.dependencies.platform(libs.koin.bom))
-            implementation(libs.koin.compose.viewmodel)             // koinViewModel()
+            implementation(libs.koin.compose.viewmodel) // koinViewModel()
         }
     }
 }

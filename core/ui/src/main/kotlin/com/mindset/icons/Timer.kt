@@ -23,7 +23,7 @@ val MindSetIcons.Timer: ImageVector
             defaultWidth = 18.dp,
             defaultHeight = 21.dp,
             viewportWidth = 18f,
-            viewportHeight = 21f
+            viewportHeight = 21f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(6f, 2f)

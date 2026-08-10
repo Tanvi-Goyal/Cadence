@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.Flow
  */
 @Dao
 interface StatsDao {
-
     /** Exercises that appear in at least one session (so the selector never offers empty charts). */
     @Query(
         """

@@ -35,13 +35,8 @@ import com.mindset.model.SessionType
 import com.mindset.presentation.NewSessionViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
-
 @Composable
-fun NewSessionScreen(
-    onBack: () -> Unit,
-    onCreated: (String) -> Unit,
-    viewModel: NewSessionViewModel = koinViewModel(),
-) {
+fun NewSessionScreen(onBack: () -> Unit, onCreated: (String) -> Unit, viewModel: NewSessionViewModel = koinViewModel()) {
     var selected by remember { mutableStateOf(SessionType.STRENGTH.name) }
     MindSetTheme {
         Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
@@ -61,12 +56,26 @@ fun NewSessionScreen(
                     )
                     Spacer(Modifier.size(12.dp))
                     Column {
-                        Text("New session", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text("Pick a focus to start", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                        Text(
+                            "New session",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "Pick a focus to start",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp,
+                        )
                     }
                 }
                 Spacer(Modifier.height(24.dp))
-                Text("SESSION TYPE", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    "SESSION TYPE",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                )
                 Spacer(Modifier.height(12.dp))
                 // 2×2 grid of type cards.
                 typeOptions.chunked(2).forEach { rowItems ->
@@ -85,7 +94,10 @@ fun NewSessionScreen(
                 Spacer(Modifier.weight(1f))
                 Button(
                     onClick = { viewModel.create(selected, onCreated) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                 ) {
@@ -95,4 +107,3 @@ fun NewSessionScreen(
         }
     }
 }
-

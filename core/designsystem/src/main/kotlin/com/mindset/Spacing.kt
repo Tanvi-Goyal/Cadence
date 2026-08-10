@@ -22,4 +22,5 @@ data class Spacing(
 internal val LocalSpacing = staticCompositionLocalOf { Spacing() }
 
 val MaterialTheme.spacing: Spacing
-    @Composable @ReadOnlyComposable get() = LocalSpacing.current
+    @Composable @ReadOnlyComposable
+    get() = LocalSpacing.current

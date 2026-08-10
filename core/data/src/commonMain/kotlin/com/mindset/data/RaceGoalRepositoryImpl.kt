@@ -19,16 +19,7 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
-/**
- * Room-backed [RaceGoalRepository]. Follows the project's sync discipline: a goal is written and its
- * (single, deterministic) outbox row enqueued in ONE transaction — so Phase-2 sync adopts race goals
- * with no schema or write-path change, even though nothing drains the outbox in v1.
- */
-class RaceGoalRepositoryImpl(
-    private val database: AppDatabase,
-    private val uuid: UuidGenerator,
-    private val clock: Clock,
-) : RaceGoalRepository {
+class RaceGoalRepositoryImpl(private val database: AppDatabase, private val uuid: UuidGenerator, private val clock: Clock) : RaceGoalRepository {
 
     private val dao get() = database.raceGoalDao()
     private val outbox get() = database.outboxDao()
@@ -37,8 +28,7 @@ class RaceGoalRepositoryImpl(
 
     override fun observeUpcoming(): Flow<RaceGoal?> = dao.observeUpcoming().map { it?.toDomain() }
 
-    override fun observeAll(): Flow<List<RaceGoal>> =
-        dao.observeAll().map { rows -> rows.map { it.toDomain() } }
+    override fun observeAll(): Flow<List<RaceGoal>> = dao.observeAll().map { rows -> rows.map { it.toDomain() } }
 
     override suspend fun create(
         formatKey: String,
@@ -61,12 +51,14 @@ class RaceGoalRepositoryImpl(
             createdAt = now,
             updatedAt = now,
         )
+
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 dao.upsert(entity)
                 enqueueOutbox(entity.id, now)
             }
         }
+
         return entity.toDomain()
     }
 
@@ -83,7 +75,6 @@ class RaceGoalRepositoryImpl(
         }
     }
 
-    /** One outbox row per goal (deterministic id) so repeated edits don't pile up rows. */
     private suspend fun enqueueOutbox(goalId: String, now: Long) {
         outbox.upsert(
             OutboxEntry(

@@ -124,7 +124,7 @@ name: Kinetic Precision iOS
 ---
 
 ## Brand & Style
-The design system bridges high-performance technical aesthetics with the refined structure of the Apple Human Interface Guidelines. The personality is precise, urgent, and sophisticated, targeting professional users who require data density without sacrificing clarity. 
+The design system bridges high-performance technical aesthetics with the refined structure of the Apple Human Interface Guidelines. The personality is precise, urgent, and sophisticated, targeting professional users who require data density without sacrificing clarity.
 
 The style utilizes **Dark Mode Minimalism** as its foundation, enhanced by **Glassmorphism** for structural depth. It adheres to iOS-native metaphors—respecting safe areas and standard interaction patterns—while maintaining a "technical-grade" feel through vibrant accents and rigorous alignment. The goal is a UI that feels like a precision instrument integrated directly into the OS.
 
@@ -137,7 +137,7 @@ The palette is rooted in a deep, absolute black (`#000000`) base to maximize the
 - **Support Colors:** System Red for destructive actions and System Amber for warnings, consistent with HIG standards.
 
 ## Typography
-Typography follows the Apple San Francisco (SF) scale to ensure legibility and platform consistency. 
+Typography follows the Apple San Francisco (SF) scale to ensure legibility and platform consistency.
 
 - **SF Pro Display** is used for Title levels and above to provide a clean, high-tech impact.
 - **SF Pro Text** handles all body and interactive labels, utilizing dynamic type scaling.

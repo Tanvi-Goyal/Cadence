@@ -23,7 +23,7 @@ val MindSetIcons.Share: ImageVector
             defaultWidth = 18.dp,
             defaultHeight = 20.dp,
             viewportWidth = 18f,
-            viewportHeight = 20f
+            viewportHeight = 20f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(15f, 20f)

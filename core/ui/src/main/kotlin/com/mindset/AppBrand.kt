@@ -26,10 +26,7 @@ import com.mindset.ui.R
  * [AppBrand] lockup and the horizontal [com.mindset.components.MindSetTopBar] so the two never diverge.
  */
 @Composable
-fun MindSetWordmark(
-    modifier: Modifier = Modifier,
-    style: TextStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-) {
+fun MindSetWordmark(modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)) {
     val primary = MaterialTheme.colorScheme.primary
     val appName = buildAnnotatedString {
         withStyle(SpanStyle(color = Color.White)) { append("MIND") }

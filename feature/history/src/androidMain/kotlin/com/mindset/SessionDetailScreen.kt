@@ -26,21 +26,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.mindset.model.MetricType
+import com.mindset.domain.LoggedItemUi
 import com.mindset.domain.Units
 import com.mindset.domain.WeightUnit
+import com.mindset.model.MetricType
 import com.mindset.model.SetEntry
-import com.mindset.domain.LoggedItemUi
 import com.mindset.presentation.SessionDetailViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 @Composable
-fun SessionDetailScreen(
-    sessionId: String,
-    onBack: () -> Unit,
-    viewModel: SessionDetailViewModel = koinViewModel { parametersOf(sessionId) },
-) {
+fun SessionDetailScreen(sessionId: String, onBack: () -> Unit, viewModel: SessionDetailViewModel = koinViewModel { parametersOf(sessionId) }) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MindSetTheme {
         Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
@@ -64,10 +60,19 @@ fun SessionDetailScreen(
                         )
                         Spacer(Modifier.size(12.dp))
                         Column {
-                            Text(state.name.ifEmpty { "Session" }, color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                state.name.ifEmpty {
+                                    "Session"
+                                },
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
                             val unit = LocalWeightUnit.current
                             Text(
-                                "${relativeDate(state.startedAt)} · ${formatVolume(state.totalVolumeKg, unit)} ${Units.label(unit)}",
+                                "${relativeDate(
+                                    state.startedAt,
+                                )} · ${formatVolume(state.totalVolumeKg, unit)} ${Units.label(unit)}",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 13.sp,
                             )
@@ -75,7 +80,13 @@ fun SessionDetailScreen(
                     }
                 }
                 if (state.items.isEmpty()) {
-                    item { Text("No exercises logged.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) }
+                    item {
+                        Text(
+                            "No exercises logged.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp,
+                        )
+                    }
                 } else {
                     items(state.items, key = { it.loggedItemId }) { item -> DetailCard(item) }
                 }
@@ -94,14 +105,28 @@ private fun DetailCard(item: LoggedItemUi) {
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(16.dp),
     ) {
-        Text(item.exerciseName, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            item.exerciseName,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
         Text("${item.sets.size} sets", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         Spacer(Modifier.size(8.dp))
         val unit = LocalWeightUnit.current
-        item.sets.forEach { set -> Text(setLine(set, isStrength, unit), color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.padding(vertical = 2.dp)) }
+        item.sets.forEach { set ->
+            Text(
+                setLine(set, isStrength, unit),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(vertical = 2.dp),
+            )
+        }
     }
 }
 
-private fun setLine(set: SetEntry, isStrength: Boolean, unit: WeightUnit): String =
-    if (isStrength) "Set ${set.setNumber}:  ${set.reps ?: 0} reps × ${formatVolume((set.loadKg ?: 0.0), unit)} ${Units.label(unit)}"
-    else "Set ${set.setNumber}:  ${set.timeSec ?: 0}s · ${set.distanceM ?: 0} m"
+private fun setLine(set: SetEntry, isStrength: Boolean, unit: WeightUnit): String = if (isStrength) {
+    "Set ${set.setNumber}:  ${set.reps ?: 0} reps × ${formatVolume((set.loadKg ?: 0.0), unit)} ${Units.label(unit)}"
+} else {
+    "Set ${set.setNumber}:  ${set.timeSec ?: 0}s · ${set.distanceM ?: 0} m"
+}

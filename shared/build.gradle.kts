@@ -32,16 +32,16 @@ kotlin {
 
     listOf(
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
             // Export the modules whose types cross the Swift boundary so they enter Shared.framework's
             // Obj-C header (KoinIos returns the VMs; Swift holds them + casts their UI-state types).
-            export(projects.core.model)   // Exercise, MuscleDiagram
-            export(projects.core.common)  // FlowSubscription
-            export(projects.core.domain)  // UserPreferences
+            export(projects.core.model) // Exercise, MuscleDiagram
+            export(projects.core.common) // FlowSubscription
+            export(projects.core.domain) // UserPreferences
             export(projects.feature.home)
             export(projects.feature.logging)
             export(projects.feature.templates)
@@ -64,6 +64,8 @@ kotlin {
             api(projects.core.domain)
             // The repository impls + MuscleImageProvider (bound in DI here); package unchanged.
             implementation(projects.core.data)
+            // dataStorePlatformModule (device-local settings seam), aggregated in Modules.kt below.
+            implementation(projects.core.datastore)
             // `api` (not implementation) is transitional: composeApp still references some entity
             // types (ExerciseMetric/Session/Exercise/VolumePoint/PlannedSession) — a UI→database leak
             // cleaned up when features are extracted (B11) and those types move to :core:model.

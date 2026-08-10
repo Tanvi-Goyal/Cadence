@@ -14,7 +14,9 @@ import org.koin.android.ext.koin.androidLogger
  * Android-only piece it can't get itself — the application [android.content.Context], which the
  * Room builder needs. This is where the platform half of the DI seam is supplied.
  */
-class MindSetApplication : Application(), SingletonImageLoader.Factory {
+class MindSetApplication :
+    Application(),
+    SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         initKoin {
@@ -24,8 +26,8 @@ class MindSetApplication : Application(), SingletonImageLoader.Factory {
     }
 
     /** Add the SVG decoder so Coil can render wger's SVG muscle diagrams (JPGs still use the default). */
-    override fun newImageLoader(context: PlatformContext): ImageLoader =
-        ImageLoader.Builder(context)
-            .components { add(SvgDecoder.Factory()) }
-            .build()
+    override fun newImageLoader(context: PlatformContext): ImageLoader = ImageLoader
+        .Builder(context)
+        .components { add(SvgDecoder.Factory()) }
+        .build()
 }

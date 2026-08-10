@@ -23,7 +23,7 @@ val MindSetIcons.Dumbbell: ImageVector
             defaultWidth = 19.8.dp,
             defaultHeight = 19.8.dp,
             viewportWidth = 19.8f,
-            viewportHeight = 19.8f
+            viewportHeight = 19.8f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(11.3f, 19.8f)

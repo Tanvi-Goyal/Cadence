@@ -17,11 +17,11 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(projects.core.domain)   // Syncer interface + SyncOutcome
+            implementation(projects.core.domain) // Syncer interface + SyncOutcome
             implementation(projects.core.database) // AppDatabase, DAOs, entities, SyncMeta
-            implementation(projects.core.network)  // SyncApi transport
-            implementation(projects.contracts)     // wire DTOs
-            implementation(libs.room.runtime)        // useWriterConnection / immediateTransaction
+            implementation(projects.core.network) // SyncApi transport
+            implementation(projects.contracts) // wire DTOs
+            implementation(libs.room.runtime) // useWriterConnection / immediateTransaction
             implementation(libs.kotlinx.coroutines.core)
             // syncModule (DI): the SyncEngine binding.
             implementation(project.dependencies.platform(libs.koin.bom))
@@ -31,9 +31,9 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.androidx.sqlite.bundled) // BundledSQLiteDriver for the in-memory test DB
-            implementation(projects.core.data)   // SessionRepositoryImpl drives the engine end-to-end
+            implementation(projects.core.data) // SessionRepositoryImpl drives the engine end-to-end
             implementation(projects.core.common) // UuidV7Generator seam
-            implementation(projects.core.model)  // PlannedSession + domain SessionType in the round-trip test
+            implementation(projects.core.model) // PlannedSession + domain SessionType in the round-trip test
         }
     }
 }

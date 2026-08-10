@@ -25,9 +25,10 @@ fun deriveSessionType(detail: SessionDetail?): SessionType {
     val allStrength = metrics.all { it == MetricType.WEIGHT_REPS || it == MetricType.REPS_ONLY }
     if (allStrength) return SessionType.STRENGTH
 
-    val allConditioning = metrics.all {
-        it == MetricType.DISTANCE_TIME || it == MetricType.DURATION || it == MetricType.CALORIES
-    }
+    val allConditioning =
+        metrics.all {
+            it == MetricType.DISTANCE_TIME || it == MetricType.DURATION || it == MetricType.CALORIES
+        }
     if (allConditioning) return SessionType.CONDITIONING
 
     return SessionType.MIXED

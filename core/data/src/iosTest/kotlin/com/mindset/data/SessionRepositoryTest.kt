@@ -4,13 +4,12 @@ import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import com.mindset.common.UuidV7Generator
 import com.mindset.data.local.AppDatabase
-import com.mindset.data.local.Block
+import com.mindset.data.local.BlockEntity
 import com.mindset.data.local.ExerciseAssetReader
-import com.mindset.data.local.ExerciseEntry
-import com.mindset.data.local.SetEntry
-import com.mindset.model.SessionSource
-import com.mindset.data.local.Session as SessionEntity
+import com.mindset.data.local.ExerciseEntryEntity
 import com.mindset.data.local.SessionType
+import com.mindset.data.local.SetEntryEntity
+import com.mindset.model.SessionSource
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -20,6 +19,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.mindset.data.local.SessionEntity as SessionEntity
 
 /**
  * Proves the offline-first invariant: creating a session persists the row AND enqueues its outbox
@@ -146,11 +146,50 @@ class SessionRepositoryTest {
         database.sessionDao().insert(
             SessionEntity(id = "t1", startedAt = 0, name = "Day", type = SessionType.STRENGTH, isTemplate = true, updatedAt = 0, createdAt = 0),
         )
-        database.blockDao().insert(Block(id = "t1-b0", sessionId = "t1", type = "STRAIGHT", orderIndex = 0, section = "MAIN", label = "Main", createdAt = 0, updatedAt = 0))
-        database.blockDao().insert(Block(id = "t1-b1", sessionId = "t1", type = "INTERVAL", orderIndex = 1, section = "CONDITIONING", conditioningFormat = "AMRAP", capSeconds = 420, label = "Cond", createdAt = 0, updatedAt = 0))
-        database.exerciseEntryDao().insert(ExerciseEntry(id = "t1-e0", blockId = "t1-b0", exerciseId = "bench-press", orderIndex = 0, note = "focus on depth", eachSide = true, createdAt = 0, updatedAt = 0))
-        database.exerciseEntryDao().insert(ExerciseEntry(id = "t1-e1", blockId = "t1-b1", exerciseId = "bench-press", orderIndex = 0, createdAt = 0, updatedAt = 0))
-        database.setEntryDao().insert(SetEntry(id = "t1-s0", exerciseEntryId = "t1-e0", setNumber = 1, targetReps = 8, createdAt = 0, updatedAt = 0))
+        database.blockDao().insert(
+            BlockEntity(
+                id = "t1-b0",
+                sessionId = "t1",
+                type = "STRAIGHT",
+                orderIndex = 0,
+                section = "MAIN",
+                label = "Main",
+                createdAt = 0,
+                updatedAt = 0,
+            ),
+        )
+        database.blockDao().insert(
+            BlockEntity(
+                id = "t1-b1",
+                sessionId = "t1",
+                type = "INTERVAL",
+                orderIndex = 1,
+                section = "CONDITIONING",
+                conditioningFormat = "AMRAP",
+                capSeconds = 420,
+                label = "Cond",
+                createdAt = 0,
+                updatedAt = 0,
+            ),
+        )
+        database.exerciseEntryDao().insert(
+            ExerciseEntryEntity(
+                id = "t1-e0",
+                blockId = "t1-b0",
+                exerciseId = "bench-press",
+                orderIndex = 0,
+                note = "focus on depth",
+                eachSide = true,
+                createdAt = 0,
+                updatedAt = 0,
+            ),
+        )
+        database.exerciseEntryDao().insert(
+            ExerciseEntryEntity(id = "t1-e1", blockId = "t1-b1", exerciseId = "bench-press", orderIndex = 0, createdAt = 0, updatedAt = 0),
+        )
+        database.setEntryDao().insert(
+            SetEntryEntity(id = "t1-s0", exerciseEntryId = "t1-e0", setNumber = 1, targetReps = 8, createdAt = 0, updatedAt = 0),
+        )
 
         val session = repo.instantiateTemplate("t1")
 

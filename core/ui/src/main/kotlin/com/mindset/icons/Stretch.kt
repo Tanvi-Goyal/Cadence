@@ -23,7 +23,7 @@ val MindSetIcons.Stretch: ImageVector
             defaultWidth = 18.dp,
             defaultHeight = 16.dp,
             viewportWidth = 18f,
-            viewportHeight = 16f
+            viewportHeight = 16f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(3.8f, 16f)

@@ -3,21 +3,20 @@ package com.mindset.data.local.dao
 import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
-import com.mindset.data.local.ExerciseEntry
+import com.mindset.data.local.ExerciseEntryEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ExerciseEntryDao {
     @Insert
-    suspend fun insert(entry: ExerciseEntry)
+    suspend fun insert(entry: ExerciseEntryEntity)
 
     @Query("SELECT COUNT(*) FROM exercise_entries WHERE blockId = :blockId AND deletedAt IS NULL")
     suspend fun countForBlock(blockId: String): Int
 
     @Query("SELECT * FROM exercise_entries WHERE id = :id")
-    suspend fun getById(id: String): ExerciseEntry?
+    suspend fun getById(id: String): ExerciseEntryEntity?
 
-    /** All entries in a session, joined through its blocks and ordered block-then-entry — reactive. */
     @Query(
         """
         SELECT e.* FROM exercise_entries e
@@ -26,7 +25,7 @@ interface ExerciseEntryDao {
         ORDER BY b.orderIndex, e.orderIndex
         """,
     )
-    fun observeBySession(sessionId: String): Flow<List<ExerciseEntry>>
+    fun observeBySession(sessionId: String): Flow<List<ExerciseEntryEntity>>
 
     /** Suspend variant of [observeBySession] — for the deep-copy and sync paths. */
     @Query(
@@ -37,10 +36,12 @@ interface ExerciseEntryDao {
         ORDER BY b.orderIndex, e.orderIndex
         """,
     )
-    suspend fun getBySession(sessionId: String): List<ExerciseEntry>
+    suspend fun getBySession(sessionId: String): List<ExerciseEntryEntity>
 
     /** Hard-remove every entry belonging to a session's blocks — used by the wholesale sync replace. */
-    @Query("DELETE FROM exercise_entries WHERE blockId IN (SELECT id FROM blocks WHERE sessionId = :sessionId)")
+    @Query(
+        "DELETE FROM exercise_entries WHERE blockId IN (SELECT id FROM blocks WHERE sessionId = :sessionId)",
+    )
     suspend fun deleteBySession(sessionId: String)
 
     /** Soft-delete (tombstone) one entry — when the user removes an item from a live session; the

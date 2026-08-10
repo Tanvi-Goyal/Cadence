@@ -6,7 +6,6 @@ import com.mindset.common.UuidV7Generator
 import com.mindset.data.local.AppDatabase
 import com.mindset.data.local.ExerciseAssetReader
 import com.mindset.data.local.SessionType
-import com.mindset.model.SessionType as ModelSessionType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -16,6 +15,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.mindset.model.SessionType as ModelSessionType
 
 /**
  * Covers the MindSet Log Session capture additions on [SessionRepositoryImpl]: history-based prefill
@@ -61,8 +61,10 @@ class LogSessionCaptureTest {
         val sets = database.setEntryDao().getForEntry(e2)
         assertEquals(2, sets.size, "recreates the same number of sets")
         assertEquals(listOf(1, 2), sets.map { it.setNumber })
-        assertEquals(8, sets[0].targetReps); assertEquals(100.0, sets[0].targetLoadKg)
-        assertEquals(6, sets[1].targetReps); assertEquals(105.0, sets[1].targetLoadKg)
+        assertEquals(8, sets[0].targetReps)
+        assertEquals(100.0, sets[0].targetLoadKg)
+        assertEquals(6, sets[1].targetReps)
+        assertEquals(105.0, sets[1].targetLoadKg)
         assertNull(sets[0].reps, "ghost — no actual yet")
         assertNull(sets[0].loadKg)
     }
@@ -134,7 +136,10 @@ class LogSessionCaptureTest {
 
         repo.removeEntry(s.id, entryId)
 
-        assertTrue(database.exerciseEntryDao().getBySession(s.id).isEmpty(), "entry is tombstoned (gone from live reads)")
+        assertTrue(
+            database.exerciseEntryDao().getBySession(s.id).isEmpty(),
+            "entry is tombstoned (gone from live reads)",
+        )
         val detail = repo.observeSessionDetail(s.id).first()
         assertTrue(detail?.blocks?.flatMap { it.entries }.isNullOrEmpty(), "session detail shows no entries")
     }

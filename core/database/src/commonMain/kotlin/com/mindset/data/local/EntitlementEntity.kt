@@ -9,10 +9,7 @@ import androidx.room3.PrimaryKey
  * of truth behind the same `EntitlementRepository` seam and simply update this cached row.
  */
 @Entity(tableName = "entitlement")
-data class EntitlementEntity(
-    @PrimaryKey val id: Int = SINGLETON_ID,
-    val isPro: Boolean,
-) {
+data class EntitlementEntity(@PrimaryKey val id: Int = SINGLETON_ID, val isPro: Boolean) {
     companion object {
         /** There is only ever one entitlement row. */
         const val SINGLETON_ID = 0

@@ -107,7 +107,9 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
                 "`updatedAt` INTEGER NOT NULL, `deletedAt` INTEGER, PRIMARY KEY(`id`))",
         )
         connection.execSQL("CREATE INDEX IF NOT EXISTS `index_personal_records_exerciseId` ON `personal_records` (`exerciseId`)")
-        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_personal_records_exerciseId_kind_distanceBucketM` ON `personal_records` (`exerciseId`, `kind`, `distanceBucketM`)")
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_personal_records_exerciseId_kind_distanceBucketM` ON `personal_records` (`exerciseId`, `kind`, `distanceBucketM`)",
+        )
     }
 }
 
@@ -299,6 +301,36 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
                 "defaultMode, onboardingComplete) " +
                 "SELECT id, fullName, bodyweightKg, heightCm, defaultDivision, NULL, onboardingComplete " +
                 "FROM `athlete_profile`",
+        )
+        connection.execSQL("DROP TABLE `athlete_profile`")
+        connection.execSQL("ALTER TABLE `athlete_profile_new` RENAME TO `athlete_profile`")
+    }
+}
+
+/**
+ * v12 → v13. Device-local settings move out of Room into a Preferences DataStore: the singleton
+ * `preferences` table (themeMode/weightUnit) and the `onboardingComplete` flag are no longer
+ * persisted by Room. This drops the `preferences` table and recreates `athlete_profile` without
+ * `onboardingComplete` (column removal needs a table-recreate; see [MIGRATION_7_8]).
+ *
+ * NOTE: `defaultDivisionKey`/`defaultMode` are intentionally KEPT here — reconciling those against
+ * the slimmed [AthleteProfileEntity] is a separate change; this migration only removes what the
+ * DataStore move retires.
+ */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override suspend fun migrate(connection: SQLiteConnection) {
+        // 1. preferences table is gone — themeMode/weightUnit now live in the Preferences DataStore.
+        connection.execSQL("DROP TABLE IF EXISTS `preferences`")
+
+        // 2. athlete_profile → recreate without onboardingComplete (moved to the DataStore).
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `athlete_profile_new` (`id` INTEGER NOT NULL, `fullName` TEXT NOT NULL, " +
+                "`bodyweightKg` REAL, `heightCm` REAL, `defaultDivisionKey` TEXT NOT NULL, `defaultMode` TEXT, " +
+                "PRIMARY KEY(`id`))",
+        )
+        connection.execSQL(
+            "INSERT INTO `athlete_profile_new` (id, fullName, bodyweightKg, heightCm, defaultDivisionKey, defaultMode) " +
+                "SELECT id, fullName, bodyweightKg, heightCm, defaultDivisionKey, defaultMode FROM `athlete_profile`",
         )
         connection.execSQL("DROP TABLE `athlete_profile`")
         connection.execSQL("ALTER TABLE `athlete_profile_new` RENAME TO `athlete_profile`")

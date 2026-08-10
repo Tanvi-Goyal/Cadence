@@ -2,23 +2,16 @@
 
 package com.mindset.data
 
-import com.mindset.data.local.Block as BlockEntity
-import com.mindset.data.local.Exercise as ExerciseEntity
-import com.mindset.data.local.ExerciseEntry as ExerciseEntryEntity
-import com.mindset.data.local.PersonalRecord as PersonalRecordEntity
-import com.mindset.data.local.PlannedSession as PlannedSessionEntity
-import com.mindset.data.local.Session as SessionEntity
-import com.mindset.data.local.SetEntry as SetEntryEntity
 import com.mindset.model.Block
 import com.mindset.model.BlockDetail
 import com.mindset.model.BlockSection
 import com.mindset.model.BlockType
-import com.mindset.model.ConditioningFormat
 import com.mindset.model.Exercise
 import com.mindset.model.ExerciseEntry
 import com.mindset.model.ExerciseEntryDetail
 import com.mindset.model.HyroxStation
 import com.mindset.model.MetricType
+import com.mindset.model.MetricType.WEIGHT_REPS
 import com.mindset.model.Modality
 import com.mindset.model.PersonalRecord
 import com.mindset.model.PlannedSession
@@ -30,6 +23,13 @@ import com.mindset.model.SessionType
 import com.mindset.model.SetEntry
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
+import com.mindset.data.local.BlockEntity as BlockEntity
+import com.mindset.data.local.Exercise as ExerciseEntity
+import com.mindset.data.local.ExerciseEntryEntity as ExerciseEntryEntity
+import com.mindset.data.local.PersonalRecord as PersonalRecordEntity
+import com.mindset.data.local.PlannedSession as PlannedSessionEntity
+import com.mindset.data.local.SessionEntity as SessionEntity
+import com.mindset.data.local.SetEntryEntity as SetEntryEntity
 
 /**
  * Entity ↔ domain mapping — the ONLY place both worlds meet. Room entities (epoch-millis Longs,
@@ -40,22 +40,10 @@ import kotlin.time.Instant
  * legacy fallbacks derive them from the old `metric`/`category` columns.
  */
 
-private inline fun <reified T : Enum<T>> safeEnum(name: String): T? =
-    enumValues<T>().firstOrNull { it.name == name }
-
-private fun legacyModality(category: String?): Modality = when (category?.lowercase()) {
-    "cardio" -> Modality.CONDITIONING
-    "stretching" -> Modality.MOBILITY
-    "plyometrics" -> Modality.CONDITIONING
-    else -> Modality.STRENGTH
-}
-
-private fun legacyMetric(metric: String): MetricType =
-    if (metric == "TIME_DISTANCE") MetricType.DISTANCE_TIME else MetricType.WEIGHT_REPS
+private inline fun <reified T : Enum<T>> safeEnum(name: String): T? = enumValues<T>().firstOrNull { it.name == name }
 
 private fun ms(value: Long): Instant = Instant.fromEpochMilliseconds(value)
 
-/** The deterministic id of a session's (currently sole, implicit) STRAIGHT block. */
 internal fun implicitBlockId(sessionId: String): String = "block-$sessionId"
 
 internal fun SessionEntity.toDomain(): Session = Session(
@@ -88,10 +76,7 @@ internal fun BlockEntity.toDomain(): Block = Block(
     type = safeEnum<BlockType>(type) ?: BlockType.STRAIGHT,
     orderIndex = orderIndex,
     rounds = rounds,
-    restBetweenRoundsMs = restBetweenRoundsMs,
-    label = label,
     section = section?.let { safeEnum<BlockSection>(it) },
-    conditioningFormat = conditioningFormat?.let { safeEnum<ConditioningFormat>(it) },
     capSeconds = capSeconds,
     workSeconds = workSeconds,
     createdAt = ms(createdAt),
@@ -106,7 +91,6 @@ internal fun ExerciseEntryEntity.toDomain(): ExerciseEntry = ExerciseEntry(
     orderIndex = orderIndex,
     targetSets = targetSets,
     restMs = restMs,
-    note = note,
     eachSide = eachSide ?: false,
     segmentKey = segmentKey,
     createdAt = ms(createdAt),
@@ -134,25 +118,21 @@ internal fun SetEntryEntity.toDomain(): SetEntry = SetEntry(
     deletedAt = deletedAt?.let(::ms),
 )
 
-/** Domain → entity for persistence (used by `updateSet`). */
-internal fun SetEntry.toEntity(): SetEntryEntity = SetEntryEntity(
+internal fun ExerciseEntity.toDomain(): Exercise = Exercise(
     id = id,
-    exerciseEntryId = exerciseEntryId,
-    setNumber = setNumber,
-    reps = reps,
-    loadKg = loadKg,
-    timeSec = timeSec,
-    distanceM = distanceM,
-    rpe = rpe,
-    targetReps = targetReps,
-    targetLoadKg = targetLoadKg,
-    targetTimeSec = targetTimeSec,
-    targetDistanceM = targetDistanceM,
-    calories = calories,
-    targetCalories = targetCalories,
-    createdAt = createdAt.toEpochMilliseconds(),
-    updatedAt = updatedAt.toEpochMilliseconds(),
-    deletedAt = deletedAt?.toEpochMilliseconds(),
+    name = name,
+    modality = modality?.let { safeEnum<Modality>(it) } ?: Modality.STRENGTH,
+    defaultMetric = defaultMetric?.let { safeEnum<MetricType>(it) } ?: WEIGHT_REPS,
+    hyroxStation = hyroxStation?.let { safeEnum<HyroxStation>(it) },
+    category = category,
+    force = force,
+    level = level,
+    mechanic = mechanic,
+    equipment = equipment,
+    primaryMuscles = primaryMusclesList,
+    secondaryMuscles = secondaryMusclesList,
+    instructions = instructionsList,
+    imageUrls = imageUrlsList,
 )
 
 internal fun PlannedSessionEntity.toDomain(): PlannedSession = PlannedSession(
@@ -176,56 +156,3 @@ internal fun PersonalRecordEntity.toDomain(): PersonalRecord = PersonalRecord(
     updatedAt = ms(updatedAt),
     deletedAt = deletedAt?.let(::ms),
 )
-
-internal fun ExerciseEntity.toDomain(): Exercise = Exercise(
-    id = id,
-    name = name,
-    modality = modality?.let { safeEnum<Modality>(it) } ?: legacyModality(category),
-    defaultMetric = defaultMetric?.let { safeEnum<MetricType>(it) } ?: legacyMetric(metric),
-    hyroxStation = hyroxStation?.let { safeEnum<HyroxStation>(it) },
-    category = category,
-    force = force,
-    level = level,
-    mechanic = mechanic,
-    equipment = equipment,
-    primaryMuscles = primaryMusclesList,
-    secondaryMuscles = secondaryMusclesList,
-    instructions = instructionsList,
-    imageUrls = imageUrlsList,
-)
-
-private fun fallbackExercise(id: String): Exercise = Exercise(
-    id = id, name = id, modality = Modality.STRENGTH, defaultMetric = MetricType.WEIGHT_REPS,
-    hyroxStation = null, category = null, force = null, level = null, mechanic = null,
-    equipment = null, primaryMuscles = emptyList(), secondaryMuscles = emptyList(),
-    instructions = emptyList(), imageUrls = emptyList(),
-)
-
-/**
- * Assemble the hydrated [SessionDetail] the UI renders, from the real block graph:
- * blocks → their exercise entries (each with resolved catalog [Exercise] + derived capture fields)
- * → their sets. [exercises] must resolve every `exerciseId` the session references.
- */
-internal fun buildSessionDetail(
-    session: SessionEntity,
-    blocks: List<BlockEntity>,
-    entries: List<ExerciseEntryEntity>,
-    sets: List<SetEntryEntity>,
-    exercises: Map<String, Exercise>,
-): SessionDetail {
-    val setsByEntry = sets.groupBy { it.exerciseEntryId }
-    val entriesByBlock = entries.groupBy { it.blockId }
-    val blockDetails = blocks.sortedBy { it.orderIndex }.map { block ->
-        val entryDetails =
-            entriesByBlock[block.id].orEmpty().sortedBy { it.orderIndex }.map { entry ->
-                ExerciseEntryDetail(
-                    entry = entry.toDomain(),
-                    exercise = exercises[entry.exerciseId] ?: fallbackExercise(entry.exerciseId),
-                    sets = setsByEntry[entry.id].orEmpty().sortedBy { it.setNumber }
-                        .map { it.toDomain() },
-                )
-            }
-        BlockDetail(block.toDomain(), entryDetails)
-    }
-    return SessionDetail(session = session.toDomain(), blocks = blockDetails)
-}

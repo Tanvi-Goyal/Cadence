@@ -59,8 +59,8 @@ import com.mindset.icons.SkiErg
 import com.mindset.icons.SledPull
 import com.mindset.icons.WallBall
 import com.mindset.model.HyroxStation
-import com.mindset.model.HyroxStepDef
-import com.mindset.model.HyroxStepKind
+import com.mindset.model.HyroxStationModel
+import com.mindset.model.HyroxStationType
 
 /*
  * The live HYROX workout overlay — a premium bottom sheet that animates up when a workout starts and
@@ -109,7 +109,11 @@ private fun HyroxTimerSheet(workout: ActiveWorkout, controller: ActiveWorkoutCon
                 .fillMaxHeight(0.94f)
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                 .background(colors.surfaceContainerLow)
-                .border(1.dp, colors.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                .border(
+                    1.dp,
+                    colors.outlineVariant.copy(alpha = 0.4f),
+                    RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                )
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = 20.dp),
@@ -142,7 +146,11 @@ private fun HyroxTimerSheet(workout: ActiveWorkout, controller: ActiveWorkoutCon
                 )
             } else {
                 Spacer(Modifier.height(20.dp))
-                TimerReadout(totalMs = workout.totalElapsedMs, splitMs = workout.splitElapsedMs, paused = workout.paused)
+                TimerReadout(
+                    totalMs = workout.totalElapsedMs,
+                    splitMs = workout.splitElapsedMs,
+                    paused = workout.paused,
+                )
                 Spacer(Modifier.height(24.dp))
                 Deck(steps = workout.steps, currentIndex = workout.currentIndex)
                 Spacer(Modifier.weight(1f))
@@ -214,7 +222,7 @@ private fun TimerReadout(totalMs: Long, splitMs: Long, paused: Boolean) {
 }
 
 @Composable
-private fun Deck(steps: List<HyroxStepDef>, currentIndex: Int) {
+private fun Deck(steps: List<HyroxStationModel>, currentIndex: Int) {
     AnimatedContent(
         targetState = currentIndex,
         transitionSpec = {
@@ -232,15 +240,19 @@ private fun Deck(steps: List<HyroxStepDef>, currentIndex: Int) {
 }
 
 @Composable
-private fun CurrentCard(step: HyroxStepDef) {
+private fun CurrentCard(step: HyroxStationModel) {
     val colors = MaterialTheme.colorScheme
-    val isRun = step.kind == HyroxStepKind.RUN
+    val isRun = step.stationType == HyroxStationType.RUN
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .background(colors.surfaceContainer)
-            .border(1.dp, if (isRun) colors.primary.copy(alpha = 0.5f) else colors.outlineVariant.copy(alpha = 0.4f), MaterialTheme.shapes.medium)
+            .border(
+                1.dp,
+                if (isRun) colors.primary.copy(alpha = 0.5f) else colors.outlineVariant.copy(alpha = 0.4f),
+                MaterialTheme.shapes.medium,
+            )
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -248,7 +260,12 @@ private fun CurrentCard(step: HyroxStepDef) {
             GlyphBadge(step, big = true)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text(step.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = colors.onSurface)
+                Text(
+                    step.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onSurface,
+                )
                 if (step.detail.isNotBlank()) {
                     Text(step.detail, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
                 }
@@ -264,7 +281,7 @@ private fun CurrentCard(step: HyroxStepDef) {
 }
 
 @Composable
-private fun NextCard(step: HyroxStepDef, alpha: Float) {
+private fun NextCard(step: HyroxStationModel, alpha: Float) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
@@ -278,15 +295,20 @@ private fun NextCard(step: HyroxStepDef, alpha: Float) {
     ) {
         GlyphBadge(step, big = false)
         Spacer(Modifier.width(12.dp))
-        Text(step.title, style = MaterialTheme.typography.titleMedium, color = colors.onSurface, modifier = Modifier.weight(1f))
+        Text(
+            step.title,
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.onSurface,
+            modifier = Modifier.weight(1f),
+        )
         Text(step.value, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
     }
 }
 
 @Composable
-private fun GlyphBadge(step: HyroxStepDef, big: Boolean) {
+private fun GlyphBadge(step: HyroxStationModel, big: Boolean) {
     val colors = MaterialTheme.colorScheme
-    val isRun = step.kind == HyroxStepKind.RUN
+    val isRun = step.stationType == HyroxStationType.RUN
     val boxSize = if (big) 48.dp else 36.dp
     val iconSize = if (big) 24.dp else 18.dp
     Box(
@@ -306,13 +328,7 @@ private fun GlyphBadge(step: HyroxStepDef, big: Boolean) {
 }
 
 @Composable
-private fun Controls(
-    paused: Boolean,
-    isLast: Boolean,
-    onReset: () -> Unit,
-    onPauseResume: () -> Unit,
-    onNext: () -> Unit,
-) {
+private fun Controls(paused: Boolean, isLast: Boolean, onReset: () -> Unit, onPauseResume: () -> Unit, onNext: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -360,20 +376,40 @@ private fun ColumnScope.FinishedSummary(totalMs: Long, steps: Int, onClose: () -
     val colors = MaterialTheme.colorScheme
     Spacer(Modifier.height(40.dp))
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Workout Complete", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = colors.onSurface)
+        Text(
+            "Workout Complete",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.onSurface,
+        )
         Spacer(Modifier.height(24.dp))
-        Text("TOTAL TIME", style = MaterialTheme.typography.labelMedium, letterSpacing = 1.5.sp, color = colors.onSurfaceVariant)
+        Text(
+            "TOTAL TIME",
+            style = MaterialTheme.typography.labelMedium,
+            letterSpacing = 1.5.sp,
+            color = colors.onSurfaceVariant,
+        )
         Spacer(Modifier.height(8.dp))
-        Text(formatClock(totalMs), style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold, color = colors.primary)
+        Text(
+            formatClock(totalMs),
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.primary,
+        )
         Spacer(Modifier.height(8.dp))
-        Text("$steps steps completed", style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(
+            "$steps steps completed",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
     Spacer(Modifier.weight(1f))
     PrimaryPill("Done", Modifier.fillMaxWidth(), onClose)
     Spacer(Modifier.height(20.dp))
 }
 
-private fun glyphIcon(step: HyroxStepDef): ImageVector = when (step.station) {
+private fun glyphIcon(step: HyroxStationModel): ImageVector = when (step.station) {
     HyroxStation.SKI_ERG -> MindSetIcons.SkiErg
     HyroxStation.SLED_PUSH -> MindSetIcons.Dumbbell
     HyroxStation.SLED_PULL -> MindSetIcons.SledPull

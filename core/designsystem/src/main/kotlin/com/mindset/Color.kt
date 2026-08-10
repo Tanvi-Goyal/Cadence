@@ -44,7 +44,6 @@ private val OnError = Color(0xFF690005)
 private val ErrorContainer = Color(0xFF93000A)
 private val OnErrorContainer = Color(0xFFFFDAD6)
 
-// Surfaces — "Deep Obsidian" base with tonal container layers for elevation (design-v2.md).
 private val BackgroundColor = Color(0xFF131313)
 private val OnBackground = Color(0xFFE5E2E1)
 private val SurfaceColor = Color(0xFF131313)
@@ -67,45 +66,45 @@ private val InverseOnSurface = Color(0xFF313030)
 // Outlines — warm strokes against the obsidian surface (M3 dark: strokes, not shadows).
 private val OutlineColor = Color(0xFFAD8883)
 private val OutlineVariant = Color(0xFF5D3F3B)
-
-/** The Obsidian Performance (dark) color scheme, selectable in [MindSetTheme]. */
-internal val MindSetColorScheme = darkColorScheme(
-    primary = Primary,
-    onPrimary = OnPrimary,
-    primaryContainer = PrimaryContainer,
-    onPrimaryContainer = OnPrimaryContainer,
-    inversePrimary = InversePrimary,
-    secondary = Secondary,
-    onSecondary = OnSecondary,
-    secondaryContainer = SecondaryContainer,
-    onSecondaryContainer = OnSecondaryContainer,
-    tertiary = Tertiary,
-    onTertiary = OnTertiary,
-    tertiaryContainer = TertiaryContainer,
-    onTertiaryContainer = OnTertiaryContainer,
-    error = ErrorColor,
-    onError = OnError,
-    errorContainer = ErrorContainer,
-    onErrorContainer = OnErrorContainer,
-    background = BackgroundColor,
-    onBackground = OnBackground,
-    surface = SurfaceColor,
-    onSurface = OnSurfaceColor,
-    surfaceVariant = SurfaceVariant,
-    onSurfaceVariant = OnSurfaceVariant,
-    surfaceTint = SurfaceTint,
-    surfaceDim = SurfaceDim,
-    surfaceBright = SurfaceBright,
-    surfaceContainerLowest = SurfaceContainerLowest,
-    surfaceContainerLow = SurfaceContainerLow,
-    surfaceContainer = SurfaceContainer,
-    surfaceContainerHigh = SurfaceContainerHigh,
-    surfaceContainerHighest = SurfaceContainerHighest,
-    inverseSurface = InverseSurface,
-    inverseOnSurface = InverseOnSurface,
-    outline = OutlineColor,
-    outlineVariant = OutlineVariant,
-)
-
 val GlassFill = Color.White.copy(alpha = 0.05f)
 val GlassBorder = Color.White.copy(alpha = 0.12f)
+
+/** The Obsidian Performance (dark) color scheme, selectable in [MindSetTheme]. */
+internal val MindSetColorScheme =
+    darkColorScheme(
+        primary = Primary,
+        onPrimary = OnPrimary,
+        primaryContainer = PrimaryContainer,
+        onPrimaryContainer = OnPrimaryContainer,
+        inversePrimary = InversePrimary,
+        secondary = Secondary,
+        onSecondary = OnSecondary,
+        secondaryContainer = SecondaryContainer,
+        onSecondaryContainer = OnSecondaryContainer,
+        tertiary = Tertiary,
+        onTertiary = OnTertiary,
+        tertiaryContainer = TertiaryContainer,
+        onTertiaryContainer = OnTertiaryContainer,
+        error = ErrorColor,
+        onError = OnError,
+        errorContainer = ErrorContainer,
+        onErrorContainer = OnErrorContainer,
+        background = BackgroundColor,
+        onBackground = OnBackground,
+        surface = SurfaceColor,
+        onSurface = OnSurfaceColor,
+        surfaceVariant = SurfaceVariant,
+        onSurfaceVariant = OnSurfaceVariant,
+        surfaceTint = SurfaceTint,
+        surfaceDim = SurfaceDim,
+        surfaceBright = SurfaceBright,
+        surfaceContainerLowest = SurfaceContainerLowest,
+        surfaceContainerLow = SurfaceContainerLow,
+        surfaceContainer = SurfaceContainer,
+        surfaceContainerHigh = SurfaceContainerHigh,
+        surfaceContainerHighest = SurfaceContainerHighest,
+        inverseSurface = InverseSurface,
+        inverseOnSurface = InverseOnSurface,
+        outline = OutlineColor,
+        outlineVariant = OutlineVariant,
+    )

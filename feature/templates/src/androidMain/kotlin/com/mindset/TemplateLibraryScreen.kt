@@ -32,11 +32,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -281,7 +281,12 @@ private fun SearchField(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(MindSetIcons.Search, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        Icon(
+            MindSetIcons.Search,
+            contentDescription = null,
+            tint = colors.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
         Text(
             text = "Search name, muscle, equipment",
             style = MaterialTheme.typography.bodyLarge,
@@ -291,11 +296,7 @@ private fun SearchField(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CategoryChips(
-    selected: TemplateCategory,
-    onSelected: (TemplateCategory) -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun CategoryChips(selected: TemplateCategory, onSelected: (TemplateCategory) -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.horizontalScroll(rememberScrollState()).padding(horizontal = Gutter),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -500,13 +501,28 @@ private fun GridCard(grid: GridTemplate, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(MindSetIcons.Grid, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(20.dp, 16.dp))
-            Icon(MindSetIcons.ChevronRight, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(7.4.dp, 12.dp))
+            Icon(
+                MindSetIcons.Grid,
+                contentDescription = null,
+                tint = colors.onSurfaceVariant,
+                modifier = Modifier.size(20.dp, 16.dp),
+            )
+            Icon(
+                MindSetIcons.ChevronRight,
+                contentDescription = null,
+                tint = colors.onSurfaceVariant,
+                modifier = Modifier.size(7.4.dp, 12.dp),
+            )
         }
         Spacer(Modifier.height(8.dp))
         Text(grid.title, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
         Spacer(Modifier.height(16.dp))
-        Text(grid.meta.uppercase(), style = MaterialTheme.typography.labelSmall, letterSpacing = 0.5.sp, color = colors.onSurfaceVariant)
+        Text(
+            grid.meta.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 0.5.sp,
+            color = colors.onSurfaceVariant,
+        )
     }
 }
 
@@ -523,7 +539,12 @@ private fun CreateCustomFab(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Icon(MindSetIcons.Add, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(24.dp))
+        Icon(
+            MindSetIcons.Add,
+            contentDescription = null,
+            tint = colors.onPrimaryContainer,
+            modifier = Modifier.size(24.dp),
+        )
         Text("Create Custom", style = MaterialTheme.typography.titleMedium, color = colors.onPrimaryContainer)
     }
 }
@@ -551,7 +572,12 @@ private fun TagBadge(text: String) {
             .background(colors.surfaceContainerHighest)
             .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
-        Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, letterSpacing = 0.5.sp, color = colors.onSurfaceVariant)
+        Text(
+            text.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 0.5.sp,
+            color = colors.onSurfaceVariant,
+        )
     }
 }
 
@@ -565,7 +591,12 @@ private fun PillBadge(text: String) {
             .background(colors.surfaceContainerHighest)
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
-        Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, letterSpacing = 0.5.sp, color = colors.onSurfaceVariant)
+        Text(
+            text.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 0.5.sp,
+            color = colors.onSurfaceVariant,
+        )
     }
 }
 
@@ -579,7 +610,12 @@ private fun FlagBadge(text: String) {
             .background(colors.primaryContainer)
             .padding(horizontal = 8.dp, vertical = 2.dp),
     ) {
-        Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, letterSpacing = 0.5.sp, color = colors.onPrimaryContainer)
+        Text(
+            text.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 0.5.sp,
+            color = colors.onPrimaryContainer,
+        )
     }
 }
 
@@ -594,7 +630,12 @@ private fun FloatingTag(text: String) {
             .background(colors.surfaceContainerHigh.copy(alpha = 0.8f))
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
-        Text(text.uppercase(), style = MaterialTheme.typography.labelSmall, letterSpacing = 0.5.sp, color = FloatingTagText)
+        Text(
+            text.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 0.5.sp,
+            color = FloatingTagText,
+        )
     }
 }
 
@@ -611,7 +652,12 @@ private fun Medallion(glyph: TemplateGlyph, size: Dp, bgAlpha: Float) {
             .background(style.medallion.copy(alpha = bgAlpha)),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(style.icon, contentDescription = null, tint = style.tint, modifier = Modifier.size(style.width, style.height))
+        Icon(
+            style.icon,
+            contentDescription = null,
+            tint = style.tint,
+            modifier = Modifier.size(style.width, style.height),
+        )
     }
 }
 
@@ -622,13 +668,7 @@ private fun BareGlyph(glyph: TemplateGlyph) {
     Icon(style.icon, contentDescription = null, tint = style.tint, modifier = Modifier.size(style.width, style.height))
 }
 
-private data class GlyphStyle(
-    val icon: ImageVector,
-    val tint: Color,
-    val medallion: Color,
-    val width: Dp,
-    val height: Dp,
-)
+private data class GlyphStyle(val icon: ImageVector, val tint: Color, val medallion: Color, val width: Dp, val height: Dp)
 
 /** Map a semantic glyph to its vector, tint, medallion base color, and intrinsic (aspect-preserving)
  *  display size. Sizes keep each exported glyph's aspect ratio so nothing is stretched. */

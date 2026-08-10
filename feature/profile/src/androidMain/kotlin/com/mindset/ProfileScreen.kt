@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.domain.ThemeMode
+import com.mindset.domain.WeightUnit
 import com.mindset.icons.ChevronRight
 import com.mindset.icons.DarkMode
 import com.mindset.icons.Database
@@ -50,8 +52,6 @@ import com.mindset.icons.Ruler
 import com.mindset.icons.Shield
 import com.mindset.icons.Sync
 import com.mindset.icons.Watch
-import com.mindset.domain.ThemeMode
-import com.mindset.domain.WeightUnit
 import com.mindset.presentation.PreferencesViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -68,11 +68,7 @@ import org.koin.compose.viewmodel.koinViewModel
 private val Gutter = 20.dp
 
 @Composable
-fun ProfileScreen(
-    onTab: (Tab) -> Unit,
-    onOpenCredits: () -> Unit,
-    viewModel: PreferencesViewModel = koinViewModel(),
-) {
+fun ProfileScreen(onTab: (Tab) -> Unit, onOpenCredits: () -> Unit, viewModel: PreferencesViewModel = koinViewModel()) {
     val prefs by viewModel.preferences.collectAsStateWithLifecycle()
     MindSetTheme {
         val colors = MaterialTheme.colorScheme
@@ -275,7 +271,12 @@ private fun StatTile(value: String, label: String, modifier: Modifier = Modifier
             .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = colors.primary)
+        Text(
+            value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.primary,
+        )
         Spacer(Modifier.height(2.dp))
         Text(
             label.uppercase(),
@@ -337,7 +338,11 @@ private fun SettingRow(
         Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         trailing()
     }
@@ -410,4 +415,3 @@ private fun Footer(onOpenCredits: () -> Unit) {
         )
     }
 }
-

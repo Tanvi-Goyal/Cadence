@@ -29,15 +29,15 @@ kotlin {
             implementation(libs.compose.runtime)
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)          // SessionRow / formatVolume / relativeDate / MindSetBottomBar
+            implementation(projects.core.ui) // SessionRow / formatVolume / relativeDate / MindSetBottomBar
             implementation(projects.core.designsystem)
-            implementation(projects.core.navigation)   // SessionDetail typed route
+            implementation(projects.core.navigation) // SessionDetail typed route
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.androidx.navigation.compose)
-            implementation(libs.androidx.paging.compose)   // collectAsLazyPagingItems (Pro list)
+            implementation(libs.androidx.paging.compose) // collectAsLazyPagingItems (Pro list)
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.compose.viewmodel)
         }

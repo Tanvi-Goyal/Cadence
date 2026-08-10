@@ -23,7 +23,7 @@ val MindSetIcons.Grid: ImageVector
             defaultWidth = 20.dp,
             defaultHeight = 16.dp,
             viewportWidth = 20f,
-            viewportHeight = 16f
+            viewportHeight = 16f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(2f, 7f)

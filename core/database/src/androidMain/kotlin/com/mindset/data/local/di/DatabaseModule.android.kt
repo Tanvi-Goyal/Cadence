@@ -8,7 +8,8 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /** Android DB seam: the Room builder + exercise-catalog reader, both need a `Context`. */
-actual val databasePlatformModule: Module = module {
-    single { androidDatabaseBuilder(androidContext()) }
-    single<ExerciseAssetReader> { androidExerciseAssetReader(androidContext()) }
-}
+actual val databasePlatformModule: Module =
+    module {
+        single { androidDatabaseBuilder(androidContext()) }
+        single<ExerciseAssetReader> { androidExerciseAssetReader(androidContext()) }
+    }

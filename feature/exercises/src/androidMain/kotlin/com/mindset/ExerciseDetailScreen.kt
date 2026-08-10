@@ -54,7 +54,10 @@ fun ExerciseDetailScreen(
             bottomBar = {
                 Button(
                     onClick = onAdd,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(20.dp).height(56.dp),
                 ) {
@@ -66,7 +69,8 @@ fun ExerciseDetailScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 20.dp, end = 20.dp,
+                    start = 20.dp,
+                    end = 20.dp,
                     top = padding.calculateTopPadding() + 12.dp,
                     bottom = padding.calculateBottomPadding() + 12.dp,
                 ),
@@ -81,7 +85,12 @@ fun ExerciseDetailScreen(
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                         )
                         Spacer(Modifier.size(12.dp))
-                        Text(ex?.name ?: "Exercise", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            ex?.name ?: "Exercise",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
                 if (ex != null) {
@@ -91,7 +100,9 @@ fun ExerciseDetailScreen(
                                 model = url,
                                 contentDescription = null,
                                 modifier = Modifier.fillMaxWidth().aspectRatio(4f / 3f)
-                                    .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainer),
+                                    .clip(
+                                        RoundedCornerShape(16.dp),
+                                    ).background(MaterialTheme.colorScheme.surfaceContainer),
                             )
                         }
                     }
@@ -102,26 +113,42 @@ fun ExerciseDetailScreen(
                             Column {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().height(220.dp)
-                                        .clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(12.dp),
+                                        .clip(
+                                            RoundedCornerShape(16.dp),
+                                        ).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     // Base body silhouette + highlighted-muscle overlay, layered
                                     // (same wger canvas, so identical bounds align them).
-                                    AsyncImage(model = diagram.baseUrl, contentDescription = null,
-                                        modifier = Modifier.fillMaxSize())
-                                    AsyncImage(model = diagram.overlayUrl, contentDescription = "Target muscle",
-                                        modifier = Modifier.fillMaxSize())
+                                    AsyncImage(
+                                        model = diagram.baseUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                    AsyncImage(
+                                        model = diagram.overlayUrl,
+                                        contentDescription = "Target muscle",
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
                                 }
                                 Text(
                                     "Muscle diagram: wger.de · CC-BY-SA",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
                                     modifier = Modifier.padding(top = 4.dp),
                                 )
                             }
                         }
                     }
                     if (ex.instructions.isNotEmpty()) {
-                        item { Text("Instructions", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
+                        item {
+                            Text(
+                                "Instructions",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                         itemsIndexedSteps(ex.instructions)
                     }
                 }
@@ -133,7 +160,12 @@ fun ExerciseDetailScreen(
 private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedSteps(steps: List<String>) {
     items(steps.size) { i ->
         Row(modifier = Modifier.fillMaxWidth().wrapContentHeight()) {
-            Text("${i + 1}. ", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "${i + 1}. ",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
             Text(steps[i], color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
         }
     }
@@ -159,9 +191,16 @@ private fun MuscleChips(ex: Exercise) {
 @Composable
 private fun Pill(label: String, filled: Boolean) {
     Box(
-        modifier = Modifier.clip(CircleShape).background(if (filled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
+        modifier = Modifier.clip(
+            CircleShape,
+        ).background(if (filled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
-        Text(label, color = if (filled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(
+            label,
+            color = if (filled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }

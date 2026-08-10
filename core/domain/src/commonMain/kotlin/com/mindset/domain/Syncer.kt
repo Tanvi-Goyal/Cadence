@@ -3,6 +3,7 @@ package com.mindset.domain
 /** Outcome of a sync pass, surfaced to the ViewModel for the UI's sync indicator. */
 sealed interface SyncOutcome {
     data object Success : SyncOutcome
+
     data class Failure(val error: Throwable) : SyncOutcome
 }
 

@@ -10,8 +10,4 @@ import kotlinx.coroutines.flow.Flow
  * (WOMEN/MEN/WOMEN_PRO/MEN_PRO); [defaultMode] is the preferred [com.mindset.model.RaceMode] name.
  * [onboardingComplete] gates whether the app opens on Home or Onboarding.
  */
-data class AthleteProfile(
-    val fullName: String = "",
-    val bodyweightKg: Double? = null,
-    val heightCm: Double? = null,
-)
+data class AthleteProfile(val fullName: String = "", val bodyweightKg: Double? = null, val heightCm: Double? = null)

@@ -29,7 +29,6 @@ enum class HyroxVariant(val label: String) {
 }
 
 object HyroxStandards {
-
     /** Which division-dependent weight a station uses (null = bodyweight/erg, no weight). */
     private enum class Load { SLED_PUSH, SLED_PULL, FARMERS, SANDBAG, WALL_BALL }
 
@@ -43,13 +42,14 @@ object HyroxStandards {
         val wallTargetM: String,
     )
 
-    private val WEIGHTS = mapOf(
-        HyroxDivision.WOMEN to DivWeights("102 kg", "78 kg", "2×16 kg", "10 kg", 4, "2.7"),
-        HyroxDivision.MEN to DivWeights("152 kg", "103 kg", "2×24 kg", "20 kg", 6, "3"),
-        // Women Pro carries the same loads as Men (Open) but keeps the women's wall-ball target.
-        HyroxDivision.WOMEN_PRO to DivWeights("152 kg", "103 kg", "2×24 kg", "20 kg", 6, "2.7"),
-        HyroxDivision.MEN_PRO to DivWeights("202 kg", "153 kg", "2×32 kg", "30 kg", 9, "3"),
-    )
+    private val WEIGHTS =
+        mapOf(
+            HyroxDivision.WOMEN to DivWeights("102 kg", "78 kg", "2×16 kg", "10 kg", 4, "2.7"),
+            HyroxDivision.MEN to DivWeights("152 kg", "103 kg", "2×24 kg", "20 kg", 6, "3"),
+            // Women Pro carries the same loads as Men (Open) but keeps the women's wall-ball target.
+            HyroxDivision.WOMEN_PRO to DivWeights("152 kg", "103 kg", "2×24 kg", "20 kg", 6, "2.7"),
+            HyroxDivision.MEN_PRO to DivWeights("202 kg", "153 kg", "2×32 kg", "30 kg", 9, "3"),
+        )
 
     /** One canonical station in race order. `distanceM` is the full-race distance (halved for HALVED);
      *  wall balls use `reps` instead. `load` picks the division weight; null stations show distance. */
@@ -65,24 +65,99 @@ object HyroxStandards {
         val reps: Int? = null,
     )
 
-    private val STATIONS = listOf(
-        Station(1, HyroxGlyph.SKI_ERG, "SkiErg", "Block 1: Start", "Controlled Start", 1000, "Distance", null),
-        Station(2, HyroxGlyph.SLED_PUSH, "Sled Push", "Block 2: Strength", "Aerobic Base", 50, "Heavy Push", Load.SLED_PUSH),
-        Station(3, HyroxGlyph.SLED_PULL, "Sled Pull", "Block 2: Strength", "Pacing Strategy", 50, "Resistance", Load.SLED_PULL),
-        Station(4, HyroxGlyph.BURPEE, "Burpee Broad Jumps", "Block 3: Agility", "Interval Mode", 80, "Ground Coverage", null),
-        Station(5, HyroxGlyph.ROWING, "Rowing", "Block 4: Engine", "Recovery Pace", 1000, "Distance", null),
-        Station(6, HyroxGlyph.FARMERS_CARRY, "Farmers Carry", "Block 5: Grip & Core", "Steady State", 200, "Kettlebell Carry", Load.FARMERS),
-        Station(7, HyroxGlyph.SANDBAG_LUNGES, "Sandbag Lunges", "Block 5: Grip & Core", "Threshold Pace", 100, "Walking Lunges", Load.SANDBAG),
-        Station(8, HyroxGlyph.WALL_BALLS, "Wall Balls", "Block 6: The Finish", "Final Push", 0, "", Load.WALL_BALL, reps = 100),
-    )
+    private val STATIONS =
+        listOf(
+            Station(
+                1,
+                HyroxGlyph.SKI_ERG,
+                "SkiErg",
+                "Block 1: Start",
+                "Controlled Start",
+                1000,
+                "Distance",
+                null,
+            ),
+            Station(
+                2,
+                HyroxGlyph.SLED_PUSH,
+                "Sled Push",
+                "Block 2: Strength",
+                "Aerobic Base",
+                50,
+                "Heavy Push",
+                Load.SLED_PUSH,
+            ),
+            Station(
+                3,
+                HyroxGlyph.SLED_PULL,
+                "Sled Pull",
+                "Block 2: Strength",
+                "Pacing Strategy",
+                50,
+                "Resistance",
+                Load.SLED_PULL,
+            ),
+            Station(
+                4,
+                HyroxGlyph.BURPEE,
+                "Burpee Broad Jumps",
+                "Block 3: Agility",
+                "Interval Mode",
+                80,
+                "Ground Coverage",
+                null,
+            ),
+            Station(
+                5,
+                HyroxGlyph.ROWING,
+                "Rowing",
+                "Block 4: Engine",
+                "Recovery Pace",
+                1000,
+                "Distance",
+                null,
+            ),
+            Station(
+                6,
+                HyroxGlyph.FARMERS_CARRY,
+                "Farmers Carry",
+                "Block 5: Grip & Core",
+                "Steady State",
+                200,
+                "Kettlebell Carry",
+                Load.FARMERS,
+            ),
+            Station(
+                7,
+                HyroxGlyph.SANDBAG_LUNGES,
+                "Sandbag Lunges",
+                "Block 5: Grip & Core",
+                "Threshold Pace",
+                100,
+                "Walking Lunges",
+                Load.SANDBAG,
+            ),
+            Station(
+                8,
+                HyroxGlyph.WALL_BALLS,
+                "Wall Balls",
+                "Block 6: The Finish",
+                "Final Push",
+                0,
+                "",
+                Load.WALL_BALL,
+                reps = 100,
+            ),
+        )
 
     /** Build the run/station block list for a division + variant. Pure — no state. */
     fun buildBlocks(division: HyroxDivision, variant: HyroxVariant): List<HyroxBlock> {
-        val selected = when (variant) {
-            HyroxVariant.FIRST_HALF -> STATIONS.filter { it.number in 1..4 }
-            HyroxVariant.SECOND_HALF -> STATIONS.filter { it.number in 5..8 }
-            HyroxVariant.FULL, HyroxVariant.HALVED -> STATIONS
-        }
+        val selected =
+            when (variant) {
+                HyroxVariant.FIRST_HALF -> STATIONS.filter { it.number in 1..4 }
+                HyroxVariant.SECOND_HALF -> STATIONS.filter { it.number in 5..8 }
+                HyroxVariant.FULL, HyroxVariant.HALVED -> STATIONS
+            }
         val halve = variant == HyroxVariant.HALVED
         val runValue = if (halve) "0.5 km" else "1.0 km"
         val weights = WEIGHTS.getValue(division)
@@ -91,7 +166,8 @@ object HyroxStandards {
         val grouped = LinkedHashMap<String, MutableList<HyroxRow>>()
         for (s in selected) {
             val rows = grouped.getOrPut(s.block) { mutableListOf() }
-            rows += HyroxRow(HyroxRowKind.RUN, HyroxGlyph.RUN, "Run ${s.number}", s.runBefore, runValue)
+            rows +=
+                HyroxRow(HyroxRowKind.RUN, HyroxGlyph.RUN, "Run ${s.number}", s.runBefore, runValue)
             rows += stationRow(s, weights, halve)
         }
         return grouped.map { (label, rows) -> HyroxBlock(label, rows) }
@@ -103,18 +179,34 @@ object HyroxStandards {
             Load.WALL_BALL -> {
                 val reps = if (halve) (s.reps ?: 100) / 2 else (s.reps ?: 100)
                 HyroxRow(
-                    HyroxRowKind.STATION, s.glyph, title,
+                    HyroxRowKind.STATION,
+                    s.glyph,
+                    title,
                     detail = "${w.wallBallKg}kg Ball • ${w.wallTargetM}m Target",
                     value = "$reps reps",
                 )
             }
+
             null -> {
                 val dist = if (halve) s.distanceM / 2 else s.distanceM
-                HyroxRow(HyroxRowKind.STATION, s.glyph, title, "${dist}m ${s.descriptor}", "${dist}m")
+                HyroxRow(
+                    HyroxRowKind.STATION,
+                    s.glyph,
+                    title,
+                    "${dist}m ${s.descriptor}",
+                    "${dist}m",
+                )
             }
+
             else -> {
                 val dist = if (halve) s.distanceM / 2 else s.distanceM
-                HyroxRow(HyroxRowKind.STATION, s.glyph, title, "${dist}m ${s.descriptor}", weightFor(s.load, w))
+                HyroxRow(
+                    HyroxRowKind.STATION,
+                    s.glyph,
+                    title,
+                    "${dist}m ${s.descriptor}",
+                    weightFor(s.load, w),
+                )
             }
         }
     }

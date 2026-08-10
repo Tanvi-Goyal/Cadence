@@ -12,11 +12,13 @@ interface RaceGoalDao {
     /** Next race being trained for: soonest dated UPCOMING goal; open-ended (null date) goals sort last. */
     @Query(
         "SELECT * FROM race_goal WHERE status = 'UPCOMING' AND deletedAt IS NULL " +
-                "ORDER BY targetDate IS NULL, targetDate LIMIT 1",
+            "ORDER BY targetDate IS NULL, targetDate LIMIT 1",
     )
     fun observeUpcoming(): Flow<RaceGoalEntity?>
 
-    @Query("SELECT * FROM race_goal WHERE deletedAt IS NULL ORDER BY targetDate IS NULL, targetDate DESC")
+    @Query(
+        "SELECT * FROM race_goal WHERE deletedAt IS NULL ORDER BY targetDate IS NULL, targetDate DESC",
+    )
     fun observeAll(): Flow<List<RaceGoalEntity>>
 
     @Query("SELECT * FROM race_goal WHERE id = :id")

@@ -16,12 +16,7 @@ import androidx.compose.ui.text.input.KeyboardType
  */
 // todo:: to  be deleted
 @Composable
-fun NumberField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    modifier: Modifier = Modifier,
-) {
+fun NumberField(value: String, onValueChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,

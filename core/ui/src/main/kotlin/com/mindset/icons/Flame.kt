@@ -23,7 +23,7 @@ val MindSetIcons.Flame: ImageVector
             defaultWidth = 12.dp,
             defaultHeight = 14.25.dp,
             viewportWidth = 12f,
-            viewportHeight = 14.25f
+            viewportHeight = 14.25f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(1.5f, 8.25f)

@@ -9,11 +9,12 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /** Network graph: HTTP client (from the platform engine) → sync transport + wger client. */
-val networkModule = module {
-    single { createHttpClient(get()) }
-    single<SyncApi> { KtorSyncApi(get(), syncBaseUrl) }
-    single { WgerApi(get()) }
-}
+val networkModule =
+    module {
+        single { createHttpClient(get()) }
+        single<SyncApi> { KtorSyncApi(get(), syncBaseUrl) }
+        single { WgerApi(get()) }
+    }
 
 /**
  * Platform-supplied HTTP engine: OkHttp on Android, Darwin on iOS. The client config is common

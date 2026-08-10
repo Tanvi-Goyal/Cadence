@@ -35,14 +35,20 @@ class MigrationTest {
         databaseClass = AppDatabase::class,
     )
 
-    private fun SQLiteConnection.long(sql: String): Long =
-        prepare(sql).use { st -> st.step(); st.getLong(0) }
+    private fun SQLiteConnection.long(sql: String): Long = prepare(sql).use { st ->
+        st.step()
+        st.getLong(0)
+    }
 
-    private fun SQLiteConnection.nullableLong(sql: String): Long? =
-        prepare(sql).use { st -> st.step(); if (st.isNull(0)) null else st.getLong(0) }
+    private fun SQLiteConnection.nullableLong(sql: String): Long? = prepare(sql).use { st ->
+        st.step()
+        if (st.isNull(0)) null else st.getLong(0)
+    }
 
-    private fun SQLiteConnection.text(sql: String): String? =
-        prepare(sql).use { st -> st.step(); if (st.isNull(0)) null else st.getText(0) }
+    private fun SQLiteConnection.text(sql: String): String? = prepare(sql).use { st ->
+        st.step()
+        if (st.isNull(0)) null else st.getText(0)
+    }
 
     @Test
     fun folds_legacy_session_tree_into_blocks_and_backfills_tombstones() = runTest {
@@ -63,9 +69,15 @@ class MigrationTest {
                     "instructions, imageUrls, keywords) VALUES " +
                     "('bench-press', 'Bench', 'strength', 'WEIGHT_REPS', '', '', '', '', '')",
             )
-            execSQL("INSERT INTO logged_items (id, sessionId, exerciseId, orderIndex) VALUES ('li1', 's1', 'bench-press', 0)")
-            execSQL("INSERT INTO set_entries (id, loggedItemId, setNumber, reps, loadKg) VALUES ('se1', 'li1', 1, 10, 60.0)")
-            execSQL("INSERT INTO set_entries (id, loggedItemId, setNumber, reps, loadKg) VALUES ('se2', 'li1', 2, 8, 65.0)")
+            execSQL(
+                "INSERT INTO logged_items (id, sessionId, exerciseId, orderIndex) VALUES ('li1', 's1', 'bench-press', 0)",
+            )
+            execSQL(
+                "INSERT INTO set_entries (id, loggedItemId, setNumber, reps, loadKg) VALUES ('se1', 'li1', 1, 10, 60.0)",
+            )
+            execSQL(
+                "INSERT INTO set_entries (id, loggedItemId, setNumber, reps, loadKg) VALUES ('se2', 'li1', 2, 8, 65.0)",
+            )
             close()
         }
 
@@ -73,8 +85,16 @@ class MigrationTest {
 
         // Fold: s1 (with entries) gets exactly one implicit STRAIGHT block; s2 (empty) gets none.
         assertEquals(1L, db.long("SELECT COUNT(*) FROM blocks"))
-        assertEquals(1L, db.long("SELECT COUNT(*) FROM blocks WHERE id = 'block-s1' AND type = 'STRAIGHT' AND sessionId = 's1'"))
-        assertEquals(1L, db.long("SELECT COUNT(*) FROM exercise_entries WHERE id = 'li1' AND blockId = 'block-s1' AND exerciseId = 'bench-press'"))
+        assertEquals(
+            1L,
+            db.long("SELECT COUNT(*) FROM blocks WHERE id = 'block-s1' AND type = 'STRAIGHT' AND sessionId = 's1'"),
+        )
+        assertEquals(
+            1L,
+            db.long(
+                "SELECT COUNT(*) FROM exercise_entries WHERE id = 'li1' AND blockId = 'block-s1' AND exerciseId = 'bench-press'",
+            ),
+        )
         assertEquals(2L, db.long("SELECT COUNT(*) FROM set_entries WHERE exerciseEntryId = 'li1'"))
 
         // Tombstone cutover: s1 stays live; s2's deletedAt is backfilled from its updatedAt.
@@ -131,9 +151,19 @@ class MigrationTest {
         assertEquals(1L, db.long("SELECT COUNT(*) FROM exercise_entries WHERE id = 'e1' AND blockId = 'b1'"))
 
         // New columns exist and default to null on migrated rows.
-        assertTrue(db.long("SELECT section IS NULL AND conditioningFormat IS NULL AND capSeconds IS NULL AND workSeconds IS NULL FROM blocks WHERE id = 'b1'") == 1L)
+        assertTrue(
+            db.long(
+                "SELECT section IS NULL AND conditioningFormat IS NULL AND capSeconds IS NULL AND workSeconds IS NULL FROM blocks WHERE id = 'b1'",
+            ) ==
+                1L,
+        )
         assertTrue(db.long("SELECT note IS NULL AND eachSide IS NULL FROM exercise_entries WHERE id = 'e1'") == 1L)
-        assertTrue(db.long("SELECT category IS NULL AND focus IS NULL AND programWeek IS NULL FROM sessions WHERE id = 's1'") == 1L)
+        assertTrue(
+            db.long(
+                "SELECT category IS NULL AND focus IS NULL AND programWeek IS NULL FROM sessions WHERE id = 's1'",
+            ) ==
+                1L,
+        )
 
         db.close()
     }
@@ -269,7 +299,12 @@ class MigrationTest {
 
         // No data loss on the additive changes; new columns read back null on migrated rows.
         assertEquals(1L, db.long("SELECT COUNT(*) FROM sessions WHERE id = 's1'"))
-        assertTrue(db.long("SELECT raceGoalId IS NULL AND formatKey IS NULL AND divisionKey IS NULL FROM sessions WHERE id = 's1'") == 1L)
+        assertTrue(
+            db.long(
+                "SELECT raceGoalId IS NULL AND formatKey IS NULL AND divisionKey IS NULL FROM sessions WHERE id = 's1'",
+            ) ==
+                1L,
+        )
         assertEquals(1L, db.long("SELECT COUNT(*) FROM personal_records WHERE id = 'pr1'"))
         assertTrue(db.long("SELECT divisionKey IS NULL FROM personal_records WHERE id = 'pr1'") == 1L)
 

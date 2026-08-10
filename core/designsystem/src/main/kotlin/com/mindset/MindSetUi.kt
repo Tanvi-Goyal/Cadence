@@ -99,12 +99,7 @@ fun AccentPill(text: String, modifier: Modifier = Modifier, icon: ImageVector? =
 
 /** Outlined pill button used for horizontally-scrolling quick actions (template chips). */
 @Composable
-fun MindSetChip(
-    label: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
+fun MindSetChip(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .clip(CircleShape)

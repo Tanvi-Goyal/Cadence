@@ -25,10 +25,7 @@ data class StatsUiState(
  * Backs the Stats tab: a selector of exercises-with-history + the selected exercise's volume trend.
  * The chart flow re-queries whenever the selection changes ([flatMapLatest]).
  */
-class StatsViewModel(
-    private val repository: SessionRepository,
-) : ViewModel() {
-
+class StatsViewModel(private val repository: SessionRepository) : ViewModel() {
     private val selected = MutableStateFlow<String?>(null)
     private val exercises = repository.observeExercisesWithHistory()
 
@@ -43,8 +40,7 @@ class StatsViewModel(
                         StatsUiState(exercises = list, selectedExerciseId = id, points = points)
                     }
                 }
-            }
-            .stateIn(
+            }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = StatsUiState(),

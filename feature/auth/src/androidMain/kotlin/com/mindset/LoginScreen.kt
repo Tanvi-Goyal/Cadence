@@ -57,11 +57,7 @@ private val Gutter = 20.dp
 private val FieldHeight = 56.dp
 
 @Composable
-fun LoginScreen(
-    onSignedIn: () -> Unit,
-    onCreateAccount: () -> Unit,
-    onForgotPassword: () -> Unit,
-) {
+fun LoginScreen(onSignedIn: () -> Unit, onCreateAccount: () -> Unit, onForgotPassword: () -> Unit) {
     MindSetTheme {
         val colors = MaterialTheme.colorScheme
         var email by rememberSaveable { mutableStateOf("") }

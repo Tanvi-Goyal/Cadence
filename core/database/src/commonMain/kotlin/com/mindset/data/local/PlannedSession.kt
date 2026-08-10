@@ -9,10 +9,4 @@ import androidx.room3.PrimaryKey
  * for now one seeded default plan gives the card real content without a program builder.
  */
 @Entity(tableName = "planned_sessions")
-data class PlannedSession(
-    @PrimaryKey val id: String,
-    val name: String,
-    val type: String,
-    val targetDurationMin: Int,
-    val focus: String,
-)
+data class PlannedSession(@PrimaryKey val id: String, val name: String, val type: String, val targetDurationMin: Int, val focus: String)

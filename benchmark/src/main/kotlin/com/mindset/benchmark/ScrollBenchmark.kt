@@ -15,7 +15,6 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class ScrollBenchmark {
-
     @get:Rule
     val rule = MacrobenchmarkRule()
 
@@ -35,8 +34,8 @@ class ScrollBenchmark {
         compilationMode = compilationMode,
         iterations = 10,
         setupBlock = {
-            launchWithSeed()   // seed + land on Home
-            openHistory()      // move to the list we're about to fling
+            launchWithSeed() // seed + land on Home
+            openHistory() // move to the list we're about to fling
         },
     ) {
         flingHistory()

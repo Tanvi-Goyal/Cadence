@@ -72,6 +72,7 @@ import com.mindset.model.CaptureFields
 import com.mindset.model.MetricType
 import com.mindset.model.SessionType
 import com.mindset.model.SetEntry
+import com.mindset.presentation.LogWorkoutUiState
 import com.mindset.presentation.LogWorkoutViewModel
 import com.mindset.presentation.StationOption
 import org.koin.compose.viewmodel.koinViewModel
@@ -80,22 +81,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/*
- * Log Session — the core capture screen for one active session (MindSet / Obsidian). Reads the DB-
- * hydrated session as a flat list of exercise/station cards, each rendered metric-aware from
- * CaptureFields. Strength sets prefill from the last time the exercise was logged (ghost targets you
- * confirm with ✓); Hyrox stations prefill their division standard and show a "Standard" reference.
- * The session type is auto-derived from content (a read-only header tag) and persisted on Complete.
- * No timers / rest countdowns / supersets in v1.
- */
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogWorkoutScreen(
     sessionId: String,
-    pickedExerciseId: String?,
-    onExerciseConsumed: () -> Unit,
     onBack: () -> Unit,
     onAddExercise: () -> Unit,
     onFinish: () -> Unit,
@@ -105,15 +94,6 @@ fun LogWorkoutScreen(
     val stations by viewModel.stations.collectAsStateWithLifecycle()
     val standards by viewModel.stationStandards.collectAsStateWithLifecycle()
     var showAddSheet by remember { mutableStateOf(false) }
-
-    // An exercise picked in the ExercisePicker is added here (this screen's alive VM scope) so the
-    // write — and its history prefill — can't be cancelled by the picker being popped off the stack.
-    LaunchedEffect(pickedExerciseId) {
-        if (pickedExerciseId != null) {
-            viewModel.addExercisePrefilled(pickedExerciseId)
-            onExerciseConsumed()
-        }
-    }
 
     MindSetTheme {
         val colors = MaterialTheme.colorScheme
@@ -152,20 +132,15 @@ fun LogWorkoutScreen(
                     val n = if (item.segmentKey != null) ++stationNo else null
                     item to n
                 }
-                items(numbered, key = { it.first.loggedItemId }) { (item, n) ->
+                items(numbered, key = {
+                    it.first.loggedItemId
+                }) { (item, n) ->
                     if (item.segmentKey != null) {
                         StationCard(
                             item = item,
                             stationNumber = n ?: 0,
                             standard = standards[item.segmentKey],
                             onUpdate = viewModel::updateActual,
-                            onRemove = { viewModel.removeEntry(item.loggedItemId) },
-                        )
-                    } else {
-                        EntryCard(
-                            item = item,
-                            onUpdate = viewModel::updateActual,
-                            onAddSet = { viewModel.addSet(item.loggedItemId) },
                             onRemove = { viewModel.removeEntry(item.loggedItemId) },
                         )
                     }
@@ -181,8 +156,14 @@ fun LogWorkoutScreen(
             ) {
                 AddToSessionSheet(
                     stations = stations,
-                    onBrowseExercises = { showAddSheet = false; onAddExercise() },
-                    onPickStation = { segmentKey -> showAddSheet = false; viewModel.addStation(segmentKey) },
+                    onBrowseExercises = {
+                        showAddSheet = false
+                        onAddExercise()
+                    },
+                    onPickStation = { segmentKey ->
+                        showAddSheet = false
+                        viewModel.addStation(segmentKey)
+                    },
                 )
             }
         }
@@ -201,10 +182,17 @@ private fun Header(
     onNotesChange: (String) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    var noteText by remember(sessionId) { mutableStateOf(notes) }
-    LaunchedEffect(notes) { if (notes.isNotEmpty() && noteText.isEmpty()) noteText = notes }
+    var noteText by remember(sessionId) {
+        mutableStateOf(notes)
+    }
 
-    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd)) {
+    LaunchedEffect(notes) {
+        if (notes.isNotEmpty() && noteText.isEmpty()) noteText = notes
+    }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -237,6 +225,7 @@ private fun Header(
                 )
             }
         }
+
         Text(
             text = "Active Session",
             style = MaterialTheme.typography.headlineSmall,
@@ -246,99 +235,99 @@ private fun Header(
 
         GlassTextField(
             value = noteText,
-            onValueChange = { noteText = it; onNotesChange(it) },
+            onValueChange = {
+                noteText = it
+                onNotesChange(it)
+            },
             placeholder = "Session notes (e.g. Focus on explosive push)",
-            style = MaterialTheme.typography.bodySmall
+            style = MaterialTheme.typography.bodySmall,
         )
     }
 }
 
-// ── Entry card (strength / conditioning) ────────────────────────────────────────────────────────
-
-@Composable
-private fun EntryCard(
-    item: LoggedItemUi,
-    onUpdate: (SetEntry) -> Unit,
-    onAddSet: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val unit = LocalWeightUnit.current
-    val capture = remember(item.metric) { CaptureFields.of(MetricType.valueOf(item.metric)) }
-    val isStrength = capture is CaptureFields.WeightReps || capture is CaptureFields.RepsOnly
-    val shape = MaterialTheme.shapes.medium
-
-    Column(
-        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill)
-            .border(1.dp, GlassBorder, shape)
-            .padding(MaterialTheme.spacing.md),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
-    ) {
-        // Header: medallion + name (+ES) + note; trailing muted tag.
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                Modifier.size(40.dp).clip(shape).background(colors.surfaceContainerHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = if (isStrength) MindSetIcons.Dumbbell else MindSetIcons.Bolt,
-                    contentDescription = null,
-                    tint = colors.primary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)
-                ) {
-                    Text(
-                        item.exerciseName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.onSurface
-                    )
-                    if (item.eachSide) EsBadge()
-                }
-                if (!item.note.isNullOrBlank()) {
-                    Text(
-                        item.note!!,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.onSurfaceVariant
-                    )
-                }
-            }
-            Text(
-                text = if (isStrength) "STRENGTH" else "CONDITIONING",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.outline,
-            )
-            DeleteButton(onRemove)
-        }
-
-        item.sets.forEach { set ->
-            SetRow(capture, set, showSetLabel = isStrength, unit = unit, onUpdate = onUpdate)
-        }
-
-        if (capture !is CaptureFields.Calories) {
-            AddSetButton(onAddSet)
-        }
-    }
-}
+// // ── Entry card (strength / conditioning) ────────────────────────────────────────────────────────
+//
+// @Composable
+// private fun EntryCard(
+//    item: LoggedItemUi,
+//    onUpdate: (SetEntry) -> Unit,
+//    onAddSet: () -> Unit,
+//    onRemove: () -> Unit,
+// ) {
+//    val colors = MaterialTheme.colorScheme
+//    val unit = LocalWeightUnit.current
+//    val capture = remember(item.metric) { CaptureFields.of(MetricType.valueOf(item.metric)) }
+//    val isStrength = capture is CaptureFields.WeightReps || capture is CaptureFields.RepsOnly
+//    val shape = MaterialTheme.shapes.medium
+//
+//    Column(
+//        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill)
+//            .border(1.dp, GlassBorder, shape)
+//            .padding(MaterialTheme.spacing.md),
+//        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+//    ) {
+//        // Header: medallion + name (+ES) + note; trailing muted tag.
+//        Row(
+//            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            Box(
+//                Modifier.size(40.dp).clip(shape).background(colors.surfaceContainerHigh),
+//                contentAlignment = Alignment.Center,
+//            ) {
+//                Icon(
+//                    imageVector = if (isStrength) MindSetIcons.Dumbbell else MindSetIcons.Bolt,
+//                    contentDescription = null,
+//                    tint = colors.primary,
+//                    modifier = Modifier.size(18.dp),
+//                )
+//            }
+//            Column(
+//                Modifier.weight(1f),
+//                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs)
+//            ) {
+//                Row(
+//                    verticalAlignment = Alignment.CenterVertically,
+//                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)
+//                ) {
+//                    Text(
+//                        item.exerciseName,
+//                        style = MaterialTheme.typography.titleMedium,
+//                        fontWeight = FontWeight.Bold,
+//                        color = colors.onSurface
+//                    )
+//                    if (item.eachSide) EsBadge()
+//                }
+//                if (!item.note.isNullOrBlank()) {
+//                    Text(
+//                        item.note!!,
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = colors.onSurfaceVariant
+//                    )
+//                }
+//            }
+//            Text(
+//                text = if (isStrength) "STRENGTH" else "CONDITIONING",
+//                style = MaterialTheme.typography.labelSmall,
+//                color = colors.outline,
+//            )
+//            DeleteButton(onRemove)
+//        }
+//
+//        item.sets.forEach { set ->
+//            SetRow(capture, set, showSetLabel = isStrength, unit = unit, onUpdate = onUpdate)
+//        }
+//
+//        if (capture !is CaptureFields.Calories) {
+//            AddSetButton(onAddSet)
+//        }
+//    }
+// }
 
 // ── Station card (Hyrox) ────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StationCard(
-    item: LoggedItemUi,
-    stationNumber: Int,
-    standard: String?,
-    onUpdate: (SetEntry) -> Unit,
-    onRemove: () -> Unit,
-) {
+private fun StationCard(item: LoggedItemUi, stationNumber: Int, standard: String?, onUpdate: (SetEntry) -> Unit, onRemove: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val unit = LocalWeightUnit.current
     val shape = MaterialTheme.shapes.medium
@@ -360,15 +349,15 @@ private fun StationCard(
         mutableStateOf(
             kgPlain(
                 set?.loadKg ?: set?.targetLoadKg,
-                unit
-            )
+                unit,
+            ),
         )
     }
     var dist by remember(set?.id) {
         mutableStateOf(
             intText(
-                set?.distanceM ?: set?.targetDistanceM
-            )
+                set?.distanceM ?: set?.targetDistanceM,
+            ),
         )
     }
     val logged = set?.timeSec != null
@@ -387,7 +376,7 @@ private fun StationCard(
                 stationIcon(item.segmentKey),
                 contentDescription = null,
                 tint = colors.primary,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(20.dp),
             )
             Text(
                 item.exerciseName,
@@ -401,7 +390,7 @@ private fun StationCard(
             Text(
                 "STATION $stationNumber",
                 style = MaterialTheme.typography.labelSmall,
-                color = colors.outline
+                color = colors.outline,
             )
 
             ConfirmChip(logged) {
@@ -411,8 +400,12 @@ private fun StationCard(
                         set.copy(
                             timeSec = secs.takeIf { it > 0 } ?: set.timeSec,
                             reps = if (second == SecondField.REPS) reps.toIntOrNull() else set.reps,
-                            loadKg = if (second == SecondField.LOAD) load.toDoubleOrNull()
-                                ?.let { Units.toKg(it, unit) } else set.loadKg,
+                            loadKg = if (second == SecondField.LOAD) {
+                                load.toDoubleOrNull()
+                                    ?.let { Units.toKg(it, unit) }
+                            } else {
+                                set.loadKg
+                            },
                             distanceM = if (hasDist) dist.toIntOrNull() else set.distanceM,
                         ),
                     )
@@ -433,7 +426,7 @@ private fun StationCard(
                 { timeDigits = it.takeLast(6) },
                 placeholder = "0:00",
                 visualTransformation = ClockVisualTransformation,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
             when (second) {
                 SecondField.REPS -> MetricField(
@@ -441,7 +434,7 @@ private fun StationCard(
                     reps,
                     { reps = it },
                     placeholder = "0",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
 
                 SecondField.LOAD -> MetricField(
@@ -449,18 +442,20 @@ private fun StationCard(
                     load,
                     { load = it },
                     placeholder = "0",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
 
                 SecondField.NONE -> Unit
             }
-            if (hasDist) MetricField(
-                "Dist (m)",
-                dist,
-                { dist = it },
-                placeholder = "0",
-                modifier = Modifier.weight(1f)
-            )
+            if (hasDist) {
+                MetricField(
+                    "Dist (m)",
+                    dist,
+                    { dist = it },
+                    placeholder = "0",
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
 
         if (standard != null) StandardView(standard)
@@ -500,24 +495,23 @@ private fun DeleteButton(onClick: () -> Unit) {
             MindSetIcons.Delete,
             contentDescription = "Remove",
             tint = colors.onSurfaceVariant,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(16.dp),
         )
     }
 }
 
 /** Per-station glyph (SledPush/Farmers/Sandbag have no bespoke icon → nearest sensible fallback). */
-private fun stationIcon(segmentKey: String?): androidx.compose.ui.graphics.vector.ImageVector =
-    when {
-        segmentKey == null -> MindSetIcons.Bolt
-        "ski" in segmentKey -> MindSetIcons.SkiErg
-        "sled" in segmentKey -> MindSetIcons.SledPull
-        "burpee" in segmentKey -> MindSetIcons.Burpee
-        "rowing" in segmentKey -> MindSetIcons.Rowing
-        "farmers" in segmentKey -> MindSetIcons.Dumbbell
-        "sandbag" in segmentKey || "lunge" in segmentKey -> MindSetIcons.LowerBody
-        "wall-ball" in segmentKey -> MindSetIcons.WallBall
-        else -> MindSetIcons.Bolt
-    }
+private fun stationIcon(segmentKey: String?): androidx.compose.ui.graphics.vector.ImageVector = when {
+    segmentKey == null -> MindSetIcons.Bolt
+    "ski" in segmentKey -> MindSetIcons.SkiErg
+    "sled" in segmentKey -> MindSetIcons.SledPull
+    "burpee" in segmentKey -> MindSetIcons.Burpee
+    "rowing" in segmentKey -> MindSetIcons.Rowing
+    "farmers" in segmentKey -> MindSetIcons.Dumbbell
+    "sandbag" in segmentKey || "lunge" in segmentKey -> MindSetIcons.LowerBody
+    "wall-ball" in segmentKey -> MindSetIcons.WallBall
+    else -> MindSetIcons.Bolt
+}
 
 /** The reference "standard" as its own bordered, primary-tinted view with an info glyph. */
 @Composable
@@ -541,7 +535,7 @@ private fun StandardView(standard: String) {
         Text(
             "Standard: $standard",
             style = MaterialTheme.typography.labelSmall,
-            color = colors.onSurfaceVariant
+            color = colors.onSurfaceVariant,
         )
     }
 }
@@ -551,7 +545,7 @@ private fun EsBadge() {
     val colors = MaterialTheme.colorScheme
     Box(
         Modifier.clip(CircleShape).background(colors.surfaceContainerHighest)
-            .padding(horizontal = MaterialTheme.spacing.xs, vertical = MaterialTheme.spacing.xs)
+            .padding(horizontal = MaterialTheme.spacing.xs, vertical = MaterialTheme.spacing.xs),
     ) {
         Text("ES", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
     }
@@ -560,19 +554,13 @@ private fun EsBadge() {
 // ── Set rows (metric-aware, ghost target → actual) ──────────────────────────────────────────────
 
 @Composable
-private fun SetRow(
-    capture: CaptureFields,
-    set: SetEntry,
-    showSetLabel: Boolean,
-    unit: WeightUnit,
-    onUpdate: (SetEntry) -> Unit
-) {
+private fun SetRow(capture: CaptureFields, set: SetEntry, showSetLabel: Boolean, unit: WeightUnit, onUpdate: (SetEntry) -> Unit) {
     val colors = MaterialTheme.colorScheme
     val logged = isLogged(capture, set)
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
     ) {
         if (showSetLabel) {
             Text(
@@ -587,8 +575,9 @@ private fun SetRow(
                 var load by remember(set.id) {
                     mutableStateOf(
                         kgPlain(
-                            set.loadKg ?: set.targetLoadKg, unit
-                        )
+                            set.loadKg ?: set.targetLoadKg,
+                            unit,
+                        ),
                     )
                 }
                 var reps by remember(set.id) { mutableStateOf(intText(set.reps ?: set.targetReps)) }
@@ -597,21 +586,22 @@ private fun SetRow(
                     { load = it },
                     { load = stepText(load, it) },
                     Modifier.weight(1f),
-                    caption = "Load (${Units.label(unit)})"
+                    caption = "Load (${Units.label(unit)})",
                 )
                 StepperField(
                     reps,
                     { reps = it },
                     { reps = stepText(reps, it) },
                     Modifier.weight(1f),
-                    caption = "Reps"
+                    caption = "Reps",
                 )
                 ConfirmButton(logged) {
                     reps.toIntOrNull()?.let { r ->
                         onUpdate(
                             set.copy(
                                 reps = r,
-                                loadKg = load.toDoubleOrNull()?.let { Units.toKg(it, unit) })
+                                loadKg = load.toDoubleOrNull()?.let { Units.toKg(it, unit) },
+                            ),
                         )
                     }
                 }
@@ -624,7 +614,7 @@ private fun SetRow(
                     { reps = it },
                     { reps = stepText(reps, it) },
                     Modifier.weight(1f),
-                    caption = "Reps"
+                    caption = "Reps",
                 )
                 ConfirmButton(logged) { reps.toIntOrNull()?.let { onUpdate(set.copy(reps = it)) } }
             }
@@ -633,8 +623,8 @@ private fun SetRow(
                 var digits by remember(set.id) {
                     mutableStateOf(
                         secondsToDigits(
-                            set.timeSec ?: set.targetTimeSec
-                        )
+                            set.timeSec ?: set.targetTimeSec,
+                        ),
                     )
                 }
                 MetricField(
@@ -643,7 +633,7 @@ private fun SetRow(
                     { digits = it.takeLast(6) },
                     placeholder = "0:00",
                     visualTransformation = ClockVisualTransformation,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 ConfirmButton(logged) {
                     digitsToSeconds(digits).takeIf { it > 0 }
@@ -655,15 +645,15 @@ private fun SetRow(
                 var digits by remember(set.id) {
                     mutableStateOf(
                         secondsToDigits(
-                            set.timeSec ?: set.targetTimeSec
-                        )
+                            set.timeSec ?: set.targetTimeSec,
+                        ),
                     )
                 }
                 var dist by remember(set.id) {
                     mutableStateOf(
                         intText(
-                            set.distanceM ?: set.targetDistanceM
-                        )
+                            set.distanceM ?: set.targetDistanceM,
+                        ),
                     )
                 }
                 MetricField(
@@ -672,14 +662,14 @@ private fun SetRow(
                     { digits = it.takeLast(6) },
                     placeholder = "0:00",
                     visualTransformation = ClockVisualTransformation,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 MetricField(
                     "Dist (m)",
                     dist,
                     { dist = it },
                     placeholder = "0",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 ConfirmButton(logged) {
                     val secs = digitsToSeconds(digits)
@@ -687,8 +677,8 @@ private fun SetRow(
                         onUpdate(
                             set.copy(
                                 timeSec = secs.takeIf { it > 0 },
-                                distanceM = dist.toIntOrNull()
-                            )
+                                distanceM = dist.toIntOrNull(),
+                            ),
                         )
                     }
                 }
@@ -698,8 +688,8 @@ private fun SetRow(
                 var cal by remember(set.id) {
                     mutableStateOf(
                         intText(
-                            set.calories ?: set.targetCalories
-                        )
+                            set.calories ?: set.targetCalories,
+                        ),
                     )
                 }
                 MetricField(
@@ -707,7 +697,7 @@ private fun SetRow(
                     cal,
                     { cal = it },
                     placeholder = "0",
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 ConfirmButton(logged) {
                     cal.toIntOrNull()?.let { onUpdate(set.copy(calories = it)) }
@@ -748,13 +738,13 @@ private fun AddSetButton(onClick: () -> Unit) {
             MindSetIcons.Add,
             contentDescription = null,
             tint = colors.primary,
-            modifier = Modifier.size(14.dp)
+            modifier = Modifier.size(14.dp),
         )
         Spacer(Modifier.width(MaterialTheme.spacing.sm))
         Text(
             "Add Set".uppercase(),
             style = MaterialTheme.typography.labelMedium,
-            color = colors.primary
+            color = colors.primary,
         )
     }
 }
@@ -779,7 +769,7 @@ private fun MetricField(
         Text(
             label.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = colors.onSurfaceVariant
+            color = colors.onSurfaceVariant,
         )
         Spacer(Modifier.height(MaterialTheme.spacing.xs))
         BasicTextField(
@@ -789,7 +779,7 @@ private fun MetricField(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             textStyle = MaterialTheme.typography.bodyMedium.copy(
                 color = colors.onSurface,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
             ),
             cursorBrush = SolidColor(colors.primary),
             visualTransformation = visualTransformation,
@@ -800,7 +790,7 @@ private fun MetricField(
                             placeholder,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = colors.onSurfaceVariant.copy(alpha = 0.35f)
+                            color = colors.onSurfaceVariant.copy(alpha = 0.35f),
                         )
                     }
                     inner()
@@ -826,11 +816,7 @@ private val ClockVisualTransformation = VisualTransformation { text ->
 // ── Add-to-session sheet (Exercises + Stations) ─────────────────────────────────────────────────
 
 @Composable
-private fun AddToSessionSheet(
-    stations: List<StationOption>,
-    onBrowseExercises: () -> Unit,
-    onPickStation: (String) -> Unit,
-) {
+private fun AddToSessionSheet(stations: List<StationOption>, onBrowseExercises: () -> Unit, onPickStation: (String) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(
         Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.md)
@@ -840,7 +826,7 @@ private fun AddToSessionSheet(
         Text(
             "Add to session".uppercase(),
             style = MaterialTheme.typography.labelMedium,
-            color = colors.onSurfaceVariant
+            color = colors.onSurfaceVariant,
         )
 
         SheetRow(
@@ -855,7 +841,7 @@ private fun AddToSessionSheet(
             Text(
                 "Hyrox stations".uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = colors.outline
+                color = colors.outline,
             )
             stations.forEach { station ->
                 SheetRow(
@@ -870,12 +856,7 @@ private fun AddToSessionSheet(
 }
 
 @Composable
-private fun SheetRow(
-    title: String,
-    subtitle: String,
-    leading: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit
-) {
+private fun SheetRow(title: String, subtitle: String, leading: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
     Row(
@@ -886,13 +867,13 @@ private fun SheetRow(
     ) {
         Box(
             Modifier.size(36.dp).clip(CircleShape).background(colors.surfaceContainerHigh),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 leading,
                 contentDescription = null,
                 tint = colors.primary,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(16.dp),
             )
         }
         Column(Modifier.weight(1f)) {
@@ -900,13 +881,13 @@ private fun SheetRow(
                 title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = colors.onSurface
+                color = colors.onSurface,
             )
             if (subtitle.isNotBlank()) {
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.labelSmall,
-                    color = colors.onSurfaceVariant
+                    color = colors.onSurfaceVariant,
                 )
             }
         }
@@ -929,13 +910,13 @@ private fun AddCta(onClick: () -> Unit) {
             MindSetIcons.Add,
             contentDescription = null,
             tint = colors.primary,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(16.dp),
         )
         Spacer(Modifier.width(MaterialTheme.spacing.sm))
         Text(
             "Add Exercise or Station".uppercase(),
             style = MaterialTheme.typography.labelMedium,
-            color = colors.primary
+            color = colors.primary,
         )
     }
 }
@@ -966,8 +947,7 @@ private fun isLogged(capture: CaptureFields, s: SetEntry): Boolean = when (captu
 private fun intText(v: Int?): String = v?.toString().orEmpty()
 
 /** Nudge a numeric text value by [delta], clamped at 0. Empty → treated as 0. */
-private fun stepText(current: String, delta: Int): String =
-    ((current.toIntOrNull() ?: 0) + delta).coerceAtLeast(0).toString()
+private fun stepText(current: String, delta: Int): String = ((current.toIntOrNull() ?: 0) + delta).coerceAtLeast(0).toString()
 
 private fun kgPlain(kg: Double?, unit: WeightUnit): String {
     if (kg == null) return ""
@@ -999,5 +979,4 @@ private fun digitsToClock(digits: String): String {
     return "$mm:$ss"
 }
 
-private fun formatDateTime(millis: Long): String =
-    SimpleDateFormat("MMM d, yyyy · hh:mm a", Locale.getDefault()).format(Date(millis))
+private fun formatDateTime(millis: Long): String = SimpleDateFormat("MMM d, yyyy · hh:mm a", Locale.getDefault()).format(Date(millis))

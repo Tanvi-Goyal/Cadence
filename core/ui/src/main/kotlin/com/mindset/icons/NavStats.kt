@@ -22,7 +22,7 @@ val NavStats: ImageVector
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 960f,
-            viewportHeight = 960f
+            viewportHeight = 960f,
         ).apply {
             path(fill = SolidColor(Color(0xFF1F1F1F))) {
                 moveTo(120f, 840f)

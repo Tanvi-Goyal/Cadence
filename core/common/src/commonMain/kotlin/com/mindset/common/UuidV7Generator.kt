@@ -21,23 +21,19 @@ import kotlin.uuid.Uuid
  * [clock] and [random] are constructor-injected so generation is fully deterministic under test.
  */
 @OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
-class UuidV7Generator(
-    private val clock: Clock,
-    private val random: Random = Random.Default,
-) : UuidGenerator {
-
+class UuidV7Generator(private val clock: Clock, private val random: Random = Random.Default) : UuidGenerator {
     override fun newId(): String {
         val tsMs = clock.now().toEpochMilliseconds() and TIMESTAMP_MASK // low 48 bits
-        val randA = random.nextInt(1 shl 12).toLong()                   // 12 bits of rand_a
+        val randA = random.nextInt(1 shl 12).toLong() // 12 bits of rand_a
         val msb = (tsMs shl 16) or (VERSION_7 shl 12) or randA
         val lsb = (random.nextLong() and RAND_B_MASK) or VARIANT_RFC4122
         return Uuid.fromLongs(msb, lsb).toString()
     }
 
     private companion object {
-        const val TIMESTAMP_MASK = 0xFFFF_FFFF_FFFFL      // low 48 bits
-        const val VERSION_7 = 0x7L                        // 0b0111, lands in bits 15..12 of msb
-        const val RAND_B_MASK = 0x3FFF_FFFF_FFFF_FFFFL    // clears the top 2 bits for the variant
-        val VARIANT_RFC4122 = 0x2L shl 62                 // 0b10 in the top 2 bits of lsb
+        const val TIMESTAMP_MASK = 0xFFFF_FFFF_FFFFL // low 48 bits
+        const val VERSION_7 = 0x7L // 0b0111, lands in bits 15..12 of msb
+        const val RAND_B_MASK = 0x3FFF_FFFF_FFFF_FFFFL // clears the top 2 bits for the variant
+        val VARIANT_RFC4122 = 0x2L shl 62 // 0b10 in the top 2 bits of lsb
     }
 }

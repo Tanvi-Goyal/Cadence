@@ -10,6 +10,7 @@ import org.koin.dsl.module
  * [com.mindset.data.remote.SyncApi]) are resolved from the database + network modules in the
  * aggregated graph.
  */
-val syncModule = module {
-    single { SyncEngine(get(), get(), get(), get(), get()) } bind Syncer::class
-}
+val syncModule =
+    module {
+        single { SyncEngine(get(), get(), get(), get(), get()) } bind Syncer::class
+    }

@@ -23,7 +23,7 @@ val MindSetIcons.LowerBody: ImageVector
             defaultWidth = 18.dp,
             defaultHeight = 24.dp,
             viewportWidth = 18f,
-            viewportHeight = 24f
+            viewportHeight = 24f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(9f, 4f)

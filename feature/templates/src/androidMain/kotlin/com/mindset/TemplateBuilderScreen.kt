@@ -35,11 +35,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.mindset.model.MetricType
-import com.mindset.model.SetEntry
+import com.mindset.domain.LoggedItemUi
 import com.mindset.domain.Units
 import com.mindset.domain.WeightUnit
-import com.mindset.domain.LoggedItemUi
+import com.mindset.model.MetricType
+import com.mindset.model.SetEntry
 import com.mindset.presentation.TemplateBuilderViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -72,7 +72,10 @@ fun TemplateBuilderScreen(
             bottomBar = {
                 Button(
                     onClick = onDone,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().padding(20.dp).height(56.dp),
                 ) {
@@ -106,14 +109,20 @@ fun TemplateBuilderScreen(
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                             )
-                            Text("Prescription — targets to hit", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            Text(
+                                "Prescription — targets to hit",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 13.sp,
+                            )
                         }
                     }
                 }
                 items(state.items, key = { it.loggedItemId }) { item ->
                     TargetExerciseCard(
                         item = item,
-                        onAddStrengthTarget = { reps, kg -> viewModel.addTargetStrengthSet(item.loggedItemId, reps, kg) },
+                        onAddStrengthTarget = { reps, kg ->
+                            viewModel.addTargetStrengthSet(item.loggedItemId, reps, kg)
+                        },
                         onAddCardioTarget = { sec, m -> viewModel.addTargetCardioSet(item.loggedItemId, sec, m) },
                     )
                 }
@@ -122,12 +131,21 @@ fun TemplateBuilderScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                RoundedCornerShape(16.dp),
+                            )
                             .clickable(onClick = onAddExercise)
                             .padding(vertical = 16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("+ Add exercise", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            "+ Add exercise",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
                     }
                 }
             }
@@ -136,11 +154,7 @@ fun TemplateBuilderScreen(
 }
 
 @Composable
-private fun TargetExerciseCard(
-    item: LoggedItemUi,
-    onAddStrengthTarget: (Int, Double) -> Unit,
-    onAddCardioTarget: (Int, Int) -> Unit,
-) {
+private fun TargetExerciseCard(item: LoggedItemUi, onAddStrengthTarget: (Int, Double) -> Unit, onAddCardioTarget: (Int, Int) -> Unit) {
     val isStrength = item.metric == MetricType.WEIGHT_REPS.name
     Column(
         modifier = Modifier
@@ -149,12 +163,21 @@ private fun TargetExerciseCard(
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(16.dp),
     ) {
-        Text(item.exerciseName, color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            item.exerciseName,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
         Text("${item.sets.size} target sets", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         Spacer(Modifier.height(12.dp))
         item.sets.forEach { set -> TargetRow(set, isStrength) }
         Spacer(Modifier.height(8.dp))
-        AddTargetRow(isStrength = isStrength, onAddStrengthTarget = onAddStrengthTarget, onAddCardioTarget = onAddCardioTarget)
+        AddTargetRow(
+            isStrength = isStrength,
+            onAddStrengthTarget = onAddStrengthTarget,
+            onAddCardioTarget = onAddCardioTarget,
+        )
     }
 }
 
@@ -162,19 +185,23 @@ private fun TargetExerciseCard(
 private fun TargetRow(set: SetEntry, isStrength: Boolean) {
     val unit = LocalWeightUnit.current
     val text = if (isStrength) {
-        "Set ${set.setNumber}:  ${set.targetReps ?: 0} reps × ${formatTargetKg(set.targetLoadKg, unit)} ${Units.label(unit)}"
+        "Set ${set.setNumber}:  ${set.targetReps ?: 0} reps × ${formatTargetKg(
+            set.targetLoadKg,
+            unit,
+        )} ${Units.label(unit)}"
     } else {
         "Set ${set.setNumber}:  ${set.targetTimeSec ?: 0}s · ${set.targetDistanceM ?: 0} m"
     }
-    Text(text, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, modifier = Modifier.padding(vertical = 4.dp))
+    Text(
+        text,
+        color = MaterialTheme.colorScheme.onSurface,
+        fontSize = 14.sp,
+        modifier = Modifier.padding(vertical = 4.dp),
+    )
 }
 
 @Composable
-private fun AddTargetRow(
-    isStrength: Boolean,
-    onAddStrengthTarget: (Int, Double) -> Unit,
-    onAddCardioTarget: (Int, Int) -> Unit,
-) {
+private fun AddTargetRow(isStrength: Boolean, onAddStrengthTarget: (Int, Double) -> Unit, onAddCardioTarget: (Int, Int) -> Unit) {
     val unit = LocalWeightUnit.current
     var first by remember { mutableStateOf("") }
     var second by remember { mutableStateOf("") }
@@ -200,13 +227,17 @@ private fun AddTargetRow(
                         val reps = first.toIntOrNull()
                         val entered = second.toDoubleOrNull()
                         if (reps != null && entered != null) {
-                            onAddStrengthTarget(reps, Units.toKg(entered, unit)); first = ""; second = ""
+                            onAddStrengthTarget(reps, Units.toKg(entered, unit))
+                            first = ""
+                            second = ""
                         }
                     } else {
                         val sec = first.toIntOrNull()
                         val m = second.toIntOrNull()
                         if (sec != null && m != null) {
-                            onAddCardioTarget(sec, m); first = ""; second = ""
+                            onAddCardioTarget(sec, m)
+                            first = ""
+                            second = ""
                         }
                     }
                 }

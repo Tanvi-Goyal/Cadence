@@ -21,14 +21,15 @@ import kotlin.test.assertNotNull
  * fields. In-memory Room lives in iosTest (Context-free builder), like the other repository tests.
  */
 class PbAndHydrationTest {
-
     private lateinit var database: AppDatabase
 
     @BeforeTest
     fun setup() {
-        database = Room.inMemoryDatabaseBuilder<AppDatabase>()
-            .setDriver(BundledSQLiteDriver())
-            .build()
+        database =
+            Room
+                .inMemoryDatabaseBuilder<AppDatabase>()
+                .setDriver(BundledSQLiteDriver())
+                .build()
     }
 
     @AfterTest
@@ -36,7 +37,10 @@ class PbAndHydrationTest {
 
     @OptIn(kotlin.time.ExperimentalTime::class)
     private fun repo() = SessionRepositoryImpl(
-        database, benchPressAssetReader, UuidV7Generator(kotlin.time.Clock.System), kotlin.time.Clock.System,
+        database,
+        benchPressAssetReader,
+        UuidV7Generator(kotlin.time.Clock.System),
+        kotlin.time.Clock.System,
     )
 
     @Test
@@ -45,7 +49,12 @@ class PbAndHydrationTest {
         repo.ensureSeeded() // seeds the bench-press catalog row (WEIGHT_REPS)
         val session = repo.createSession(SessionType.STRENGTH)
         repo.addExercise(session.id, "bench-press")
-        val entryId = database.exerciseEntryDao().getBySession(session.id).first().id
+        val entryId =
+            database
+                .exerciseEntryDao()
+                .getBySession(session.id)
+                .first()
+                .id
 
         repo.addSet(session.id, entryId, reps = 5, loadKg = 100.0)
 
@@ -71,8 +80,16 @@ class PbAndHydrationTest {
         val detail = repo.observeSessionDetail(session.id).first()
         assertNotNull(detail)
         assertEquals(1, detail.blocks.size, "one implicit STRAIGHT block")
-        val entry = detail.blocks.first().entries.first()
+        val entry =
+            detail.blocks
+                .first()
+                .entries
+                .first()
         assertEquals("bench-press", entry.entry.exerciseId)
-        assertEquals(CaptureFields.WeightReps, entry.captureFields, "WEIGHT_REPS ⇒ weight+reps cells")
+        assertEquals(
+            CaptureFields.WeightReps,
+            entry.captureFields,
+            "WEIGHT_REPS ⇒ weight+reps cells",
+        )
     }
 }

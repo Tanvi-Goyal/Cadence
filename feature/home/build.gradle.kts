@@ -26,9 +26,10 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.core.viewmodel)
             implementation(libs.compose.runtime)
+            implementation(libs.androidx.paging.common)
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)          // SessionRow + shared session helpers + MindSetBottomBar
+            implementation(projects.core.ui) // SessionRow + shared session helpers + MindSetBottomBar
             implementation(projects.core.designsystem) // tokens, spacing, MindSetIcons, components, LocalWeightUnit
             implementation(projects.core.navigation)
             implementation(libs.compose.foundation)

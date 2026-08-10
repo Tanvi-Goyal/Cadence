@@ -4,7 +4,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class TrainingStatsTest {
-
     @Test
     fun longestStreak_emptyIsZero() {
         assertEquals(0, longestStreakDays(emptySet()))

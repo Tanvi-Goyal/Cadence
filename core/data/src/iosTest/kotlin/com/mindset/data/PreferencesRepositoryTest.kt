@@ -1,54 +1,48 @@
 package com.mindset.data
 
-import androidx.room3.Room
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
-import com.mindset.data.local.AppDatabase
+import com.mindset.datastore.createPreferencesDataStore
 import com.mindset.domain.ThemeMode
 import com.mindset.domain.WeightUnit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import platform.Foundation.NSTemporaryDirectory
+import platform.Foundation.NSUUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
- * Preferences persistence: defaults when unset, and set round-trips through the DB. Lives in iosTest
- * for the same reason as [SessionRepositoryTest] — Room's no-arg in-memory builder is Context-free
- * on native.
+ * Preferences persistence over a DataStore. Each test gets a fresh, unique temp file so cases don't
+ * share state and don't trip DataStore's "multiple instances for the same file" guard. Lives in
+ * iosTest alongside the other native persistence tests.
  */
 class PreferencesRepositoryTest {
-
-    private lateinit var database: AppDatabase
-
-    @BeforeTest
-    fun setup() {
-        database = Room.inMemoryDatabaseBuilder<AppDatabase>()
-            .setDriver(BundledSQLiteDriver())
-            .build()
-    }
-
-    @AfterTest
-    fun teardown() {
-        database.close()
-    }
+    private fun newRepository(): PreferencesRepositoryImpl = PreferencesRepositoryImpl(
+        createPreferencesDataStore(
+            NSTemporaryDirectory() + "prefs-${NSUUID().UUIDString}.preferences_pb",
+        ),
+    )
 
     @Test
-    fun observe_defaultsWhenNoRowWritten() = runTest {
-        val prefs = PreferencesRepositoryImpl(database).observe().first()
+    fun observe_defaultsWhenNothingWritten() = runTest {
+        val prefs = newRepository().observe().first()
         assertEquals(WeightUnit.KG, prefs.weightUnit, "default unit is kg")
         assertEquals(ThemeMode.SYSTEM, prefs.themeMode, "default theme follows system")
+        assertFalse(prefs.isOnboardingComplete, "onboarding is not complete by default")
     }
 
     @Test
-    fun setPreferences_roundTripsThroughDb() = runTest {
-        val repository = PreferencesRepositoryImpl(database)
+    fun setters_roundTripThroughDataStore() = runTest {
+        val repository = newRepository()
 
         repository.setWeightUnit(WeightUnit.LB)
         repository.setThemeMode(ThemeMode.DARK)
+        repository.setOnboardingComplete(true)
 
         val prefs = repository.observe().first()
         assertEquals(WeightUnit.LB, prefs.weightUnit)
         assertEquals(ThemeMode.DARK, prefs.themeMode)
+        assertTrue(prefs.isOnboardingComplete)
     }
 }

@@ -10,23 +10,17 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /** One template row for the Templates list. */
-data class TemplateUi(
-    val id: String,
-    val name: String,
-    val type: String,
-)
+data class TemplateUi(val id: String, val name: String, val type: String)
 
 /**
  * Drives the Templates screen. Templates are ordinary [com.mindset.data.local.Session] rows with
  * `isTemplate = true`; the list observes the DB (never the network). Creating a template and
  * starting one both hand an id back via a callback so the UI can navigate.
  */
-class TemplatesViewModel(
-    private val repository: SessionRepository,
-) : ViewModel() {
-
+class TemplatesViewModel(private val repository: SessionRepository) : ViewModel() {
     val uiState: StateFlow<List<TemplateUi>> =
-        repository.observeTemplates()
+        repository
+            .observeTemplates()
             .map { templates -> templates.map { TemplateUi(it.id, it.name, it.type.name) } }
             .stateIn(
                 scope = viewModelScope,

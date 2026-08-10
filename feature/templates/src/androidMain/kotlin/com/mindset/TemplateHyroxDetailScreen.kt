@@ -214,7 +214,12 @@ private fun HeroSection(state: TemplateHyroxDetailUiState) {
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(MindSetIcons.Timer, contentDescription = null, tint = colors.onSurface, modifier = Modifier.size(13.dp))
+                    Icon(
+                        MindSetIcons.Timer,
+                        contentDescription = null,
+                        tint = colors.onSurface,
+                        modifier = Modifier.size(13.dp),
+                    )
                     Text(
                         state.duration,
                         style = MaterialTheme.typography.labelMedium,
@@ -267,13 +272,7 @@ private val HYROX_VARIANTS = listOf(HyroxVariant.FIRST_HALF, HyroxVariant.SECOND
 private val HYROX_DIVISIONS = HyroxDivision.entries.toList()
 
 @Composable
-private fun <T> SelectorGroup(
-    label: String,
-    options: List<T>,
-    selected: T,
-    labelOf: (T) -> String,
-    onSelect: (T) -> Unit,
-) {
+private fun <T> SelectorGroup(label: String, options: List<T>, selected: T, labelOf: (T) -> String, onSelect: (T) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -361,7 +360,12 @@ private fun StationRow(row: HyroxRow) {
                     .background(colors.primaryContainer.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(style.icon, contentDescription = null, tint = style.tint, modifier = Modifier.size(style.width, style.height))
+                Icon(
+                    style.icon,
+                    contentDescription = null,
+                    tint = style.tint,
+                    modifier = Modifier.size(style.width, style.height),
+                )
             }
             RowText(row.title, row.detail)
         }
@@ -390,7 +394,12 @@ private fun RunRow(row: HyroxRow) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 val style = hyroxGlyphStyle(row.glyph)
                 Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    Icon(style.icon, contentDescription = null, tint = style.tint, modifier = Modifier.size(style.width, style.height))
+                    Icon(
+                        style.icon,
+                        contentDescription = null,
+                        tint = style.tint,
+                        modifier = Modifier.size(style.width, style.height),
+                    )
                 }
                 RowText(row.title, row.detail)
             }
@@ -426,7 +435,12 @@ private fun FinishIndicator(label: String) {
                     .background(colors.primaryContainer.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(MindSetIcons.Flag, contentDescription = null, tint = colors.primary, modifier = Modifier.size(22.dp))
+                Icon(
+                    MindSetIcons.Flag,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(22.dp),
+                )
             }
             Text(
                 label.uppercase(),
@@ -442,13 +456,7 @@ private fun FinishIndicator(label: String) {
 // ── Top app bar (solid, translucent) ────────────────────────────────────────────────────────
 
 @Composable
-private fun TopBar(
-    title: String,
-    onBack: () -> Unit,
-    onEdit: () -> Unit,
-    statusBarInset: Dp,
-    modifier: Modifier = Modifier,
-) {
+private fun TopBar(title: String, onBack: () -> Unit, onEdit: () -> Unit, statusBarInset: Dp, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Column(
         modifier = modifier
@@ -514,7 +522,12 @@ private fun StartCta(onStart: () -> Unit, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(MindSetIcons.Play, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(11.dp, 14.dp))
+            Icon(
+                MindSetIcons.Play,
+                contentDescription = null,
+                tint = colors.onPrimary,
+                modifier = Modifier.size(11.dp, 14.dp),
+            )
             Spacer(Modifier.width(8.dp))
             Text(
                 "Start Workout",
@@ -563,7 +576,10 @@ private fun TemplateHyroxDetailPreview() {
                 division = HyroxDivision.MEN,
                 variant = HyroxVariant.FIRST_HALF,
                 showVariantSelector = true,
-                blocks = com.mindset.presentation.HyroxStandards.buildBlocks(HyroxDivision.MEN, HyroxVariant.FIRST_HALF),
+                blocks = com.mindset.presentation.HyroxStandards.buildBlocks(
+                    HyroxDivision.MEN,
+                    HyroxVariant.FIRST_HALF,
+                ),
                 finishLabel = "Finish Line",
             ),
             onBack = {},

@@ -22,10 +22,7 @@ import com.mindset.icons.NavAccount
 import com.mindset.spacing
 
 @Composable
-fun MindSetTopBar(
-    onProfileClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun MindSetTopBar(onProfileClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = modifier

@@ -27,11 +27,7 @@ fun NavGraphBuilder.templatesScreen(
 /** Template Detail (Figma 33:1455). Opened from a Library card; START WORKOUT and the more-menu edit
  *  route out via callbacks. Carries the tapped template id for [onEdit] (real per-template content +
  *  the instantiate-on-start flow land with the data pass). */
-fun NavGraphBuilder.templateDetailScreen(
-    onBack: () -> Unit,
-    onStart: () -> Unit,
-    onEdit: (String) -> Unit,
-) {
+fun NavGraphBuilder.templateDetailScreen(onBack: () -> Unit, onStart: () -> Unit, onEdit: (String) -> Unit) {
     composable<TemplateDetail> { entry ->
         val templateId = entry.toRoute<TemplateDetail>().templateId
         TemplateDetailScreen(
@@ -44,10 +40,7 @@ fun NavGraphBuilder.templateDetailScreen(
 
 /** Template Detail — Hyrox sim (Figma 33:1727). The station-list detail variant, shared by the full
  *  and half simulations; the VM seeds its content from the template id. */
-fun NavGraphBuilder.templateHyroxDetailScreen(
-    onBack: () -> Unit,
-    onEdit: (String) -> Unit,
-) {
+fun NavGraphBuilder.templateHyroxDetailScreen(onBack: () -> Unit, onEdit: (String) -> Unit) {
     composable<TemplateHyroxDetail> { entry ->
         val templateId = entry.toRoute<TemplateHyroxDetail>().templateId
         TemplateHyroxDetailScreen(
@@ -60,11 +53,7 @@ fun NavGraphBuilder.templateHyroxDetailScreen(
 
 /** Template Detail — Strength (Push / Pull / Lower Body). The exercise-list detail variant; the VM
  *  seeds its content from the template id. */
-fun NavGraphBuilder.templateStrengthDetailScreen(
-    onBack: () -> Unit,
-    onStarted: (String) -> Unit,
-    onEdit: (String) -> Unit,
-) {
+fun NavGraphBuilder.templateStrengthDetailScreen(onBack: () -> Unit, onStarted: (String) -> Unit, onEdit: (String) -> Unit) {
     composable<TemplateStrengthDetail> { entry ->
         val templateId = entry.toRoute<TemplateStrengthDetail>().templateId
         TemplateStrengthDetailScreen(
@@ -76,21 +65,14 @@ fun NavGraphBuilder.templateStrengthDetailScreen(
     }
 }
 
-fun NavGraphBuilder.newTemplateScreen(
-    onBack: () -> Unit,
-    onCreated: (String) -> Unit,
-) {
+fun NavGraphBuilder.newTemplateScreen(onBack: () -> Unit, onCreated: (String) -> Unit) {
     composable<NewTemplate> {
         NewTemplateScreen(onBack = onBack, onCreated = onCreated)
     }
 }
 
 /** The template builder. Same picker→origin savedStateHandle handoff as Log Workout. */
-fun NavGraphBuilder.templateBuilderScreen(
-    onBack: () -> Unit,
-    onAddExercise: () -> Unit,
-    onDone: () -> Unit,
-) {
+fun NavGraphBuilder.templateBuilderScreen(onBack: () -> Unit, onAddExercise: () -> Unit, onDone: () -> Unit) {
     composable<TemplateBuilder> { entry ->
         val templateId = entry.toRoute<TemplateBuilder>().templateId
         val picked by entry.savedStateHandle

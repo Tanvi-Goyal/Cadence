@@ -3,10 +3,12 @@ package com.mindset.domain.repository
 import androidx.paging.PagingData
 import com.mindset.model.Exercise
 import com.mindset.model.ExerciseRef
+import com.mindset.model.Gender
 import com.mindset.model.HyroxDivisionInfo
-import com.mindset.model.HyroxStepDef
+import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxVariant
 import com.mindset.model.PlannedSession
+import com.mindset.model.RaceMode
 import com.mindset.model.Session
 import com.mindset.model.SessionDetail
 import com.mindset.model.SessionType
@@ -19,7 +21,6 @@ import kotlinx.coroutines.flow.Flow
  * types) — nothing here knows about Koin, so the DI framework can be swapped without touching it.
  */
 interface SessionRepository {
-
     /** The single source of truth for the UI: a reactive stream of non-deleted, non-template sessions. */
     fun observeSessions(): Flow<List<Session>>
 
@@ -50,11 +51,7 @@ interface SessionRepository {
      * [equipment] and [muscle] narrow by exact equipment and primary-muscle membership. Backed by a
      * Room [PagingSource].
      */
-    fun searchExercises(
-        query: String,
-        equipment: String? = null,
-        muscle: String? = null,
-    ): Flow<PagingData<Exercise>>
+    fun searchExercises(query: String, equipment: String? = null, muscle: String? = null): Flow<PagingData<Exercise>>
 
     /**
      * The reverse-chronological session feed as a Paging 3 stream — the History (Pro) list. [type]
@@ -100,13 +97,13 @@ interface SessionRepository {
      * [divisionKey]) and tagging the entry with its [segmentKey]. Resolved from the seeded reference
      * tables via [hyroxStations].
      */
-    suspend fun addStation(sessionId: String, divisionKey: String, segmentKey: String)
+    suspend fun addStation(sessionId: String, divisionKey: String, segmentKey: String, raceMode: RaceMode, gender: Gender)
 
     /**
      * The 8 Hyrox stations for [divisionKey] (division-accurate standards) — the "Stations" section of
      * the add-to-session sheet. Thin filter over [hyroxFormat] (`kind == STATION`).
      */
-    suspend fun hyroxStations(divisionKey: String): List<HyroxStepDef>
+    suspend fun hyroxStations(divisionKey: String, raceMode: RaceMode, gender: Gender): List<HyroxStationModel>
 
     /**
      * Per-station reference "standard" labels for the athlete's gender (both tiers) at [mode], keyed by
@@ -114,7 +111,7 @@ interface SessionRepository {
      * the Open and Pro standards are read so the Log Session card can show the full reference. Falls back
      * to SINGLES standards when [mode] has none seeded. Stations with no meaningful standard are omitted.
      */
-    suspend fun stationStandardLabels(divisionKey: String, mode: String): Map<String, String>
+    suspend fun stationStandardLabels(divisionKey: String, mode: RaceMode, gender: Gender): Map<String, String>
 
     /** Updates a session's free-text [notes], touching it so the change re-syncs. */
     suspend fun updateSessionNotes(sessionId: String, notes: String)
@@ -165,22 +162,12 @@ interface SessionRepository {
 
     // ── HYROX live workout ──────────────────────────────────────────────────────────────────────
 
-    /** The division options (Women / Men / …) from the seeded HYROX reference tables. */
-    suspend fun hyroxDivisions(): List<HyroxDivisionInfo>
-
     /**
      * The ordered run→station sequence for a [divisionKey] + [variant], resolved from the reference
      * tables (distances, reps, and division-accurate weights). This is the single source both the
      * detail screen and the live timer consume — replacing the in-code `HyroxStandards`.
      */
-    suspend fun hyroxFormat(divisionKey: String, variant: HyroxVariant): List<HyroxStepDef>
-
-    /**
-     * Synthesizes a live HYROX session (type = HYROX, one block, one entry+set per step carrying the
-     * step's targets; actuals null) and returns its id. Written atomically with its outbox row, so the
-     * workout is a real, syncable session from the first tick.
-     */
-    suspend fun startHyroxSession(divisionKey: String, variant: HyroxVariant, templateId: String): String
+    suspend fun hyroxFormat(divisionKey: String, variant: HyroxVariant, raceMode: RaceMode, gender: Gender): List<HyroxStationModel>
 
     /** Records the elapsed split ([elapsedSec]) for the step at [stepIndex] onto its set. */
     suspend fun recordHyroxSplit(sessionId: String, stepIndex: Int, elapsedSec: Int)

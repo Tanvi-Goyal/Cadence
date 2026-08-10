@@ -15,17 +15,20 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class BaselineProfileGenerator {
-
     @get:Rule
     val rule = BaselineProfileRule()
 
     @Test
     fun generate() = rule.collect(packageName = TARGET_PACKAGE) {
         pressHome()
-        launchWithSeed()          // cold start (+ seed so History is a real list)
+        launchWithSeed() // cold start (+ seed so History is a real list)
         openHistory()
         flingHistory()
-        device.findObject(androidx.test.uiautomator.By.text("Stats"))?.click()
+        device
+            .findObject(
+                androidx.test.uiautomator.By
+                    .text("Stats"),
+            )?.click()
         device.waitForIdle()
     }
 }

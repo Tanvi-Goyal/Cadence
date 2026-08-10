@@ -5,8 +5,10 @@ package com.mindset.data
 import com.mindset.domain.ActiveWorkout
 import com.mindset.domain.ActiveWorkoutController
 import com.mindset.domain.repository.SessionRepository
-import com.mindset.model.HyroxStepDef
+import com.mindset.model.Gender
+import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxVariant
+import com.mindset.model.RaceMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,11 +33,7 @@ import kotlin.time.Instant
  * so they serialize and the plain `var` anchors are never touched concurrently.
  */
 @OptIn(ExperimentalTime::class)
-class ActiveWorkoutControllerImpl(
-    private val repository: SessionRepository,
-    private val clock: Clock,
-) : ActiveWorkoutController {
-
+class ActiveWorkoutControllerImpl(private val repository: SessionRepository, private val clock: Clock) : ActiveWorkoutController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
 
     private val _state = MutableStateFlow<ActiveWorkout?>(null)
@@ -50,34 +48,37 @@ class ActiveWorkoutControllerImpl(
     private var sessionId: String = ""
     private var divisionKey: String = ""
     private var variant: HyroxVariant = HyroxVariant.FULL
-    private var steps: List<HyroxStepDef> = emptyList()
+    private var steps: List<HyroxStationModel> = emptyList()
     private var currentIndex = 0
-    private var totalAccumMs = 0L      // total elapsed banked at the last pause/advance
-    private var splitAccumMs = 0L      // current-split elapsed banked at the last pause
+    private var totalAccumMs = 0L // total elapsed banked at the last pause/advance
+    private var splitAccumMs = 0L // current-split elapsed banked at the last pause
     private var runStartMark: Instant = Instant.DISTANT_PAST
     private var paused = false
     private var finished = false
     private var tickJob: Job? = null
 
-    override fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String) {
-        scope.launch {
-            val id = repository.startHyroxSession(divisionKey, variant, templateId)
-            val format = repository.hyroxFormat(divisionKey, variant)
-            sessionId = id
-            this@ActiveWorkoutControllerImpl.divisionKey = divisionKey
-            this@ActiveWorkoutControllerImpl.variant = variant
-            steps = format
-            currentIndex = 0
-            totalAccumMs = 0L
-            splitAccumMs = 0L
-            runStartMark = clock.now()
-            paused = false
-            finished = false
-            _expanded.value = true   // a fresh workout opens the full sheet
-            emit()
-            startTicking()
-        }
-    }
+//    override fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String) {
+//        scope.launch {
+//            val id = repository.startHyroxSession(divisionKey, variant, templateId)
+//            val format = repository.hyroxFormat(
+//                divisionKey, variant,
+//                RaceMode.SINGLES, gender = Gender.WOMEN
+//            )
+//            sessionId = id
+//            this@ActiveWorkoutControllerImpl.divisionKey = divisionKey
+//            this@ActiveWorkoutControllerImpl.variant = variant
+//            steps = format
+//            currentIndex = 0
+//            totalAccumMs = 0L
+//            splitAccumMs = 0L
+//            runStartMark = clock.now()
+//            paused = false
+//            finished = false
+//            _expanded.value = true   // a fresh workout opens the full sheet
+//            emit()
+//            startTicking()
+//        }
+//    }
 
     override fun pause() = onScope {
         if (paused || finished || steps.isEmpty()) return@onScope
@@ -146,32 +147,33 @@ class ActiveWorkoutControllerImpl(
 
     private fun startTicking() {
         tickJob?.cancel()
-        tickJob = scope.launch {
-            while (isActive) {
-                delay(TICK_MS)
-                if (!paused && !finished && steps.isNotEmpty()) emit()
+        tickJob =
+            scope.launch {
+                while (isActive) {
+                    delay(TICK_MS)
+                    if (!paused && !finished && steps.isNotEmpty()) emit()
+                }
             }
-        }
     }
 
     /** Live milliseconds since the last resume/advance (0 while paused). */
-    private fun liveMs(): Long =
-        if (paused) 0L else (clock.now() - runStartMark).inWholeMilliseconds
+    private fun liveMs(): Long = if (paused) 0L else (clock.now() - runStartMark).inWholeMilliseconds
 
     private fun emit() {
         if (steps.isEmpty()) return
         val live = liveMs()
-        _state.value = ActiveWorkout(
-            sessionId = sessionId,
-            divisionKey = divisionKey,
-            variant = variant,
-            steps = steps,
-            currentIndex = currentIndex,
-            totalElapsedMs = totalAccumMs + live,
-            splitElapsedMs = splitAccumMs + live,
-            paused = paused,
-            finished = finished,
-        )
+        _state.value =
+            ActiveWorkout(
+                sessionId = sessionId,
+                divisionKey = divisionKey,
+                variant = variant,
+                steps = steps,
+                currentIndex = currentIndex,
+                totalElapsedMs = totalAccumMs + live,
+                splitElapsedMs = splitAccumMs + live,
+                paused = paused,
+                finished = finished,
+            )
     }
 
     private companion object {

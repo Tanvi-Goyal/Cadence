@@ -13,17 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,12 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.components.FieldLabel
@@ -50,23 +42,19 @@ import com.mindset.components.GlassCard
 import com.mindset.components.GlassTextField
 import com.mindset.components.PrimaryButton
 import com.mindset.components.SecondaryButton
-import com.mindset.icons.ChevronRight
-import com.mindset.presentation.Gender
+import com.mindset.model.Gender
+import com.mindset.model.RaceMode
+import com.mindset.model.Tier
 import com.mindset.presentation.OnboardingStep
 import com.mindset.presentation.OnboardingUiState
 import com.mindset.presentation.OnboardingViewModel
-import com.mindset.presentation.RaceFormat
-import com.mindset.presentation.Tier
 import org.koin.compose.viewmodel.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @Composable
-fun OnboardingScreen(
-    onComplete: () -> Unit,
-    viewModel: OnboardingViewModel = koinViewModel(),
-) {
+fun OnboardingScreen(onComplete: () -> Unit, viewModel: OnboardingViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.done) { if (state.done) onComplete() }
 
@@ -145,8 +133,11 @@ private fun StepIndicator(stepIndex: Int, stepCount: Int) {
                         .height(2.dp)
                         .clip(CircleShape)
                         .background(
-                            if (i <= stepIndex) colors.primary
-                            else colors.surfaceContainerHigh
+                            if (i <= stepIndex) {
+                                colors.primary
+                            } else {
+                                colors.surfaceContainerHigh
+                            },
                         ),
                 )
             }
@@ -170,7 +161,7 @@ private fun AthleteProfileStep(state: OnboardingUiState, vm: OnboardingViewModel
     Column {
         StepHeading(
             "Athlete Profile",
-            "Define your physical baseline for precise programming."
+            "Define your physical baseline for precise programming.",
         )
         FieldLabel("Full Name")
         GlassTextField(
@@ -215,8 +206,11 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
             Text(
                 text = state.raceDateMillis?.let(::formatDate) ?: "mm / dd / yyyy",
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (state.raceDateMillis != null) colors.onSurface
-                else colors.onSurfaceVariant.copy(alpha = 0.6f),
+                color = if (state.raceDateMillis != null) {
+                    colors.onSurface
+                } else {
+                    colors.onSurfaceVariant.copy(alpha = 0.6f)
+                },
             )
         }
         Spacer(Modifier.height(MaterialTheme.spacing.md))
@@ -240,8 +234,8 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
         FieldLabel("Format")
         SegmentedSelector(
             options = listOf("Singles", "Doubles", "Relay"),
-            selectedIndex = state.format?.ordinal ?: -1,
-            onSelect = { vm.onFormat(RaceFormat.entries[it]) },
+            selectedIndex = state.raceMode?.ordinal ?: -1,
+            onSelect = { vm.onFormat(RaceMode.entries[it]) },
         )
         Spacer(Modifier.height(MaterialTheme.spacing.md))
 
@@ -344,5 +338,4 @@ private fun SegmentedSelector(options: List<String>, selectedIndex: Int, onSelec
     }
 }
 
-private fun formatDate(millis: Long): String =
-    SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(millis))
+private fun formatDate(millis: Long): String = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(millis))

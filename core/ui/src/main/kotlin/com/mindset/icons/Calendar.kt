@@ -25,7 +25,7 @@ val MindSetIcons.Calendar: ImageVector
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 24f,
-            viewportHeight = 24f
+            viewportHeight = 24f,
         ).apply {
             // Even-odd fill so the inner rectangle reads as a cut-out window, not a solid block.
             path(fill = SolidColor(Color.White), pathFillType = PathFillType.EvenOdd) {

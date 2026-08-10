@@ -42,7 +42,7 @@ class StatsQueriesTest {
         repo.addExercise(session.id, "bench-press")
         val itemId = database.exerciseEntryDao().getBySession(session.id).first().id
         repo.addSet(session.id, itemId, reps = 10, loadKg = 60.0) // 600
-        repo.addSet(session.id, itemId, reps = 5, loadKg = 100.0)  // 500
+        repo.addSet(session.id, itemId, reps = 5, loadKg = 100.0) // 500
 
         val points = repo.observeVolumeOverTime("bench-press").first()
         assertEquals(1, points.size, "one session → one point")

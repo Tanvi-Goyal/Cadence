@@ -28,13 +28,13 @@ import kotlinx.serialization.json.Json
 data class Exercise(
     @PrimaryKey val id: String,
     val name: String,
-    val category: String,          // dataset type: strength / cardio / stretching / ...
-    val metric: String,            // derived: TIME_DISTANCE if cardio, else WEIGHT_REPS
-    val force: String? = null,     // push / pull / static
-    val level: String? = null,     // beginner / intermediate / expert
-    val mechanic: String? = null,  // compound / isolation
+    val category: String, // dataset type: strength / cardio / stretching / ...
+    val metric: String, // derived: TIME_DISTANCE if cardio, else WEIGHT_REPS
+    val force: String? = null, // push / pull / static
+    val level: String? = null, // beginner / intermediate / expert
+    val mechanic: String? = null, // compound / isolation
     val equipment: String? = null,
-    val primaryMuscles: String = "",   // JSON array (see *List accessors)
+    val primaryMuscles: String = "", // JSON array (see *List accessors)
     val secondaryMuscles: String = "",
     val instructions: String = "",
     val imageUrls: String = "",
@@ -58,11 +58,10 @@ data class Exercise(
 private val listJson = Json { ignoreUnknownKeys = true }
 private val stringListSerializer = ListSerializer(String.serializer())
 
-private fun decodeList(json: String): List<String> =
-    if (json.isEmpty()) emptyList() else listJson.decodeFromString(stringListSerializer, json)
+private fun decodeList(json: String): List<String> = if (json.isEmpty()) emptyList() else listJson.decodeFromString(stringListSerializer, json)
 
 /** How an exercise's sets are measured — drives the Log Workout set-row UI and volume calc. */
 object ExerciseMetric {
-    const val WEIGHT_REPS = "WEIGHT_REPS"     // strength: reps × loadKg
+    const val WEIGHT_REPS = "WEIGHT_REPS" // strength: reps × loadKg
     const val TIME_DISTANCE = "TIME_DISTANCE" // conditioning: timeSec / distanceM
 }

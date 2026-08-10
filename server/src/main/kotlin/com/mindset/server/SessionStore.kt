@@ -30,7 +30,6 @@ interface SessionStore {
  * versions wins?" (the LWW rule below).
  */
 class InMemorySessionStore : SessionStore {
-
     private data class StoredSession(val dto: SessionDto, val serverSeq: Long)
 
     private val mutex = Mutex()

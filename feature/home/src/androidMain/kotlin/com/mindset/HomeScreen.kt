@@ -1,6 +1,5 @@
 package com.mindset
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,45 +23,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import com.mindset.model.PlannedSession
-import com.mindset.model.Session
-import com.mindset.ui.R
 import com.mindset.domain.ActiveWorkout
-import com.mindset.domain.Units
-import com.mindset.domain.WeightUnit
-import com.mindset.icons.Add
 import com.mindset.icons.Bolt
 import com.mindset.icons.ChevronRight
 import com.mindset.icons.Grid
-import com.mindset.presentation.HomeStats
+import com.mindset.model.PlannedSession
+import com.mindset.model.Session
 import com.mindset.presentation.HomeUiState
 import com.mindset.presentation.HomeViewModel
-import com.mindset.presentation.SyncStatusUi
+import kotlinx.coroutines.flow.StateFlow
 import org.koin.compose.viewmodel.koinViewModel
-import java.util.Calendar
-import java.util.Date
-import java.text.SimpleDateFormat
-import java.util.Locale
-
-/** Screen-edge gutter for Home; the Figma frame uses a 20dp margin (not the 16dp grid default). */
-private val ScreenGutter = 20.dp
 
 @Composable
 fun HomeScreen(
@@ -76,27 +56,19 @@ fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    // Starting the planned session creates it, then emits its id here to open Log Workout.
-    LaunchedEffect(Unit) {
-        viewModel.openSession.collect { onOpenSession(it) }
-    }
+
     MindSetTheme {
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = { MindSetBottomBar(current = Tab.Home, onTab = onTab) },
         ) { padding ->
+
             HomeContent(
                 state = state,
-                activeWorkout = viewModel.activeWorkout,
-                onStartPlanned = viewModel::onStartPlannedSession,
                 onExpandWorkout = viewModel::onExpandWorkout,
-                onResetWorkout = viewModel::onResetWorkout,
-                onToggleWorkoutPause = viewModel::onToggleWorkoutPause,
-                onAdvanceWorkout = viewModel::onAdvanceWorkout,
                 onNewSession = onNewSession,
                 onOpenTemplates = onOpenTemplates,
                 onOpenTemplate = onOpenTemplate,
-                onSync = viewModel::onSyncClick,
                 onOpenDetail = onOpenDetail,
                 onSeeAll = onSeeAll,
                 contentPadding = padding,
@@ -108,16 +80,10 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     state: HomeUiState,
-    activeWorkout: StateFlow<ActiveWorkout?>,
-    onStartPlanned: () -> Unit,
     onExpandWorkout: () -> Unit,
-    onResetWorkout: () -> Unit,
-    onToggleWorkoutPause: () -> Unit,
-    onAdvanceWorkout: () -> Unit,
     onNewSession: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenTemplate: (String) -> Unit,
-    onSync: () -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
     contentPadding: PaddingValues,
@@ -128,105 +94,69 @@ private fun HomeContent(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(
-            start = ScreenGutter,
-            end = ScreenGutter,
+            start = spacing.md,
+            end = spacing.md,
             top = contentPadding.calculateTopPadding() + spacing.sm,
             bottom = contentPadding.calculateBottomPadding() + spacing.lg,
         ),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        item { HomeHeader(state.syncStatus, state.syncError, onSync, onNewSession) }
-
-        item { SummaryMetrics(state.stats) }
-
         // When a HYROX workout is live, the timer card takes the "Up next" slot; otherwise the planned
         // session (if any) shows there. This slot collects the ticking state internally so the tick
         // recomposes only the card, not the rest of Home.
-        item {
-            UpNextOrLiveSlot(
-                activeWorkout = activeWorkout,
-                plannedSession = state.plannedSession,
-                onStartPlanned = onStartPlanned,
-                onExpandWorkout = onExpandWorkout,
-                onResetWorkout = onResetWorkout,
-                onToggleWorkoutPause = onToggleWorkoutPause,
-                onAdvanceWorkout = onAdvanceWorkout,
-            )
-        }
+//        item {
+//            UpNextOrLiveSlot(
+//                activeWorkout = activeWorkout,
+//                plannedSession = state.plannedSession,
+//                onStartPlanned = onStartPlanned,
+//                onExpandWorkout = onExpandWorkout,
+//                onResetWorkout = onResetWorkout,
+//                onToggleWorkoutPause = onToggleWorkoutPause,
+//                onAdvanceWorkout = onAdvanceWorkout,
+//            )
+//        }
 
-        item { TemplatesSection(state.templates, onOpenTemplate, onOpenTemplates) }
+//        item { TemplatesSection(state.templates, onOpenTemplate, onOpenTemplates) }
 
         item {
             RecentSection(
                 sessions = state.sessions,
-                volumeBySession = state.volumeBySession,
-                pbSessionIds = state.pbSessionIds,
                 onOpenDetail = onOpenDetail,
                 onSeeAll = onSeeAll,
             )
         }
-
-        item { WeeklyChallengeCard() }
     }
 }
+//
+//@Composable
+//private fun HomeHeader(syncStatus: SyncStatusUi, syncError: String?, onSync: () -> Unit, onNewSession: () -> Unit) {
+//    val colors = MaterialTheme.colorScheme
+//    Column {
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.SpaceBetween,
+//            verticalAlignment = Alignment.CenterVertically,
+//        ) {
+//            Text(
+//                text = "Home",
+//                style = MaterialTheme.typography.headlineMedium,
+//                fontWeight = FontWeight.Bold,
+//                color = colors.onSurface,
+//            )
+//            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
+//                HeaderIconButton(
+//                    icon = MindSetIcons.Add,
+//                    contentDescription = "New session",
+//                    tint = colors.primary,
+//                    onClick = onNewSession,
+//                )
+//            }
+//        }
+//    }
+//}
 
 @Composable
-private fun HomeHeader(
-    syncStatus: SyncStatusUi,
-    syncError: String?,
-    onSync: () -> Unit,
-    onNewSession: () -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "Home",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = colors.onSurface,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
-                HeaderIconButton(
-                    icon = MindSetIcons.Sync,
-                    contentDescription = "Sync",
-                    tint = if (syncStatus == SyncStatusUi.Error) colors.error else colors.primary,
-                    enabled = syncStatus != SyncStatusUi.Syncing,
-                    onClick = onSync,
-                )
-                HeaderIconButton(
-                    icon = MindSetIcons.Add,
-                    contentDescription = "New session",
-                    tint = colors.primary,
-                    onClick = onNewSession,
-                )
-            }
-        }
-        if (syncStatus == SyncStatusUi.Error && syncError != null) {
-            Text(
-                text = "Sync failed — $syncError",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.error,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = MaterialTheme.spacing.sm),
-            )
-        }
-    }
-}
-
-@Composable
-private fun HeaderIconButton(
-    icon: ImageVector,
-    contentDescription: String,
-    tint: Color,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-) {
+private fun HeaderIconButton(icon: ImageVector, contentDescription: String, tint: Color, onClick: () -> Unit, enabled: Boolean = true) {
     Box(
         modifier = Modifier
             .clip(CircleShape)
@@ -234,20 +164,11 @@ private fun HeaderIconButton(
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
-    }
-}
-
-@Composable
-private fun SummaryMetrics(stats: HomeStats) {
-    val unit = LocalWeightUnit.current
-    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
-        StatTile(value = stats.total.toString(), label = "Sessions", modifier = Modifier.weight(1f))
-        StatTile(value = stats.dayStreak.toString(), label = "Day streak", modifier = Modifier.weight(1f))
-        StatTile(
-            value = formatVolume(stats.totalVolumeKg, unit),
-            label = "Volume (${Units.label(unit)})",
-            modifier = Modifier.weight(1f),
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -328,6 +249,7 @@ private fun UpNextOrLiveSlot(
             onTogglePause = onToggleWorkoutPause,
             onNext = onAdvanceWorkout,
         )
+
         plannedSession != null -> UpNextSection(plannedSession, onStartPlanned)
         // else: neither a live workout nor a planned session — render nothing.
     }
@@ -339,13 +261,7 @@ private fun UpNextOrLiveSlot(
  * the workout without expanding. Controls hide once the workout is finished.
  */
 @Composable
-private fun LiveWorkoutCard(
-    workout: ActiveWorkout,
-    onExpand: () -> Unit,
-    onReset: () -> Unit,
-    onTogglePause: () -> Unit,
-    onNext: () -> Unit,
-) {
+private fun LiveWorkoutCard(workout: ActiveWorkout, onExpand: () -> Unit, onReset: () -> Unit, onTogglePause: () -> Unit, onNext: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
         SectionLabel("In progress")
@@ -377,7 +293,11 @@ private fun LiveWorkoutCard(
                     )
                     SectionLabel("Step ${workout.currentIndex + 1} of ${workout.totalSteps}")
                 }
-                LiveClock(totalMs = workout.totalElapsedMs, paused = workout.paused, finished = workout.finished)
+                LiveClock(
+                    totalMs = workout.totalElapsedMs,
+                    paused = workout.paused,
+                    finished = workout.finished,
+                )
                 Icon(
                     imageVector = MindSetIcons.ChevronRight,
                     contentDescription = "Open workout",
@@ -418,7 +338,8 @@ private fun RowScope.WorkoutActionPill(text: String, primary: Boolean, weight: F
     val styled = if (primary) {
         base.background(colors.primary)
     } else {
-        base.background(colors.surfaceContainerHigh).border(1.dp, colors.outlineVariant, CircleShape)
+        base.background(colors.surfaceContainerHigh)
+            .border(1.dp, colors.outlineVariant, CircleShape)
     }
     Box(styled.clickable(onClick = onClick), contentAlignment = Alignment.Center) {
         Text(
@@ -455,11 +376,7 @@ private fun LiveClock(totalMs: Long, paused: Boolean, finished: Boolean) {
 }
 
 @Composable
-private fun TemplatesSection(
-    templates: List<Session>,
-    onOpenTemplate: (String) -> Unit,
-    onOpenTemplates: () -> Unit,
-) {
+private fun TemplatesSection(templates: List<Session>, onOpenTemplate: (String) -> Unit, onOpenTemplates: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {
         SectionLabel("Templates")
         Row(
@@ -468,7 +385,11 @@ private fun TemplatesSection(
         ) {
             // Leading chip is always visible (no horizontal scroll needed) so the Templates library
             // stays reachable — it's Home's only route into it.
-            MindSetChip(label = "Browse templates", icon = MindSetIcons.Grid, onClick = onOpenTemplates)
+            MindSetChip(
+                label = "Browse templates",
+                icon = MindSetIcons.Grid,
+                onClick = onOpenTemplates,
+            )
             templates.take(6).forEach { template ->
                 MindSetChip(
                     label = template.name,
@@ -483,8 +404,6 @@ private fun TemplatesSection(
 @Composable
 private fun RecentSection(
     sessions: List<Session>,
-    volumeBySession: Map<String, Double>,
-    pbSessionIds: Set<String>,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
 ) {
@@ -521,85 +440,12 @@ private fun RecentSection(
                 sessions.take(4).forEach { session ->
                     SessionRow(
                         session = session,
-                        volumeKg = volumeBySession[session.id] ?: 0.0,
+                        volumeKg = 0.0,
                         onClick = { onOpenDetail(session.id) },
-                        isPb = session.id in pbSessionIds,
+                        isPb = false,
                     )
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun WeeklyChallengeCard() {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(192.dp)
-            .clip(MaterialTheme.shapes.large),
-    ) {
-        Image(
-            painter = painterResource(R.drawable.hero_weekly_challenge),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, colors.background),
-                    ),
-                ),
-        )
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(MaterialTheme.spacing.md),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
-        ) {
-            Text(
-                text = "Weekly Challenge",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = colors.primary,
-            )
-            Text(
-                text = "Full Body Capacity",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-            )
-        }
-    }
-}
-
-
-@Preview
-@Composable
-private fun HomeContentPreview() {
-    MindSetTheme {
-        HomeContent(
-            state = HomeUiState(
-                plannedSession = PlannedSession("1", "Upper Strength", com.mindset.model.SessionType.STRENGTH, 55, "Push focus"),
-                stats = HomeStats(total = 20, dayStreak = 9, totalVolumeKg = 26700.0),
-            ),
-            activeWorkout = MutableStateFlow(null),
-            onStartPlanned = {},
-            onExpandWorkout = {},
-            onResetWorkout = {},
-            onToggleWorkoutPause = {},
-            onAdvanceWorkout = {},
-            onNewSession = {},
-            onOpenTemplates = {},
-            onOpenTemplate = {},
-            onSync = {},
-            onOpenDetail = {},
-            onSeeAll = {},
-            contentPadding = PaddingValues(0.dp),
-        )
     }
 }

@@ -1,13 +1,7 @@
 package com.mindset.model
 
-/**
- * A catalog exercise. **Not** [Syncable] — the library is identical seeded reference data on every
- * device (referenced by [id]), so it never travels the sync wire. Unlike the Room entity (which
- * stores list columns as JSON text), the domain type exposes real [List]s; the mapper decodes.
- *
- * v8 additions: [modality] and [defaultMetric] (first-class, replacing the entity's 2-value
- * `metric`) and [hyroxStation] — non-null tags this as one of the 8 Hyrox stations.
- */
+enum class Modality { STRENGTH, CONDITIONING, RUN, MOBILITY }
+
 data class Exercise(
     val id: String,
     val name: String,

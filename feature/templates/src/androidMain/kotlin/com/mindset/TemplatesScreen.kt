@@ -67,7 +67,12 @@ fun TemplatesScreen(
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                         )
                         Spacer(Modifier.size(12.dp))
-                        Text("Templates", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Templates",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
                 item {
@@ -75,12 +80,21 @@ fun TemplatesScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                RoundedCornerShape(16.dp),
+                            )
                             .clickable(onClick = onNewTemplate)
                             .padding(vertical = 16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("+ New template", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            "+ New template",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
                     }
                 }
                 if (templates.isEmpty()) {
@@ -124,11 +138,21 @@ private fun TemplateRow(template: TemplateUi, onEdit: () -> Unit, onStart: () ->
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center,
         ) {
-            Text(typeBadge(template.type), color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(
+                typeBadge(template.type),
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
         Spacer(Modifier.size(12.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(template.name, color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text(
+                template.name,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+            )
             Text("Tap to edit", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         }
         Box(
@@ -138,7 +162,12 @@ private fun TemplateRow(template: TemplateUi, onEdit: () -> Unit, onStart: () ->
                 .clickable(onClick = onStart)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
-            Text("Start", color = MaterialTheme.colorScheme.onPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Start",
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }

@@ -6,6 +6,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /** Android HTTP engine seam. */
-actual val networkPlatformModule: Module = module {
-    single<HttpClientEngine> { OkHttp.create() }
-}
+actual val networkPlatformModule: Module =
+    module {
+        single<HttpClientEngine> { OkHttp.create() }
+    }

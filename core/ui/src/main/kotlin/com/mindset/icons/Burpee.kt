@@ -23,7 +23,7 @@ val MindSetIcons.Burpee: ImageVector
             defaultWidth = 21.95.dp,
             defaultHeight = 21.95.dp,
             viewportWidth = 21.95f,
-            viewportHeight = 21.95f
+            viewportHeight = 21.95f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(11f, 15.95f)

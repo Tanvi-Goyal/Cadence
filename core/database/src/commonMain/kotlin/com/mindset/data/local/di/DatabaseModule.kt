@@ -9,12 +9,13 @@ import org.koin.dsl.module
  * Database graph: the [AppDatabase] and the DAOs other modules inject directly (the sync engine
  * needs session/outbox/syncMeta DAOs; repositories reach the rest via `database.xxxDao()`).
  */
-val databaseModule = module {
-    single { buildDatabase(get()) }
-    single { get<AppDatabase>().sessionDao() }
-    single { get<AppDatabase>().outboxDao() }
-    single { get<AppDatabase>().syncMetaDao() }
-}
+val databaseModule =
+    module {
+        single { buildDatabase(get()) }
+        single { get<AppDatabase>().sessionDao() }
+        single { get<AppDatabase>().outboxDao() }
+        single { get<AppDatabase>().syncMetaDao() }
+    }
 
 /**
  * Platform-supplied DB bindings. Each platform builds the [androidx.room3.RoomDatabase.Builder]

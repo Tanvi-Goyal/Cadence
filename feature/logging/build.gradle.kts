@@ -28,9 +28,9 @@ kotlin {
             implementation(libs.compose.runtime)
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)          // TypeCard
+            implementation(projects.core.ui) // TypeCard
             implementation(projects.core.designsystem) // NumberField + tokens + LocalWeightUnit
-            implementation(projects.core.navigation)   // NewSession/LogWorkout/ExercisePicker routes + PICKED_EXERCISE
+            implementation(projects.core.navigation) // NewSession/LogWorkout/ExercisePicker routes + PICKED_EXERCISE
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)

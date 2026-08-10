@@ -5,19 +5,21 @@ import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
 import com.mindset.data.local.SessionVolume
-import com.mindset.data.local.SetEntry
+import com.mindset.data.local.SetEntryEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SetEntryDao {
     @Insert
-    suspend fun insert(set: SetEntry)
+    suspend fun insert(set: SetEntryEntity)
 
     @Update
-    suspend fun update(set: SetEntry)
+    suspend fun update(set: SetEntryEntity)
 
-    @Query("SELECT * FROM set_entries WHERE exerciseEntryId = :exerciseEntryId AND deletedAt IS NULL ORDER BY setNumber")
-    suspend fun getForEntry(exerciseEntryId: String): List<SetEntry>
+    @Query(
+        "SELECT * FROM set_entries WHERE exerciseEntryId = :exerciseEntryId AND deletedAt IS NULL ORDER BY setNumber",
+    )
+    suspend fun getForEntry(exerciseEntryId: String): List<SetEntryEntity>
 
     /**
      * The actual-bearing sets of the **most recent prior session** that logged [exerciseId] — the raw
@@ -52,9 +54,8 @@ interface SetEntryDao {
         ORDER BY s.setNumber
         """,
     )
-    suspend fun lastSetsForExercise(exerciseId: String, excludeSessionId: String): List<SetEntry>
+    suspend fun lastSetsForExercise(exerciseId: String, excludeSessionId: String): List<SetEntryEntity>
 
-    /** All sets in a session (joined via exercise_entries → blocks) — observed by Log Workout. */
     @Query(
         """
         SELECT s.* FROM set_entries s
@@ -64,13 +65,15 @@ interface SetEntryDao {
         ORDER BY s.setNumber
         """,
     )
-    fun observeForSession(sessionId: String): Flow<List<SetEntry>>
+    fun observeForSession(sessionId: String): Flow<List<SetEntryEntity>>
 
     @Query("DELETE FROM set_entries WHERE exerciseEntryId IN (:entryIds)")
     suspend fun deleteForEntries(entryIds: List<String>)
 
     /** Soft-delete (tombstone) every set under an entry — pairs with [ExerciseEntryDao.softDelete]. */
-    @Query("UPDATE set_entries SET deletedAt = :now, updatedAt = :now WHERE exerciseEntryId = :entryId AND deletedAt IS NULL")
+    @Query(
+        "UPDATE set_entries SET deletedAt = :now, updatedAt = :now WHERE exerciseEntryId = :entryId AND deletedAt IS NULL",
+    )
     suspend fun softDeleteForEntry(entryId: String, now: Long)
 
     /**

@@ -15,7 +15,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
 
-
 /**
  * A premium "sheen" progress line: a lens-shaped stroke (pointed at both ends, thickest in the
  * middle) filled with a soft whitish gradient that fades into the background at both edges, with a

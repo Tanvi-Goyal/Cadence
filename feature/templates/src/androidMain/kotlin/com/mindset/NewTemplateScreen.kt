@@ -39,11 +39,7 @@ import org.koin.compose.viewmodel.koinViewModel
  * hand off to the builder to add exercises + target sets.
  */
 @Composable
-fun NewTemplateScreen(
-    onBack: () -> Unit,
-    onCreated: (String) -> Unit,
-    viewModel: TemplatesViewModel = koinViewModel(),
-) {
+fun NewTemplateScreen(onBack: () -> Unit, onCreated: (String) -> Unit, viewModel: TemplatesViewModel = koinViewModel()) {
     var name by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf(SessionType.STRENGTH.name) }
     MindSetTheme {
@@ -64,12 +60,26 @@ fun NewTemplateScreen(
                     )
                     Spacer(Modifier.size(12.dp))
                     Column {
-                        Text("New template", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                        Text("A plan you can start any day", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                        Text(
+                            "New template",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "A plan you can start any day",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp,
+                        )
                     }
                 }
                 Spacer(Modifier.height(24.dp))
-                Text("NAME", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    "NAME",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = name,
@@ -85,7 +95,12 @@ fun NewTemplateScreen(
                     ),
                 )
                 Spacer(Modifier.height(24.dp))
-                Text("SESSION TYPE", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    "SESSION TYPE",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                )
                 Spacer(Modifier.height(12.dp))
                 typeOptions.chunked(2).forEach { rowItems ->
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -107,7 +122,10 @@ fun NewTemplateScreen(
                         val finalName = trimmed.ifEmpty { defaultTemplateName(selected) }
                         viewModel.createTemplate(finalName, selected, onCreated)
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                 ) {

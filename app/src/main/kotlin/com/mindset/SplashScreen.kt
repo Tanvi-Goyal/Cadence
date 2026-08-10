@@ -54,9 +54,11 @@ fun SplashScreen(onDone: () -> Unit) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 AppBrand()
                 Spacer(Modifier.height(36.dp))
-                SheenProgress(modifier = Modifier
-                    .width(200.dp)
-                    .height(4.dp))
+                SheenProgress(
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(4.dp),
+                )
             }
         }
     }

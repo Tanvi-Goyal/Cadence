@@ -13,19 +13,15 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
 /** Ktor-backed [SyncApi]. [baseUrl] is platform-supplied (emulator host differs per platform). */
-class KtorSyncApi(
-    private val client: HttpClient,
-    private val baseUrl: String,
-) : SyncApi {
-
-    override suspend fun push(changes: List<SessionDto>): PushResponse =
-        client.post("$baseUrl/sync/push") {
+class KtorSyncApi(private val client: HttpClient, private val baseUrl: String) : SyncApi {
+    override suspend fun push(changes: List<SessionDto>): PushResponse = client
+        .post("$baseUrl/sync/push") {
             contentType(ContentType.Application.Json)
             setBody(PushRequest(changes))
         }.body()
 
-    override suspend fun pull(cursor: Long?): PullResponse =
-        client.post("$baseUrl/sync/pull") {
+    override suspend fun pull(cursor: Long?): PullResponse = client
+        .post("$baseUrl/sync/pull") {
             contentType(ContentType.Application.Json)
             setBody(PullRequest(cursor))
         }.body()

@@ -1,6 +1,6 @@
 package com.mindset.domain
 
-import com.mindset.model.HyroxStepDef
+import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxVariant
 import kotlinx.coroutines.flow.StateFlow
 
@@ -13,7 +13,7 @@ data class ActiveWorkout(
     val sessionId: String,
     val divisionKey: String,
     val variant: HyroxVariant,
-    val steps: List<HyroxStepDef>,
+    val steps: List<HyroxStationModel>,
     val currentIndex: Int,
     val totalElapsedMs: Long,
     val splitElapsedMs: Long,
@@ -21,9 +21,9 @@ data class ActiveWorkout(
     val finished: Boolean,
 ) {
     val totalSteps: Int get() = steps.size
-    val current: HyroxStepDef? get() = steps.getOrNull(currentIndex)
-    val next1: HyroxStepDef? get() = steps.getOrNull(currentIndex + 1)
-    val next2: HyroxStepDef? get() = steps.getOrNull(currentIndex + 2)
+    val current: HyroxStationModel? get() = steps.getOrNull(currentIndex)
+    val next1: HyroxStationModel? get() = steps.getOrNull(currentIndex + 1)
+    val next2: HyroxStationModel? get() = steps.getOrNull(currentIndex + 2)
 }
 
 /**
@@ -45,8 +45,8 @@ interface ActiveWorkoutController {
      */
     val expanded: StateFlow<Boolean>
 
-    /** Synthesizes + starts a HYROX workout for the chosen division/variant and begins the clock. */
-    fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String)
+    /* Synthesizes + starts a HYROX workout for the chosen division/variant and begins the clock. */
+//    fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String)
 
     /** Pause / resume the running clock (both total and current split). */
     fun pause()

@@ -1,0 +1,18 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+indent_style = space
+insert_final_newline = true
+max_line_length = 150
+trim_trailing_whitespace = true
+
+[*.{kt,kts}]
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+# Disable some strict rules that are hard to auto-fix or conflicting with Compose/KMP
+ktlint_standard_function-naming = disabled
+ktlint_standard_filename = disabled
+ktlint_standard_no-empty-file = disabled

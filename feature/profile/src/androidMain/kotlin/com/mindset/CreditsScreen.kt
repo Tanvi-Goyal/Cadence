@@ -32,7 +32,8 @@ fun CreditsScreen(onBack: () -> Unit) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 contentPadding = PaddingValues(
-                    start = 20.dp, end = 20.dp,
+                    start = 20.dp,
+                    end = 20.dp,
                     top = padding.calculateTopPadding() + 12.dp,
                     bottom = padding.calculateBottomPadding() + 24.dp,
                 ),
@@ -47,7 +48,12 @@ fun CreditsScreen(onBack: () -> Unit) {
                             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
                         )
                         Spacer(Modifier.size(12.dp))
-                        Text("Open data & credits", color = MaterialTheme.colorScheme.onSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            "Open data & credits",
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                 }
                 item {
@@ -74,7 +80,9 @@ fun CreditsScreen(onBack: () -> Unit) {
 @Composable
 private fun CreditCard(title: String, source: String, license: String, url: String) {
     Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().clip(
+            RoundedCornerShape(16.dp),
+        ).background(MaterialTheme.colorScheme.surfaceContainer).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)

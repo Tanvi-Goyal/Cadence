@@ -4,12 +4,12 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mindset.domain.ActiveWorkoutController
-import com.mindset.model.HyroxVariant as RaceVariant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import com.mindset.model.HyroxVariant as RaceVariant
 
 /*
  * Drives the HYROX-simulation detail (Figma 33:1727 — "Full Hyrox Sim") and its "Half Sim" sibling,
@@ -23,20 +23,22 @@ import kotlinx.coroutines.flow.stateIn
 
 /** Which leading glyph a Hyrox row shows. Screen maps each to a `MindSetIcons` vector. */
 enum class HyroxGlyph {
-    SKI_ERG, SLED_PUSH, SLED_PULL, BURPEE, ROWING, FARMERS_CARRY, SANDBAG_LUNGES, WALL_BALLS, RUN,
+    SKI_ERG,
+    SLED_PUSH,
+    SLED_PULL,
+    BURPEE,
+    ROWING,
+    FARMERS_CARRY,
+    SANDBAG_LUNGES,
+    WALL_BALLS,
+    RUN,
 }
 
 /** A row is either a functional STATION (icon medallion) or an interleaved RUN (left accent border). */
 enum class HyroxRowKind { STATION, RUN }
 
 @Immutable
-data class HyroxRow(
-    val kind: HyroxRowKind,
-    val glyph: HyroxGlyph,
-    val title: String,
-    val detail: String,
-    val value: String,
-)
+data class HyroxRow(val kind: HyroxRowKind, val glyph: HyroxGlyph, val title: String, val detail: String, val value: String)
 
 /** A titled block of rows (e.g. "BLOCK 1: START"). */
 @Immutable
@@ -57,10 +59,7 @@ data class TemplateHyroxDetailUiState(
     val finishLabel: String,
 )
 
-class TemplateHyroxDetailViewModel(
-    private val controller: ActiveWorkoutController,
-    private val templateId: String,
-) : ViewModel() {
+class TemplateHyroxDetailViewModel(private val controller: ActiveWorkoutController, private val templateId: String) : ViewModel() {
 
     private val isHalf: Boolean = templateId == "half-hyrox-sim"
 
@@ -74,11 +73,11 @@ class TemplateHyroxDetailViewModel(
      * [HyroxDivision]/[HyroxVariant] enums map by name onto the DB division key / domain [RaceVariant].
      */
     fun startWorkout() {
-        controller.startHyrox(
-            divisionKey = division.value.name,
-            variant = RaceVariant.valueOf(variant.value.name),
-            templateId = templateId,
-        )
+//        controller.startHyrox(
+//            divisionKey = division.value.name,
+//            variant = RaceVariant.valueOf(variant.value.name),
+//            templateId = templateId,
+//        )
     }
 
     val uiState: StateFlow<TemplateHyroxDetailUiState> =
@@ -89,10 +88,14 @@ class TemplateHyroxDetailViewModel(
                 initialValue = buildState(division.value, variant.value),
             )
 
-    fun onDivisionSelected(d: HyroxDivision) { division.value = d }
+    fun onDivisionSelected(d: HyroxDivision) {
+        division.value = d
+    }
 
     /** Ignored for the full sim (no variant selector). */
-    fun onVariantSelected(v: HyroxVariant) { if (isHalf) variant.value = v }
+    fun onVariantSelected(v: HyroxVariant) {
+        if (isHalf) variant.value = v
+    }
 
     private fun buildState(d: HyroxDivision, v: HyroxVariant): TemplateHyroxDetailUiState {
         val (title, duration, description) = meta(v)
@@ -117,16 +120,19 @@ class TemplateHyroxDetailViewModel(
             "A high-intensity simulation covering all 8 functional stations and interleaved running " +
                 "segments. Designed for elite preparation.",
         )
+
         HyroxVariant.FIRST_HALF -> Triple(
             "Half Hyrox Sim",
             "35-45 min",
             "The opening four stations at full race distance — SkiErg through Burpee Broad Jumps.",
         )
+
         HyroxVariant.SECOND_HALF -> Triple(
             "Half Hyrox Sim",
             "35-45 min",
             "The closing four stations at full race distance — Rowing through Wall Balls.",
         )
+
         HyroxVariant.HALVED -> Triple(
             "Half Hyrox Sim",
             "40-50 min",

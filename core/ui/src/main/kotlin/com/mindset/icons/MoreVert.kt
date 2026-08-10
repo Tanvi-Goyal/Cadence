@@ -23,7 +23,7 @@ val MindSetIcons.MoreVert: ImageVector
             defaultWidth = 4.dp,
             defaultHeight = 16.dp,
             viewportWidth = 4f,
-            viewportHeight = 16f
+            viewportHeight = 16f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(2f, 16f)

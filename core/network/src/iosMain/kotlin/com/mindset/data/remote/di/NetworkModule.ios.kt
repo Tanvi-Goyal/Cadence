@@ -6,6 +6,7 @@ import org.koin.core.module.Module
 import org.koin.dsl.module
 
 /** iOS HTTP engine seam. */
-actual val networkPlatformModule: Module = module {
-    single<HttpClientEngine> { Darwin.create() }
-}
+actual val networkPlatformModule: Module =
+    module {
+        single<HttpClientEngine> { Darwin.create() }
+    }

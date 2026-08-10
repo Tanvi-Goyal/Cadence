@@ -25,129 +25,127 @@ fun MindSetNavHost() {
             }
         },
     ) {
+        NavHost(
+            navController = nav,
+            startDestination = Splash,
+        ) {
+            splashScreen(
+                onDone = { onboardingComplete ->
+                    val destination: Any = if (onboardingComplete) Home else Onboarding
+                    nav.navigate(destination) { popUpTo(Splash) { inclusive = true } }
+                },
+            )
 
-    NavHost(
-        navController = nav,
-        startDestination = Splash
-    ) {
+            onboardingScreen(
+                onComplete = { nav.navigate(Home) { popUpTo(Onboarding) { inclusive = true } } },
+            )
 
-        splashScreen(
-            onDone = { onboardingComplete ->
-                val destination: Any = if (onboardingComplete) Home else Onboarding
-                nav.navigate(destination) { popUpTo(Splash) { inclusive = true } }
-            },
-        )
+            homeScreen(
+                onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
+                onNewSession = { nav.navigate(NewSession) },
+                onOpenTemplates = { nav.navigate(Templates) },
+                onOpenTemplate = { id -> nav.openTemplateDetail(id) },
+                onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
+                onSeeAll = { nav.switchTab(Tab.History) },
+                onTab = nav::switchTab,
+            )
 
-        onboardingScreen(
-            onComplete = { nav.navigate(Home) { popUpTo(Onboarding) { inclusive = true } } },
-        )
+            loginScreen(
+                onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+                onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+                onForgotPassword = {},
+            )
 
-        homeScreen(
-            onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
-            onNewSession = { nav.navigate(NewSession) },
-            onOpenTemplates = { nav.navigate(Templates) },
-            onOpenTemplate = { id -> nav.openTemplateDetail(id) },
-            onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
-            onSeeAll = { nav.switchTab(Tab.History) },
-            onTab = nav::switchTab,
-        )
+            historyScreen(
+                onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
+                onOpenProfile = { nav.switchTab(Tab.Profile) },
+                onTab = nav::switchTab,
+            )
 
-        loginScreen(
-            onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
-            onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
-            onForgotPassword = {},
-        )
+            statsScreen(onTab = nav::switchTab)
 
-        historyScreen(
-            onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
-            onOpenProfile = { nav.switchTab(Tab.Profile) },
-            onTab = nav::switchTab,
-        )
+            profileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Credits) })
 
-        statsScreen(onTab = nav::switchTab)
+            creditsScreen(onBack = { nav.popBackStack() })
 
-        profileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Credits) })
+//        newSessionScreen(
+//            onBack = { nav.popBackStack() },
+//            onCreated = { id ->
+//                // Replace New Session with Log Workout so Back returns Home, not the picker.
+//                nav.navigate(LogWorkout(id)) { popUpTo<NewSession> { inclusive = true } }
+//            },
+//        )
 
-        creditsScreen(onBack = { nav.popBackStack() })
+            logWorkoutScreen(
+                onBack = { nav.popBackStack() },
+                onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG)) },
+                onFinish = { nav.popBackStack(Home, inclusive = false) },
+            )
 
-        newSessionScreen(
-            onBack = { nav.popBackStack() },
-            onCreated = { id ->
-                // Replace New Session with Log Workout so Back returns Home, not the picker.
-                nav.navigate(LogWorkout(id)) { popUpTo<NewSession> { inclusive = true } }
-            },
-        )
-
-        logWorkoutScreen(
-            onBack = { nav.popBackStack() },
-            onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG)) },
-            onFinish = { nav.popBackStack(Home, inclusive = false) },
-        )
-
-        exercisePickerScreen(
-            onOpenDetail = { exerciseId, target ->
-                nav.navigate(
-                    ExerciseDetail(
-                        exerciseId,
-                        target
+            exercisePickerScreen(
+                onOpenDetail = { exerciseId, target ->
+                    nav.navigate(
+                        ExerciseDetail(
+                            exerciseId,
+                            target,
+                        ),
                     )
-                )
-            },
-            onBack = { nav.popBackStack() },
-        )
+                },
+                onBack = { nav.popBackStack() },
+            )
 
-        exerciseDetailScreen(
-            onAdd = { exerciseId, target ->
-                val origin = when (target) {
-                    PickerTarget.LOG -> nav.getBackStackEntry<LogWorkout>()
-                    PickerTarget.BUILDER -> nav.getBackStackEntry<TemplateBuilder>()
-                }
-                origin.savedStateHandle[PICKED_EXERCISE] = exerciseId
-                when (target) {
-                    PickerTarget.LOG -> nav.popBackStack<LogWorkout>(inclusive = false)
-                    PickerTarget.BUILDER -> nav.popBackStack<TemplateBuilder>(inclusive = false)
-                }
-            },
-            onBack = { nav.popBackStack() },
-        )
+            exerciseDetailScreen(
+                onAdd = { exerciseId, target ->
+                    val origin = when (target) {
+                        PickerTarget.LOG -> nav.getBackStackEntry<LogWorkout>()
+                        PickerTarget.BUILDER -> nav.getBackStackEntry<TemplateBuilder>()
+                    }
+                    origin.savedStateHandle[PICKED_EXERCISE] = exerciseId
+                    when (target) {
+                        PickerTarget.LOG -> nav.popBackStack<LogWorkout>(inclusive = false)
+                        PickerTarget.BUILDER -> nav.popBackStack<TemplateBuilder>(inclusive = false)
+                    }
+                },
+                onBack = { nav.popBackStack() },
+            )
 
-        sessionDetailScreen(onBack = { nav.popBackStack() })
+            sessionDetailScreen(onBack = { nav.popBackStack() })
 
-        templatesScreen(
-            onBack = { nav.popBackStack() },
-            onNewTemplate = { nav.navigate(NewTemplate) },
-            onEditTemplate = { id -> nav.openTemplateDetail(id) },
-            onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
-        )
+            templatesScreen(
+                onBack = { nav.popBackStack() },
+                onNewTemplate = { nav.navigate(NewTemplate) },
+                onEditTemplate = { id -> nav.openTemplateDetail(id) },
+                onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
+            )
 
-        templateDetailScreen(
-            onBack = { nav.popBackStack() },
-            onStart = { nav.navigate(NewSession) },
-            onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
-        )
-        templateHyroxDetailScreen(
-            onBack = { nav.popBackStack() },
-            onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
-        )
-        templateStrengthDetailScreen(
-            onBack = { nav.popBackStack() },
-            // Start deep-copies the template into a live session; open it in Log Workout.
-            onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
-            onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
-        )
-        newTemplateScreen(
-            onBack = { nav.popBackStack() },
-            onCreated = { id ->
-                // Replace New Template with the builder so Back returns to the Templates list.
-                nav.navigate(TemplateBuilder(id)) { popUpTo<NewTemplate> { inclusive = true } }
-            },
-        )
-        templateBuilderScreen(
-            onBack = { nav.popBackStack() },
-            onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.BUILDER)) },
-            onDone = { nav.popBackStack() },
-        )
-    }
+            templateDetailScreen(
+                onBack = { nav.popBackStack() },
+                onStart = { nav.navigate(NewSession) },
+                onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
+            )
+            templateHyroxDetailScreen(
+                onBack = { nav.popBackStack() },
+                onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
+            )
+            templateStrengthDetailScreen(
+                onBack = { nav.popBackStack() },
+                // Start deep-copies the template into a live session; open it in Log Workout.
+                onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
+                onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
+            )
+            newTemplateScreen(
+                onBack = { nav.popBackStack() },
+                onCreated = { id ->
+                    // Replace New Template with the builder so Back returns to the Templates list.
+                    nav.navigate(TemplateBuilder(id)) { popUpTo<NewTemplate> { inclusive = true } }
+                },
+            )
+            templateBuilderScreen(
+                onBack = { nav.popBackStack() },
+                onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.BUILDER)) },
+                onDone = { nav.popBackStack() },
+            )
+        }
     }
 }
 

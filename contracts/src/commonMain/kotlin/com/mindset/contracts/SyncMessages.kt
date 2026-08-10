@@ -19,7 +19,4 @@ data class PushResponse(val accepted: Int)
 data class PullRequest(val cursor: Long? = null)
 
 @Serializable
-data class PullResponse(
-    val changes: List<SessionDto>,
-    val nextCursor: Long,
-)
+data class PullResponse(val changes: List<SessionDto>, val nextCursor: Long)

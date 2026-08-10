@@ -10,11 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 
 @Composable
-fun GlassTextField(
-    value: String, onValueChange: (String) -> Unit,
-    placeholder: String,
-    style: TextStyle = MaterialTheme.typography.bodyLarge
-) {
+fun GlassTextField(value: String, onValueChange: (String) -> Unit, placeholder: String, style: TextStyle = MaterialTheme.typography.bodyLarge) {
     val colors = MaterialTheme.colorScheme
     GlassCard {
         Box {

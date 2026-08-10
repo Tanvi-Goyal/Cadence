@@ -11,9 +11,8 @@ import kotlinx.serialization.json.Json
  * Darwin on iOS). The client config — JSON content negotiation — is common; only the engine is
  * platform-specific, so the seam is exactly one type wide.
  */
-fun createHttpClient(engine: HttpClientEngine): HttpClient =
-    HttpClient(engine) {
-        install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
-        }
+fun createHttpClient(engine: HttpClientEngine): HttpClient = HttpClient(engine) {
+    install(ContentNegotiation) {
+        json(Json { ignoreUnknownKeys = true })
     }
+}

@@ -15,7 +15,7 @@ fun FieldLabel(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(
             bottom = MaterialTheme.spacing.sm,
-            start = MaterialTheme.spacing.xs
+            start = MaterialTheme.spacing.xs,
         ),
     )
 }

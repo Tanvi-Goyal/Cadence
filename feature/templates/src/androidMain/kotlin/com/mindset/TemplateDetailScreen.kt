@@ -72,12 +72,7 @@ import org.koin.compose.viewmodel.koinViewModel
 private val Gutter = 20.dp
 
 @Composable
-fun TemplateDetailScreen(
-    onBack: () -> Unit,
-    onStart: () -> Unit,
-    onEdit: () -> Unit,
-    viewModel: TemplateDetailViewModel = koinViewModel(),
-) {
+fun TemplateDetailScreen(onBack: () -> Unit, onStart: () -> Unit, onEdit: () -> Unit, viewModel: TemplateDetailViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MindSetTheme {
         TemplateDetailContent(state = state, onBack = onBack, onStart = onStart, onEdit = onEdit)
@@ -85,12 +80,7 @@ fun TemplateDetailScreen(
 }
 
 @Composable
-private fun TemplateDetailContent(
-    state: TemplateDetailUiState,
-    onBack: () -> Unit,
-    onStart: () -> Unit,
-    onEdit: () -> Unit,
-) {
+private fun TemplateDetailContent(state: TemplateDetailUiState, onBack: () -> Unit, onStart: () -> Unit, onEdit: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Scaffold(containerColor = colors.background) { inner ->
         Box(Modifier.fillMaxSize()) {
@@ -312,7 +302,12 @@ private fun WorkBlock(work: WorkSegment) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(MindSetIcons.Bolt, contentDescription = null, tint = colors.primary, modifier = Modifier.size(13.dp, 17.dp))
+                Icon(
+                    MindSetIcons.Bolt,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(13.dp, 17.dp),
+                )
                 Text(
                     work.label.uppercase(),
                     style = MaterialTheme.typography.bodyLarge,
@@ -349,8 +344,16 @@ private fun WorkBlock(work: WorkSegment) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(work.recoveryTitle, style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
-                        Text(work.recoveryDuration, style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
+                        Text(
+                            work.recoveryTitle,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.onSurfaceVariant,
+                        )
+                        Text(
+                            work.recoveryDuration,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = colors.onSurfaceVariant,
+                        )
                     }
                     Text(
                         work.recoveryDetail,
@@ -418,12 +421,20 @@ private fun CoachNotes(note: String, coach: String, modifier: Modifier = Modifie
                     lineHeight = 26.sp,
                     color = colors.onSurface,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Box(
                         modifier = Modifier.size(32.dp).clip(CircleShape).background(colors.primaryContainer),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(NavAccount, contentDescription = null, tint = colors.onPrimaryContainer, modifier = Modifier.size(16.dp))
+                        Icon(
+                            NavAccount,
+                            contentDescription = null,
+                            tint = colors.onPrimaryContainer,
+                            modifier = Modifier.size(16.dp),
+                        )
                     }
                     Text(coach, style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
                 }
@@ -460,7 +471,12 @@ private fun StartCta(onStart: () -> Unit, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(MindSetIcons.Play, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(11.dp, 14.dp))
+            Icon(
+                MindSetIcons.Play,
+                contentDescription = null,
+                tint = colors.onPrimary,
+                modifier = Modifier.size(11.dp, 14.dp),
+            )
             Spacer(Modifier.width(12.dp))
             Text(
                 "Start Workout".uppercase(),

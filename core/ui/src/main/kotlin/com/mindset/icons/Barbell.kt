@@ -23,7 +23,7 @@ val MindSetIcons.Barbell: ImageVector
             defaultWidth = 19.975.dp,
             defaultHeight = 19.988.dp,
             viewportWidth = 19.975f,
-            viewportHeight = 19.988f
+            viewportHeight = 19.988f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(18.625f, 7.388f)

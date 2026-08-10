@@ -23,12 +23,7 @@ enum class BlockGlyph { WARM_UP, COOL_DOWN }
 
 /** A plain protocol block (warm-up / cool-down): medallion glyph + title + duration + detail line. */
 @Immutable
-data class ProtocolBlock(
-    val glyph: BlockGlyph,
-    val title: String,
-    val duration: String,
-    val detail: String,
-)
+data class ProtocolBlock(val glyph: BlockGlyph, val title: String, val duration: String, val detail: String)
 
 /** One labelled metric inside the work segment (e.g. GOAL PACE → 3:45/km). */
 @Immutable

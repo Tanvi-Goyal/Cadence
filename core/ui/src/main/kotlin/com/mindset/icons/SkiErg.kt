@@ -23,7 +23,7 @@ val MindSetIcons.SkiErg: ImageVector
             defaultWidth = 17.dp,
             defaultHeight = 23.dp,
             viewportWidth = 17f,
-            viewportHeight = 23f
+            viewportHeight = 23f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(14f, 23f)

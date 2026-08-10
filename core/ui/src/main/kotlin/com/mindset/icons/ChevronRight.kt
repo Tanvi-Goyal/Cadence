@@ -23,7 +23,7 @@ val MindSetIcons.ChevronRight: ImageVector
             defaultWidth = 7.4.dp,
             defaultHeight = 12.dp,
             viewportWidth = 7.4f,
-            viewportHeight = 12f
+            viewportHeight = 12f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(4.6f, 6f)

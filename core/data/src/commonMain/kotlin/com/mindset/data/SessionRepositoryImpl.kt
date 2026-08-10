@@ -7,34 +7,30 @@ import androidx.paging.map
 import androidx.room3.immediateTransaction
 import androidx.room3.useWriterConnection
 import com.mindset.common.UuidGenerator
-import com.mindset.domain.repository.SessionRepository
 import com.mindset.data.local.AppDatabase
-import com.mindset.data.local.Block
-import com.mindset.data.local.Exercise as ExerciseEntity
-import com.mindset.data.local.ExerciseAssetReader
-import com.mindset.data.local.EventDivisionEntity
+import com.mindset.data.local.BlockEntity
 import com.mindset.data.local.EventSeed
 import com.mindset.data.local.EventSegmentEntity
-import com.mindset.data.local.ExerciseEntry
+import com.mindset.data.local.EventSegmentStandardEntity
+import com.mindset.data.local.ExerciseAssetReader
+import com.mindset.data.local.ExerciseEntryEntity
 import com.mindset.data.local.ExerciseImporter
 import com.mindset.data.local.OutboxEntry
-import com.mindset.data.local.SegmentStandardEntity
-import com.mindset.data.local.PersonalRecord as PersonalRecordEntity
-import com.mindset.data.local.Session as SessionEntity
 import com.mindset.data.local.SessionSource
 import com.mindset.data.local.SessionType
-import com.mindset.data.local.SetEntry as SetEntryEntity
 import com.mindset.data.local.SyncMeta
 import com.mindset.data.local.SyncMetaKeys
 import com.mindset.data.local.SyncStatus
 import com.mindset.data.local.TemplateSeed
 import com.mindset.domain.detectPrs
+import com.mindset.domain.repository.SessionRepository
 import com.mindset.model.EventFormat
 import com.mindset.model.Exercise
+import com.mindset.model.Gender
 import com.mindset.model.HyroxDivisionInfo
 import com.mindset.model.HyroxStation
-import com.mindset.model.HyroxStepDef
-import com.mindset.model.HyroxStepKind
+import com.mindset.model.HyroxStationModel
+import com.mindset.model.HyroxStationType
 import com.mindset.model.HyroxVariant
 import com.mindset.model.MetricType
 import com.mindset.model.PlannedSession
@@ -42,23 +38,17 @@ import com.mindset.model.RaceMode
 import com.mindset.model.SegmentKind
 import com.mindset.model.Session
 import com.mindset.model.SessionDetail
-import com.mindset.model.SessionType as DomainSessionType
 import com.mindset.model.SetEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import com.mindset.data.local.PersonalRecord as PersonalRecordEntity
+import com.mindset.data.local.SessionEntity as SessionEntity
+import com.mindset.data.local.SetEntryEntity as SetEntryEntity
+import com.mindset.model.SessionType as DomainSessionType
 
-/**
- * Room-backed [SessionRepository]. Plain constructor injection ([AppDatabase]) — no DI-framework
- * types leak in, so a later swap of Koin for another framework is a wiring-only change.
- *
- * Sync model: the **session is the sync unit**. Any change to its logged items or sets bumps the
- * parent [Session.updatedAt] and refreshes a SINGLE per-session outbox row (deterministic id), all
- * in one transaction — so the whole aggregate is pushed together and there's never a pile-up of
- * outbox rows for the same session.
- */
 @OptIn(ExperimentalTime::class)
 class SessionRepositoryImpl(
     private val database: AppDatabase,
@@ -67,7 +57,6 @@ class SessionRepositoryImpl(
     private val clock: Clock,
 ) : SessionRepository {
 
-    /** Wall-clock millis via the injected [clock] — the single time source for all writes. */
     private fun now(): Long = clock.now().toEpochMilliseconds()
 
     private companion object {
@@ -90,7 +79,27 @@ class SessionRepositoryImpl(
     private val plans get() = database.plannedSessionDao()
     private val personalRecords get() = database.personalRecordDao()
     private val syncMeta get() = database.syncMetaDao()
-    private val eventRef get() = database.eventRefDao()
+    private val eventSegmentDao get() = database.eventSegmentDao()
+    private val eventSegmentStandardDao get() = database.eventSegmentStandardDao()
+    private val eventFormatDao get() = database.eventFormatDao()
+    private val eventDivisionDao get() = database.eventDivisionDao()
+
+    override fun observeSessionDetail(sessionId: String): Flow<SessionDetail?> = combine(
+        sessions.observeById(sessionId),
+        blocks.observeForSession(sessionId),
+        entries.observeBySession(sessionId),
+        setEntries.observeForSession(sessionId),
+    ) { session, sessionBlocks, sessionEntries, sets ->
+        session?.let {
+            buildSessionDetail(
+                it,
+                sessionBlocks,
+                sessionEntries,
+                sets,
+                resolveExercises(sessionEntries),
+            )
+        }
+    }
 
     /**
      * Recompute + upsert PBs for a just-written set, inside the caller's write transaction. Pure
@@ -123,7 +132,7 @@ class SessionRepositoryImpl(
     }
 
     /** Every session currently has one deterministic implicit STRAIGHT block; entries hang off it. */
-    private fun implicitBlock(sessionId: String, now: Long): Block = Block(
+    private fun implicitBlock(sessionId: String, now: Long): BlockEntity = BlockEntity(
         id = implicitBlockId(sessionId),
         sessionId = sessionId,
         type = "STRAIGHT", // com.mindset.model.BlockType.STRAIGHT
@@ -133,52 +142,29 @@ class SessionRepositoryImpl(
         updatedAt = now,
     )
 
-    override fun observeSessions(): Flow<List<Session>> =
-        sessions.observeAll().map { rows -> rows.map { it.toDomain() } }
+    override fun observeSessions(): Flow<List<Session>> = sessions.observeAll().map { rows -> rows.map { it.toDomain() } }
 
-    override fun observeTemplates(): Flow<List<Session>> =
-        sessions.observeTemplates().map { rows -> rows.map { it.toDomain() } }
+    override fun observeTemplates(): Flow<List<Session>> = sessions.observeTemplates().map { rows -> rows.map { it.toDomain() } }
 
-    override fun observePlannedSession(): Flow<PlannedSession?> =
-        plans.observeCurrent().map { it?.toDomain() }
-
-    override fun observeSessionDetail(sessionId: String): Flow<SessionDetail?> =
-        combine(
-            sessions.observeById(sessionId),
-            blocks.observeForSession(sessionId),
-            entries.observeBySession(sessionId),
-            setEntries.observeForSession(sessionId),
-        ) { session, sessionBlocks, sessionEntries, sets ->
-            session?.let {
-                buildSessionDetail(it,
-                    sessionBlocks,
-                    sessionEntries,
-                    sets,
-                    resolveExercises(sessionEntries))
-            }
-        }
+    override fun observePlannedSession(): Flow<PlannedSession?> = plans.observeCurrent().map { it?.toDomain() }
 
     /**
      * Resolve just the catalog rows a session references (an indexed `IN` lookup, not the full
      * ~870-row catalog), as domain models. Re-runs per emission — cheap for a handful of exercises;
      * revisit with a cache if a session ever references many.
      */
-    private suspend fun resolveExercises(items: List<ExerciseEntry>): Map<String, Exercise> =
-        exercises.getByIds(items.map { it.exerciseId }.distinct()).associate { it.id to it.toDomain() }
+    private suspend fun resolveExercises(items: List<ExerciseEntryEntity>): Map<String, Exercise> =
+        exercises.getByIds(items.map { it.exerciseId }.distinct())
+            .associate { it.id to it.toDomain() }
 
-    override fun observeVolumesBySession(): Flow<Map<String, Double>> =
-        setEntries.observeSessionVolumes().map { list -> list.associate { it.sessionId to it.volume } }
+    override fun observeVolumesBySession(): Flow<Map<String, Double>> = setEntries.observeSessionVolumes()
+        .map { list -> list.associate { it.sessionId to it.volume } }
 
     override fun observeExercisesWithHistory() = database.statsDao().exercisesWithHistory()
 
-    override fun observeVolumeOverTime(exerciseId: String) =
-        database.statsDao().volumeOverTime(exerciseId)
+    override fun observeVolumeOverTime(exerciseId: String) = database.statsDao().volumeOverTime(exerciseId)
 
-    override fun searchExercises(
-        query: String,
-        equipment: String?,
-        muscle: String?,
-    ): Flow<PagingData<Exercise>> =
+    override fun searchExercises(query: String, equipment: String?, muscle: String?): Flow<PagingData<Exercise>> =
         Pager(PagingConfig(pageSize = 30)) { exercises.search(query, equipment, muscle) }
             .flow.map { page -> page.map { it.toDomain() } }
 
@@ -186,25 +172,26 @@ class SessionRepositoryImpl(
         Pager(PagingConfig(pageSize = 20)) { sessions.pagedSessions(type?.name) }
             .flow.map { page -> page.map { it.toDomain() } }
 
-    override suspend fun exercisesById(): Map<String, Exercise> =
-        exercises.getAll().associate { it.id to it.toDomain() }
+    override suspend fun exercisesById(): Map<String, Exercise> = exercises.getAll().associate { it.id to it.toDomain() }
 
     override suspend fun exerciseById(id: String): Exercise? = exercises.getById(id)?.toDomain()
 
-    override suspend fun createSession(type: String): Session =
-        insertSession(name = displayName(type), type = type).toDomain()
+    override suspend fun createSession(type: String): Session = insertSession(name = displayName(type), type = type).toDomain()
 
-    override suspend fun createTemplate(name: String, type: String): Session =
-        insertSession(name = name, type = type, isTemplate = true, source = SessionSource.MANUAL).toDomain()
+    override suspend fun createTemplate(name: String, type: String): Session = insertSession(
+        name = name,
+        type = type,
+        isTemplate = true,
+        source = SessionSource.MANUAL,
+    ).toDomain()
 
-    override suspend fun startPlannedSession(plan: PlannedSession): Session =
-        insertSession(name = plan.name, type = plan.type.name).toDomain()
+    override suspend fun startPlannedSession(plan: PlannedSession): Session = insertSession(name = plan.name, type = plan.type.name).toDomain()
 
     override suspend fun addExercise(sessionId: String, exerciseId: String) {
         val now = now()
         val blockId = implicitBlockId(sessionId)
         val nextOrder = entries.countForBlock(blockId)
-        val entry = ExerciseEntry(
+        val entry = ExerciseEntryEntity(
             id = uuid.newId(),
             blockId = blockId,
             exerciseId = exerciseId,
@@ -212,9 +199,15 @@ class SessionRepositoryImpl(
             createdAt = now,
             updatedAt = now,
         )
+
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
-                blocks.insert(implicitBlock(sessionId, now)) // insert-if-absent (IGNORE on conflict)
+                blocks.insert(
+                    implicitBlock(
+                        sessionId,
+                        now,
+                    ),
+                ) // insert-if-absent (IGNORE on conflict)
                 entries.insert(entry)
                 touchSession(sessionId)
             }
@@ -226,7 +219,7 @@ class SessionRepositoryImpl(
         val blockId = implicitBlockId(sessionId)
         val nextOrder = entries.countForBlock(blockId)
         val entryId = uuid.newId()
-        val entry = ExerciseEntry(
+        val entry = ExerciseEntryEntity(
             id = entryId,
             blockId = blockId,
             exerciseId = exerciseId,
@@ -253,7 +246,12 @@ class SessionRepositoryImpl(
         }
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
-                blocks.insert(implicitBlock(sessionId, now)) // insert-if-absent (IGNORE on conflict)
+                blocks.insert(
+                    implicitBlock(
+                        sessionId,
+                        now,
+                    ),
+                ) // insert-if-absent (IGNORE on conflict)
                 entries.insert(entry)
                 ghostSets.forEach { setEntries.insert(it) }
                 touchSession(sessionId)
@@ -261,31 +259,39 @@ class SessionRepositoryImpl(
         }
     }
 
-    override suspend fun addStation(sessionId: String, divisionKey: String, segmentKey: String) {
-        val step = hyroxStations(divisionKey).firstOrNull { it.segmentKey == segmentKey } ?: return
+    override suspend fun addStation(sessionId: String, divisionKey: String, segmentKey: String, raceMode: RaceMode, gender: Gender) {
+        val stations = hyroxStations(
+            divisionKey = divisionKey,
+            raceMode = raceMode,
+            gender = gender,
+        ).firstOrNull { it.segmentKey == segmentKey } ?: return
+
         val now = now()
         val blockId = implicitBlockId(sessionId)
         val nextOrder = entries.countForBlock(blockId)
         val entryId = uuid.newId()
-        val entry = ExerciseEntry(
+
+        val entry = ExerciseEntryEntity(
             id = entryId,
             blockId = blockId,
-            exerciseId = step.exerciseId,
+            exerciseId = stations.exerciseId,
             orderIndex = nextOrder,
-            segmentKey = step.segmentKey, // tags this entry as a Hyrox station (drives the Standard line + HYROX type)
+            segmentKey = stations.segmentKey, // tags this entry as a Hyrox station (drives the Standard line + HYROX type)
             createdAt = now,
             updatedAt = now,
         )
+
         val set = SetEntryEntity(
             id = uuid.newId(),
             exerciseEntryId = entryId,
             setNumber = 1,
-            targetReps = step.targetReps,
-            targetLoadKg = step.targetLoadKg,
-            targetDistanceM = step.targetDistanceM,
+            targetReps = stations.targetReps,
+            targetLoadKg = stations.targetLoadKg,
+            targetDistanceM = stations.targetDistanceM,
             createdAt = now,
             updatedAt = now,
         )
+
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 blocks.insert(implicitBlock(sessionId, now))
@@ -296,30 +302,36 @@ class SessionRepositoryImpl(
         }
     }
 
-    override suspend fun hyroxStations(divisionKey: String): List<HyroxStepDef> =
-        hyroxFormat(divisionKey, HyroxVariant.FULL).filter { it.kind == HyroxStepKind.STATION }
+    override suspend fun hyroxStations(divisionKey: String, raceMode: RaceMode, gender: Gender): List<HyroxStationModel> = hyroxFormat(
+        divisionKey = divisionKey,
+        HyroxVariant.FULL,
+        raceMode = raceMode,
+        gender = gender,
+    ).filter { it.stationType == HyroxStationType.STATION }
 
-    override suspend fun stationStandardLabels(divisionKey: String, mode: String): Map<String, String> {
+    override suspend fun stationStandardLabels(divisionKey: String, mode: RaceMode, gender: Gender): Map<String, String> {
         ensureSeeded()
         val format = EventFormat.HYROX
-        // Gender drives which two divisions we compare (open + pro); tier choice doesn't narrow it.
-        val gender = if (divisionKey.startsWith("WOMEN")) "WOMEN" else "MEN"
+        suspend fun standards(div: String): Map<String, EventSegmentStandardEntity> = eventSegmentStandardDao.standardsFor(format, div, mode.name)
+            .ifEmpty {
+                eventSegmentStandardDao.standardsFor(
+                    format,
+                    div,
+                    RaceMode.SINGLES.name,
+                )
+            }
+            .associateBy { it.segmentId }
 
-        // Only SINGLES standards are seeded today — fall back to it if the chosen mode has none.
-        suspend fun standards(div: String): Map<String, SegmentStandardEntity> =
-            eventRef.standardsFor(format, div, mode)
-                .ifEmpty { eventRef.standardsFor(format, div, RaceMode.SINGLES.name) }
-                .associateBy { it.segmentId }
+        val open = standards("${gender.name}_OPEN")
+        val pro = standards("${gender.name}_PRO")
 
-        val open = standards(gender)
-        val pro = standards("${gender}_PRO")
         return (open.keys + pro.keys).mapNotNull { segId ->
             standardLabel(pro[segId], open[segId])?.let { segId to it }
         }.toMap()
     }
 
     /** "78kg (Pro) / 53kg (Open)" for loaded stations; "100 reps · …" for wall balls; distance otherwise. */
-    private fun standardLabel(pro: SegmentStandardEntity?, open: SegmentStandardEntity?): String? {
+    private fun standardLabel(pro: EventSegmentStandardEntity?, open: EventSegmentStandardEntity?): String? {
         val reps = open?.targetReps ?: pro?.targetReps
         if (reps != null) {
             val balls = listOfNotNull(
@@ -328,6 +340,7 @@ class SessionRepositoryImpl(
             )
             return if (balls.isEmpty()) "$reps reps" else "$reps reps · ${balls.joinToString(" / ")} ball"
         }
+
         val proLoad = pro?.loadKg
         val openLoad = open?.loadKg
         if (proLoad != null || openLoad != null) {
@@ -348,7 +361,13 @@ class SessionRepositoryImpl(
         val now = now()
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
-                sessions.upsert(current.copy(notes = notes, updatedAt = now, syncStatus = SyncStatus.PENDING))
+                sessions.upsert(
+                    current.copy(
+                        notes = notes,
+                        updatedAt = now,
+                        syncStatus = SyncStatus.PENDING,
+                    ),
+                )
                 enqueueOutbox(sessionId, now)
             }
         }
@@ -365,14 +384,7 @@ class SessionRepositoryImpl(
         }
     }
 
-    override suspend fun addSet(
-        sessionId: String,
-        loggedItemId: String,
-        reps: Int?,
-        loadKg: Double?,
-        timeSec: Int?,
-        distanceM: Int?,
-    ) {
+    override suspend fun addSet(sessionId: String, loggedItemId: String, reps: Int?, loadKg: Double?, timeSec: Int?, distanceM: Int?) {
         val now = now()
         val nextNumber = setEntries.getForEntry(loggedItemId).size + 1
         val set = SetEntryEntity(
@@ -395,14 +407,7 @@ class SessionRepositoryImpl(
         }
     }
 
-    override suspend fun addTargetSet(
-        sessionId: String,
-        loggedItemId: String,
-        reps: Int?,
-        loadKg: Double?,
-        timeSec: Int?,
-        distanceM: Int?,
-    ) {
+    override suspend fun addTargetSet(sessionId: String, loggedItemId: String, reps: Int?, loadKg: Double?, timeSec: Int?, distanceM: Int?) {
         val now = now()
         val nextNumber = setEntries.getForEntry(loggedItemId).size + 1
         val set = SetEntryEntity(
@@ -489,37 +494,35 @@ class SessionRepositoryImpl(
         // user logs what actually happened.
         val templateBlocks = blocks.getBySession(templateId)
         val newBlockIdByOld = templateBlocks.associate { it.id to uuid.newId() }
-        val newBlocks = templateBlocks.map { tb ->
-            Block(
+        val newBlockEntities = templateBlocks.map { tb ->
+            BlockEntity(
                 id = newBlockIdByOld.getValue(tb.id),
                 sessionId = newSession.id,
                 type = tb.type,
                 orderIndex = tb.orderIndex,
                 rounds = tb.rounds,
-                restBetweenRoundsMs = tb.restBetweenRoundsMs,
-                label = tb.label,
                 section = tb.section,
-                conditioningFormat = tb.conditioningFormat,
                 capSeconds = tb.capSeconds,
                 workSeconds = tb.workSeconds,
                 createdAt = now,
                 updatedAt = now,
             )
         }
+
         val entriesWithSets = entries.getBySession(templateId).map { entry ->
             val newEntryId = uuid.newId()
-            val newEntry = ExerciseEntry(
+            val newEntry = ExerciseEntryEntity(
                 id = newEntryId,
                 blockId = newBlockIdByOld.getValue(entry.blockId),
                 exerciseId = entry.exerciseId,
                 orderIndex = entry.orderIndex,
                 targetSets = entry.targetSets,
                 restMs = entry.restMs,
-                note = entry.note,
                 eachSide = entry.eachSide,
                 createdAt = now,
                 updatedAt = now,
             )
+
             val newSets = setEntries.getForEntry(entry.id).map { set ->
                 SetEntryEntity(
                     id = uuid.newId(),
@@ -540,7 +543,7 @@ class SessionRepositoryImpl(
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 sessions.insert(newSession)
-                newBlocks.forEach { blocks.insert(it) }
+                newBlockEntities.forEach { blocks.insert(it) }
                 entriesWithSets.forEach { (entry, sets) ->
                     entries.insert(entry)
                     sets.forEach { setEntries.insert(it) }
@@ -551,19 +554,16 @@ class SessionRepositoryImpl(
         return newSession.toDomain()
     }
 
-    // ── HYROX live workout ──────────────────────────────────────────────────────────────────────
-
-    override suspend fun hyroxDivisions(): List<HyroxDivisionInfo> {
-        ensureSeeded()
-        return eventRef.divisionsForFormat(EventFormat.HYROX).map { HyroxDivisionInfo(it.key, it.label) }
-    }
-
-    override suspend fun hyroxFormat(divisionKey: String, variant: HyroxVariant): List<HyroxStepDef> {
+    override suspend fun hyroxFormat(divisionKey: String, variant: HyroxVariant, raceMode: RaceMode, gender: Gender): List<HyroxStationModel> {
         ensureSeeded()
         val format = EventFormat.HYROX
-        val segments = eventRef.segmentsForFormat(format)
-        val standards = eventRef.standardsFor(format, divisionKey, RaceMode.SINGLES.name)
-            .associateBy { it.segmentId }
+        val segments = eventSegmentDao.segmentsForFormat(format)
+        val standards = eventSegmentStandardDao.standardsFor(
+            formatKey = format,
+            divisionKey = divisionKey,
+            mode = raceMode.name,
+        ).associateBy { it.segmentId }
+
         // Resolve each station's HyroxStation enum from its catalog exercise (data-driven, not hardcoded).
         val stationEnumByExercise = exercises.getByIds(segments.map { it.exerciseId }.distinct())
             .associate { it.id to it.hyroxStation?.let { name -> HyroxStation.entries.firstOrNull { e -> e.name == name } } }
@@ -576,102 +576,91 @@ class SessionRepositoryImpl(
             HyroxVariant.SECOND_HALF -> segments.filter { it.orderIndex in 9..16 }
             HyroxVariant.FULL, HyroxVariant.HALVED -> segments
         }
+
         val halve = variant == HyroxVariant.HALVED
 
-        // Re-index 0..n over the SELECTED segments so a variant's first step is index 0 (the timer
+        // Re-index 0.n over the SELECTED segments so a variant's first step is index 0 (the timer
         // advances by index, and recordHyroxSplit finds the entry by orderIndex == index).
         return selected.mapIndexed { i, seg ->
-            segmentStep(i, seg, stationEnumByExercise[seg.exerciseId], standards[seg.id], halve)
+            segmentStation(i, seg, stationEnumByExercise[seg.exerciseId], standards[seg.id], halve)
         }
     }
 
-    private fun segmentStep(
+    private fun segmentStation(
         index: Int,
         seg: EventSegmentEntity,
         station: HyroxStation?,
-        standard: SegmentStandardEntity?,
+        standard: EventSegmentStandardEntity?,
         halve: Boolean,
-    ): HyroxStepDef {
+    ): HyroxStationModel {
         if (seg.kind == SegmentKind.RUN.name) {
             val dist = (seg.distanceM ?: 1000).let { if (halve) it / 2 else it }
-            return HyroxStepDef(
-                index = index, kind = HyroxStepKind.RUN, station = null, exerciseId = seg.exerciseId,
-                title = seg.name, detail = seg.descriptor, value = "${dist / 1000.0} km",
-                targetDistanceM = dist, segmentKey = seg.id,
+
+            return HyroxStationModel(
+                index = index,
+                stationType = HyroxStationType.RUN,
+                station = null,
+                exerciseId = seg.exerciseId,
+                title = seg.name,
+                detail = seg.descriptor,
+                value = "${dist / 1000.0} km",
+                targetDistanceM = dist,
+                segmentKey = seg.id,
             )
         }
+
         val stationNumber = seg.orderIndex / 2 // stations sit at even order 2,4,…16 → 1..8
         val title = "$stationNumber. ${seg.name}"
         // Rep-scored station (wall balls): reps + ball weight/target from the division standard.
         if (seg.metric == MetricType.REPS_ONLY.name) {
             val reps = (standard?.targetReps ?: seg.reps ?: 100).let { if (halve) it / 2 else it }
-            return HyroxStepDef(
-                index, HyroxStepKind.STATION, station, seg.exerciseId, title,
+
+            return HyroxStationModel(
+                index = index,
+                stationType = HyroxStationType.STATION,
+                station = station,
+                exerciseId = seg.exerciseId,
+                title = title,
                 detail = "${standard?.loadKg?.toInt() ?: 0}kg Ball • ${standard?.targetHeightM ?: "-"}m Target",
-                value = "$reps reps", targetReps = reps, targetLoadKg = standard?.loadKg, segmentKey = seg.id,
+                value = "$reps reps",
+                targetReps = reps,
+                targetLoadKg = standard?.loadKg,
+                segmentKey = seg.id,
             )
         }
+
         val dist = (seg.distanceM ?: 0).let { if (halve) it / 2 else it }
-        // Loaded station shows the rulebook weight; an unloaded/erg station shows pure distance.
         return if (standard?.loadKg != null) {
-            HyroxStepDef(
-                index, HyroxStepKind.STATION, station, seg.exerciseId, title,
-                detail = "${dist}m ${seg.descriptor}", value = standard.loadDisplay ?: "",
-                targetDistanceM = dist, targetLoadKg = standard.loadKg, segmentKey = seg.id,
+            HyroxStationModel(
+                index = index,
+                stationType = HyroxStationType.STATION,
+                station = station,
+                exerciseId = seg.exerciseId,
+                title = title,
+                detail = "${dist}m ${seg.descriptor}",
+                value = standard.loadDisplay ?: "",
+                targetDistanceM = dist,
+                targetLoadKg = standard.loadKg,
+                segmentKey = seg.id,
             )
         } else {
-            HyroxStepDef(
-                index, HyroxStepKind.STATION, station, seg.exerciseId, title,
-                detail = "${dist}m ${seg.descriptor}", value = "${dist}m",
-                targetDistanceM = dist, segmentKey = seg.id,
+            HyroxStationModel(
+                index = index,
+                stationType = HyroxStationType.STATION,
+                station = station,
+                exerciseId = seg.exerciseId,
+                title = title,
+                detail = "${dist}m ${seg.descriptor}",
+                value = "${dist}m",
+                targetDistanceM = dist,
+                segmentKey = seg.id,
             )
         }
-    }
-
-    override suspend fun startHyroxSession(divisionKey: String, variant: HyroxVariant, templateId: String): String {
-        val steps = hyroxFormat(divisionKey, variant)
-        val now = now()
-        val sessionId = uuid.newId()
-        val session = SessionEntity(
-            id = sessionId, startedAt = now, name = "Hyrox", type = SessionType.HYROX,
-            isTemplate = false, source = SessionSource.RACE_SIM, templateId = templateId,
-            formatKey = EventFormat.HYROX, divisionKey = divisionKey,
-            createdAt = now, updatedAt = now,
-        )
-        val block = implicitBlock(sessionId, now)
-        // One entry+set per step; the set carries the step's TARGETS (actuals filled in as splits land).
-        // The entry is tagged with the segment it fulfils so the race timeline / per-segment PBs are
-        // ordered reads, not inference.
-        val rows = steps.map { step ->
-            val entryId = uuid.newId()
-            val entry = ExerciseEntry(
-                id = entryId, blockId = block.id, exerciseId = step.exerciseId,
-                orderIndex = step.index, note = step.title, segmentKey = step.segmentKey,
-                createdAt = now, updatedAt = now,
-            )
-            val set = SetEntryEntity(
-                id = uuid.newId(), exerciseEntryId = entryId, setNumber = 1,
-                targetDistanceM = step.targetDistanceM, targetReps = step.targetReps,
-                targetLoadKg = step.targetLoadKg, createdAt = now, updatedAt = now,
-            )
-            entry to set
-        }
-        database.useWriterConnection { connection ->
-            connection.immediateTransaction {
-                sessions.insert(session)
-                blocks.insert(block)
-                rows.forEach { (entry, set) ->
-                    entries.insert(entry)
-                    setEntries.insert(set)
-                }
-                enqueueOutbox(sessionId, now)
-            }
-        }
-        return sessionId
     }
 
     override suspend fun recordHyroxSplit(sessionId: String, stepIndex: Int, elapsedSec: Int) {
-        val entry = entries.getBySession(sessionId).firstOrNull { it.orderIndex == stepIndex } ?: return
+        val entry =
+            entries.getBySession(sessionId).firstOrNull { it.orderIndex == stepIndex } ?: return
         val set = setEntries.getForEntry(entry.id).firstOrNull() ?: return
         val now = now()
         val updated = set.copy(
@@ -731,7 +720,7 @@ class SessionRepositoryImpl(
     }
 
     override suspend fun ensureSeeded() {
-        // Versioned re-seed: fresh installs import; existing installs whose catalog predates the
+        // Versioned re-seed: fresh installations import; existing installs whose catalog predates the
         // current seed (e.g. before modality/Hyrox landed) upsert to refresh + add the new rows.
         val seeded = syncMeta.get(SyncMetaKeys.SEED_VERSION)?.toIntOrNull() ?: 0
         if (seeded < CATALOG_SEED_VERSION) {
@@ -749,18 +738,23 @@ class SessionRepositoryImpl(
             database.useWriterConnection { connection ->
                 connection.immediateTransaction {
                     templates.forEach { t ->
-                        val entryIds = entries.getBySession(t.session.id).map { it.id }
+                        val entryIds = entries.getBySession(t.sessionEntity.id).map { it.id }
                         if (entryIds.isNotEmpty()) setEntries.deleteForEntries(entryIds)
-                        entries.deleteBySession(t.session.id) // before blocks (its subquery joins blocks)
-                        blocks.deleteBySession(t.session.id)
-                        sessions.upsert(t.session)
-                        t.blocks.forEach { blocks.insert(it) }
+                        entries.deleteBySession(t.sessionEntity.id) // before blocks (its subquery joins blocks)
+                        blocks.deleteBySession(t.sessionEntity.id)
+                        sessions.upsert(t.sessionEntity)
+                        t.blockEntities.forEach { blocks.insert(it) }
                         t.entries.forEach { entries.insert(it) }
                         t.sets.forEach { setEntries.insert(it) }
                     }
                 }
             }
-            syncMeta.set(SyncMeta(SyncMetaKeys.TEMPLATE_SEED_VERSION, TEMPLATE_SEED_VERSION.toString()))
+            syncMeta.set(
+                SyncMeta(
+                    SyncMetaKeys.TEMPLATE_SEED_VERSION,
+                    TEMPLATE_SEED_VERSION.toString(),
+                ),
+            )
         }
 
         // Event-format reference tables (formats / segments / divisions / per-division standards).
@@ -768,10 +762,10 @@ class SessionRepositoryImpl(
         // new event (DEKA/CrossFit) is a seed change here + a VERSION bump, never a migration.
         val eventSeeded = syncMeta.get(SyncMetaKeys.EVENT_SEED_VERSION)?.toIntOrNull() ?: 0
         if (eventSeeded < EventSeed.VERSION) {
-            eventRef.upsertFormats(EventSeed.formats)
-            eventRef.upsertSegments(EventSeed.segments)
-            eventRef.upsertDivisions(EventSeed.divisions)
-            eventRef.upsertStandards(EventSeed.standards)
+            eventFormatDao.upsertFormats(EventSeed.formats)
+            eventSegmentDao.upsertSegments(EventSeed.segments)
+            eventDivisionDao.upsertDivisions(EventSeed.divisions)
+            eventSegmentStandardDao.upsertStandards(EventSeed.standards)
             syncMeta.set(SyncMeta(SyncMetaKeys.EVENT_SEED_VERSION, EventSeed.VERSION.toString()))
         }
     }
@@ -811,9 +805,13 @@ class SessionRepositoryImpl(
                     blocks.insert(implicitBlock(sessionId, ts))
                     val entryId = uuid.newId()
                     entries.insert(
-                        ExerciseEntry(
-                            id = entryId, blockId = implicitBlockId(sessionId), exerciseId = "bench-press",
-                            orderIndex = 0, createdAt = ts, updatedAt = ts,
+                        ExerciseEntryEntity(
+                            id = entryId,
+                            blockId = implicitBlockId(sessionId),
+                            exerciseId = "bench-press",
+                            orderIndex = 0,
+                            createdAt = ts,
+                            updatedAt = ts,
                         ),
                     )
                     repeat(3) { s ->

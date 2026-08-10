@@ -9,10 +9,7 @@ import androidx.room3.PrimaryKey
  * be added later without a schema change.
  */
 @Entity(tableName = "sync_meta")
-data class SyncMeta(
-    @PrimaryKey val key: String,
-    val value: String,
-)
+data class SyncMeta(@PrimaryKey val key: String, val value: String)
 
 /** Well-known keys for [SyncMeta]. */
 object SyncMetaKeys {

@@ -17,7 +17,6 @@ import kotlin.time.Instant
  */
 @OptIn(ExperimentalTime::class)
 class UuidV7GeneratorTest {
-
     private class FakeClock(var instant: Instant) : Clock {
         override fun now(): Instant = instant
     }
@@ -26,7 +25,10 @@ class UuidV7GeneratorTest {
 
     @Test
     fun version_and_variant_bits_are_set() {
-        val id = UuidV7Generator(FakeClock(Instant.fromEpochMilliseconds(1_700_000_000_000))).newId()
+        val id =
+            UuidV7Generator(
+                FakeClock(Instant.fromEpochMilliseconds(1_700_000_000_000)),
+            ).newId()
 
         assertEquals('7', id[14], "version nibble must be 7")
         assertTrue(id[19] in "89ab", "variant nibble must be 10xx (8,9,a,b) but was '${id[19]}'")
@@ -59,7 +61,8 @@ class UuidV7GeneratorTest {
 
     @Test
     fun ids_are_unique_across_many_calls_at_the_same_instant() {
-        val gen = UuidV7Generator(FakeClock(Instant.fromEpochMilliseconds(1_700_000_000_000)), Random(42))
+        val gen =
+            UuidV7Generator(FakeClock(Instant.fromEpochMilliseconds(1_700_000_000_000)), Random(42))
         val ids = List(10_000) { gen.newId() }
         assertEquals(ids.size, ids.toSet().size, "no collisions from the 74 random bits")
     }

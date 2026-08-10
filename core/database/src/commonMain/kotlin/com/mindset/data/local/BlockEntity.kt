@@ -16,21 +16,15 @@ import androidx.room3.PrimaryKey
  * the block graph happens in A4; the legacy-fold migration in A6.
  */
 @Entity(tableName = "blocks", indices = [Index("sessionId")])
-data class Block(
+data class BlockEntity(
     @PrimaryKey val id: String,
     val sessionId: String,
     val type: String,
     val orderIndex: Int,
     val rounds: Int? = null,
-    val restBetweenRoundsMs: Long? = null,
-    val label: String? = null,
-    // v9: section grouping (WARMUP/MAIN/ACCESSORY/CONDITIONING/CORE, as `BlockSection.name`) and the
-    // conditioning shape — `conditioningFormat` (AMRAP/EMOM/TABATA/FOR_TIME), `capSeconds` (AMRAP/EMOM/
-    // circuit time cap), `workSeconds` (TABATA work interval; rest reuses `restBetweenRoundsMs`).
-    val section: String? = null,
-    val conditioningFormat: String? = null,
     val capSeconds: Long? = null,
     val workSeconds: Long? = null,
+    val section: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
     val deletedAt: Long? = null,

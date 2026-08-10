@@ -23,7 +23,7 @@ val MindSetIcons.Bolt: ImageVector
             defaultWidth = 13.333.dp,
             defaultHeight = 16.667.dp,
             viewportWidth = 13.333f,
-            viewportHeight = 16.667f
+            viewportHeight = 16.667f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(3.333f, 16.667f)

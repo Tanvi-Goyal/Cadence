@@ -42,12 +42,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
+import com.mindset.domain.ExerciseFilters
 import com.mindset.icons.Add
 import com.mindset.icons.ArrowBack
 import com.mindset.icons.ChevronRight
 import com.mindset.icons.Dumbbell
 import com.mindset.icons.Search
-import com.mindset.domain.ExerciseFilters
 import com.mindset.model.Exercise
 import com.mindset.presentation.ExerciseLibraryViewModel
 import org.koin.compose.viewmodel.koinViewModel
@@ -62,11 +62,7 @@ import org.koin.compose.viewmodel.koinViewModel
 private val Gutter = 20.dp
 
 @Composable
-fun ExercisePickerScreen(
-    onOpenDetail: (String) -> Unit,
-    onBack: () -> Unit,
-    libraryViewModel: ExerciseLibraryViewModel = koinViewModel(),
-) {
+fun ExercisePickerScreen(onOpenDetail: (String) -> Unit, onBack: () -> Unit, libraryViewModel: ExerciseLibraryViewModel = koinViewModel()) {
     val query by libraryViewModel.queryText.collectAsStateWithLifecycle()
     val selectedMuscle by libraryViewModel.selectedMuscle.collectAsStateWithLifecycle()
     val selectedEquipment by libraryViewModel.selectedEquipment.collectAsStateWithLifecycle()
@@ -146,7 +142,12 @@ private fun TopBar(onBack: () -> Unit) {
             modifier = Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onBack),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(MindSetIcons.ArrowBack, contentDescription = "Back", tint = colors.onSurface, modifier = Modifier.size(16.dp))
+            Icon(
+                MindSetIcons.ArrowBack,
+                contentDescription = "Back",
+                tint = colors.onSurface,
+                modifier = Modifier.size(16.dp),
+            )
         }
         Spacer(Modifier.size(4.dp))
         Text("Add Exercise", style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
@@ -168,7 +169,12 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, modifier
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(MindSetIcons.Search, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        Icon(
+            MindSetIcons.Search,
+            contentDescription = null,
+            tint = colors.onSurfaceVariant,
+            modifier = Modifier.size(18.dp),
+        )
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (query.isEmpty()) {
                 Text(
@@ -203,12 +209,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit, modifier
 }
 
 @Composable
-private fun ChipRow(
-    options: List<String>,
-    selected: String?,
-    onToggle: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
+private fun ChipRow(options: List<String>, selected: String?, onToggle: (String) -> Unit, modifier: Modifier = Modifier) {
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(horizontal = Gutter),
@@ -293,7 +294,12 @@ private fun Thumbnail(imageUrl: String?) {
             .background(colors.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(MindSetIcons.Dumbbell, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(20.dp))
+        Icon(
+            MindSetIcons.Dumbbell,
+            contentDescription = null,
+            tint = colors.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
+        )
         if (imageUrl != null) {
             AsyncImage(
                 model = imageUrl,
@@ -305,7 +311,6 @@ private fun Thumbnail(imageUrl: String?) {
     }
 }
 
-private fun subtitle(muscle: String?, equipment: String?): String =
-    listOfNotNull(muscle, equipment)
-        .map { it.replaceFirstChar { c -> c.uppercase() } }
-        .joinToString(" · ")
+private fun subtitle(muscle: String?, equipment: String?): String = listOfNotNull(muscle, equipment)
+    .map { it.replaceFirstChar { c -> c.uppercase() } }
+    .joinToString(" · ")

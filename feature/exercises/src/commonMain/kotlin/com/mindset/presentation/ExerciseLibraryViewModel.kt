@@ -18,10 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
  * Backs the searchable exercise picker. The paged feed re-queries whenever the search text or the
  * selected muscle / equipment filter changes. Filters are single-select toggles (tap again = clear).
  */
-class ExerciseLibraryViewModel(
-    private val repository: SessionRepository,
-) : ViewModel() {
-
+class ExerciseLibraryViewModel(private val repository: SessionRepository) : ViewModel() {
     private val query = MutableStateFlow("")
     private val muscle = MutableStateFlow<String?>(null)
     private val equipment = MutableStateFlow<String?>(null)

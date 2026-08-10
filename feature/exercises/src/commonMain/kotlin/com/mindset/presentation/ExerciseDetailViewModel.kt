@@ -2,10 +2,10 @@ package com.mindset.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mindset.model.MuscleDiagram
 import com.mindset.domain.MuscleImageProvider
 import com.mindset.domain.repository.SessionRepository
 import com.mindset.model.Exercise
+import com.mindset.model.MuscleDiagram
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,12 +15,7 @@ import kotlinx.coroutines.launch
  * Loads one catalog [Exercise] for the Exercise Detail screen, plus (best-effort) a wger muscle
  * diagram URL for its primary muscle — the network only feeds this StateFlow; the UI observes it.
  */
-class ExerciseDetailViewModel(
-    repository: SessionRepository,
-    muscleImages: MuscleImageProvider,
-    exerciseId: String,
-) : ViewModel() {
-
+class ExerciseDetailViewModel(repository: SessionRepository, muscleImages: MuscleImageProvider, exerciseId: String) : ViewModel() {
     private val _exercise = MutableStateFlow<Exercise?>(null)
     val exercise: StateFlow<Exercise?> = _exercise.asStateFlow()
 

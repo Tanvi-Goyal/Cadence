@@ -23,7 +23,7 @@ val MindSetIcons.WarmUp: ImageVector
             defaultWidth = 20.dp,
             defaultHeight = 21.dp,
             viewportWidth = 20f,
-            viewportHeight = 21f
+            viewportHeight = 21f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(14f, 21f)

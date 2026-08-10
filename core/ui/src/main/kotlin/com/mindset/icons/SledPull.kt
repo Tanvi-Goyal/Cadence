@@ -23,7 +23,7 @@ val MindSetIcons.SledPull: ImageVector
             defaultWidth = 15.994.dp,
             defaultHeight = 18.dp,
             viewportWidth = 15.994f,
-            viewportHeight = 18f
+            viewportHeight = 18f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(1.997f, 16f)

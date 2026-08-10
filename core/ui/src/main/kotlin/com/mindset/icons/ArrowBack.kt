@@ -23,7 +23,7 @@ val MindSetIcons.ArrowBack: ImageVector
             defaultWidth = 16.dp,
             defaultHeight = 16.dp,
             viewportWidth = 16f,
-            viewportHeight = 16f
+            viewportHeight = 16f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(3.825f, 9f)

@@ -23,7 +23,7 @@ val MindSetIcons.CoolDown: ImageVector
             defaultWidth = 20.dp,
             defaultHeight = 18.dp,
             viewportWidth = 20f,
-            viewportHeight = 18f
+            viewportHeight = 18f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(10f, 18f)

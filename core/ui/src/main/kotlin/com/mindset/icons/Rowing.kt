@@ -23,7 +23,7 @@ val MindSetIcons.Rowing: ImageVector
             defaultWidth = 24.dp,
             defaultHeight = 24.dp,
             viewportWidth = 24f,
-            viewportHeight = 24f
+            viewportHeight = 24f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(14.5f, 3f)

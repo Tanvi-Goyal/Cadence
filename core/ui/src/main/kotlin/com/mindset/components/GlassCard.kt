@@ -16,11 +16,7 @@ import com.mindset.GlassFill
 import com.mindset.spacing
 
 @Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
+fun GlassCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
     val shape = MaterialTheme.shapes.medium
     var base = modifier
         .fillMaxWidth()
@@ -32,8 +28,6 @@ fun GlassCard(
         base.padding(
             horizontal = MaterialTheme.spacing.md,
             vertical = MaterialTheme.spacing.smd,
-        )
+        ),
     ) { content() }
-
 }
-

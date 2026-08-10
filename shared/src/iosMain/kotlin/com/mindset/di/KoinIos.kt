@@ -1,10 +1,10 @@
 package com.mindset.di
 
 import com.mindset.FlowSubscription
-import com.mindset.model.MuscleDiagram
 import com.mindset.domain.MuscleImageProvider
 import com.mindset.domain.repository.SessionRepository
 import com.mindset.model.Exercise
+import com.mindset.model.MuscleDiagram
 import com.mindset.presentation.HistoryViewModel
 import com.mindset.presentation.HomeViewModel
 import com.mindset.presentation.LogWorkoutViewModel
@@ -40,16 +40,14 @@ fun statsViewModel(): StatsViewModel = KoinPlatform.getKoin().get()
 fun preferencesViewModel(): PreferencesViewModel = KoinPlatform.getKoin().get()
 
 /** Parameterized: the [SessionDetailViewModel] factory takes the sessionId via Koin `parametersOf`. */
-fun sessionDetailViewModel(sessionId: String): SessionDetailViewModel =
-    KoinPlatform.getKoin().get { parametersOf(sessionId) }
+fun sessionDetailViewModel(sessionId: String): SessionDetailViewModel = KoinPlatform.getKoin().get { parametersOf(sessionId) }
 
 // `do` prefix (as with [doInitKoin]): Kotlin/Native mangles Obj-C selectors starting with `new`
 // (the ARC "new" method family), so a bare `newSessionViewModel()` would surface to Swift under a
 // surprising auto-generated name. Naming it explicitly keeps Kotlin and Swift in sync.
 fun doNewSessionViewModel(): NewSessionViewModel = KoinPlatform.getKoin().get()
 
-fun logWorkoutViewModel(sessionId: String): LogWorkoutViewModel =
-    KoinPlatform.getKoin().get { parametersOf(sessionId) }
+fun logWorkoutViewModel(sessionId: String): LogWorkoutViewModel = KoinPlatform.getKoin().get { parametersOf(sessionId) }
 
 /**
  * Load the full exercise catalog for the iOS picker. The shared [ExerciseLibraryViewModel] exposes
@@ -66,5 +64,4 @@ fun loadExercises(onResult: (List<Exercise>) -> Unit): FlowSubscription {
 }
 
 /** wger muscle diagram (base body + overlay URLs) for a muscle name; suspend → Swift async. Null if unmapped/offline. */
-suspend fun muscleDiagram(muscleName: String): MuscleDiagram? =
-    KoinPlatform.getKoin().get<MuscleImageProvider>().diagram(muscleName)
+suspend fun muscleDiagram(muscleName: String): MuscleDiagram? = KoinPlatform.getKoin().get<MuscleImageProvider>().diagram(muscleName)

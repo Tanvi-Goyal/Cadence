@@ -10,10 +10,7 @@ import androidx.navigation.toRoute
  * the app's NavHost (the feature only surfaces the target via the lambdas, staying decoupled).
  */
 
-fun NavGraphBuilder.exercisePickerScreen(
-    onOpenDetail: (exerciseId: String, target: PickerTarget) -> Unit,
-    onBack: () -> Unit,
-) {
+fun NavGraphBuilder.exercisePickerScreen(onOpenDetail: (exerciseId: String, target: PickerTarget) -> Unit, onBack: () -> Unit) {
     composable<ExercisePicker> { entry ->
         val target = entry.toRoute<ExercisePicker>().target
         ExercisePickerScreen(
@@ -23,10 +20,7 @@ fun NavGraphBuilder.exercisePickerScreen(
     }
 }
 
-fun NavGraphBuilder.exerciseDetailScreen(
-    onAdd: (exerciseId: String, target: PickerTarget) -> Unit,
-    onBack: () -> Unit,
-) {
+fun NavGraphBuilder.exerciseDetailScreen(onAdd: (exerciseId: String, target: PickerTarget) -> Unit, onBack: () -> Unit) {
     composable<ExerciseDetail> { entry ->
         val route = entry.toRoute<ExerciseDetail>()
         ExerciseDetailScreen(

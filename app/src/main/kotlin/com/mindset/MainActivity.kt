@@ -36,7 +36,9 @@ class MainActivity : ComponentActivity() {
             // Zero cost in production traffic — it only changes what the accessibility tree exposes.
             // Read preferences once at the root and publish theme + unit down the tree, so the whole
             // app re-themes / re-labels from a single source when the Profile screen changes them.
-            val prefs by koinViewModel<PreferencesViewModel>().preferences.collectAsStateWithLifecycle()
+            val prefs by koinViewModel<PreferencesViewModel>()
+                .preferences
+                .collectAsStateWithLifecycle()
             Box(Modifier.semantics { testTagsAsResourceId = true }) {
                 CompositionLocalProvider(
                     LocalThemeMode provides prefs.themeMode,

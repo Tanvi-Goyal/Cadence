@@ -10,5 +10,6 @@ import com.mindset.contracts.SessionDto
  */
 interface SyncApi {
     suspend fun push(changes: List<SessionDto>): PushResponse
+
     suspend fun pull(cursor: Long?): PullResponse
 }

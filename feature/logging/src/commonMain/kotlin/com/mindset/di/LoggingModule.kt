@@ -7,7 +7,15 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 /** Koin graph for the logging feature: new-session VM + the parameterized log-workout VM. */
-val loggingModule = module {
-    viewModelOf(::NewSessionViewModel)
-    viewModel { params -> LogWorkoutViewModel(get(), get(), params.get()) }
-}
+val loggingModule =
+    module {
+        viewModelOf(::NewSessionViewModel)
+        viewModel { params ->
+            LogWorkoutViewModel(
+                get(),
+                get(),
+                get(),
+                params.get(),
+            )
+        }
+    }

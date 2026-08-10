@@ -159,8 +159,10 @@ fun typeIcon(type: String): ImageVector = when (type) {
 fun relativeDate(epochMillis: Long): String {
     val cal = Calendar.getInstance()
     val startOfToday = cal.apply {
-        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
     }.timeInMillis
     val dayMs = 86_400_000L
     return when (((startOfToday - epochMillis) / dayMs)) {

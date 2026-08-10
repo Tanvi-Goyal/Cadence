@@ -6,10 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import com.mindset.domain.repository.EntitlementRepository
-import com.mindset.domain.repository.SessionRepository
 import com.mindset.domain.longestStreakDays
 import com.mindset.domain.personalBestSessionIds
+import com.mindset.domain.repository.EntitlementRepository
+import com.mindset.domain.repository.SessionRepository
 import com.mindset.domain.trainingStreakDays
 import com.mindset.model.Session
 import com.mindset.model.SessionType
@@ -25,16 +25,12 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /** A history row: the session plus its computed volume. */
-data class HistoryRow(
-    val session: Session,
-    val volumeKg: Double,
-)
+data class HistoryRow(val session: Session, val volumeKg: Double)
 
 /** The workout-type filter behind the History header's filter control. */
 enum class HistoryFilter { ALL, STRENGTH, CONDITIONING, HYROX, MIXED }
 
-private fun HistoryFilter.toSessionType(): SessionType? =
-    if (this == HistoryFilter.ALL) null else SessionType.valueOf(name)
+private fun HistoryFilter.toSessionType(): SessionType? = if (this == HistoryFilter.ALL) null else SessionType.valueOf(name)
 
 /** Immutable UI state for the History tab (free + pro variants gate on [isPro]). */
 data class HistoryUiState(
@@ -61,11 +57,7 @@ private const val THIRTY_DAYS_MS = 30 * DAY_MS
  * streak calendar, PB detection, volumes and the free-tier 30-day list; the Pro list is a separate
  * Paging 3 stream ([pagedSessions]) so the visible list stays cheap for large histories.
  */
-class HistoryViewModel(
-    private val repository: SessionRepository,
-    entitlements: EntitlementRepository,
-) : ViewModel() {
-
+class HistoryViewModel(private val repository: SessionRepository, entitlements: EntitlementRepository) : ViewModel() {
     private val filter = MutableStateFlow(HistoryFilter.ALL)
 
     val uiState: StateFlow<HistoryUiState> =
@@ -76,17 +68,25 @@ class HistoryViewModel(
             filter,
         ) { sessions, volumes, entitlement, activeFilter ->
             val now = Clock.System.now().toEpochMilliseconds()
-            val trainedEpochDays = sessions.map { it.startedAt.toEpochMilliseconds() / DAY_MS }.toSet()
+            val trainedEpochDays =
+                sessions
+                    .map { it.startedAt.toEpochMilliseconds() / DAY_MS }
+                    .toSet()
             HistoryUiState(
                 isPro = entitlement.isPro,
                 filter = activeFilter,
-                streakDays = trainingStreakDays(sessions.map { it.startedAt.toEpochMilliseconds() }, now),
+                streakDays =
+                trainingStreakDays(
+                    sessions.map { it.startedAt.toEpochMilliseconds() },
+                    now,
+                ),
                 longestStreakDays = longestStreakDays(trainedEpochDays),
                 trainedEpochDays = trainedEpochDays,
                 todayEpochDay = now / DAY_MS,
                 volumes = volumes,
                 pbSessionIds = personalBestSessionIds(sessions, volumes),
-                freeRows = sessions
+                freeRows =
+                sessions
                     .filter { it.startedAt.toEpochMilliseconds() >= now - THIRTY_DAYS_MS }
                     .map { HistoryRow(it, volumes[it.id] ?: 0.0) },
             )

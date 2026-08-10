@@ -59,9 +59,13 @@ fun MacrobenchmarkScope.flingHistory() {
     // AccessibilityNodeInfo snapshot; the LazyColumn recycles/recomposes its node as it
     // scrolls, so a cached handle goes stale and the next call throws StaleObjectException.
     val selector = By.res(HISTORY_LIST_TAG)
+
     fun flingOnce(direction: Direction) {
-        val list = device.findObject(selector)
-            ?: error("flingHistory: list ('$HISTORY_LIST_TAG') not found — check testTag + testTagsAsResourceId")
+        val list =
+            device.findObject(selector)
+                ?: error(
+                    "flingHistory: list ('$HISTORY_LIST_TAG') not found — check testTag + testTagsAsResourceId",
+                )
         list.setGestureMargin(device.displayWidth / 5)
         list.fling(direction)
         device.waitForIdle()

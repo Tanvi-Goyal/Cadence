@@ -14,10 +14,16 @@ plugins {
 
 android {
     namespace = "com.mindset.ui"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk =
+        libs.versions.android.compileSdk
+            .get()
+            .toInt()
 
     defaultConfig {
-        minSdk = libs.versions.android.minSdk.get().toInt()
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -33,8 +39,8 @@ kotlin {
 
 dependencies {
     implementation(projects.core.designsystem) // MindSetTheme + MaterialTheme.spacing tokens
-    implementation(projects.core.model)         // Session / SessionType for shared session UI
-    implementation(projects.core.domain)        // Units / WeightUnit formatting
+    implementation(projects.core.model) // Session / SessionType for shared session UI
+    implementation(projects.core.domain) // Units / WeightUnit formatting
     implementation(libs.compose.runtime)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)

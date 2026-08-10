@@ -18,11 +18,7 @@ import com.mindset.GlassFill
 import com.mindset.spacing
 
 @Composable
-fun SecondaryButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
     Box(

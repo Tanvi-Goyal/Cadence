@@ -7,20 +7,21 @@ import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Upsert
 import androidx.room3.paging.PagingSourceDaoReturnTypeConverter
-import com.mindset.data.local.Session
+import com.mindset.data.local.SessionEntity
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Reads/writes for [Session]. [observeAll] returns a [Flow] so the UI observes the DB reactively
+ * Reads/writes for [SessionEntity]. [observeAll] returns a [Flow] so the UI observes the DB reactively
  * and never has to poll — the single-source-of-truth contract in AGENTS.md. The class-level converter
  * lets a [PagingSource]-returning query compile in commonMain (Room-KMP requirement, same as ExerciseDao).
  */
 @Dao
 @DaoReturnTypeConverters(PagingSourceDaoReturnTypeConverter::class)
 interface SessionDao {
-
-    @Query("SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 0 ORDER BY startedAt DESC")
-    fun observeAll(): Flow<List<Session>>
+    @Query(
+        "SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 0 ORDER BY startedAt DESC",
+    )
+    fun observeAll(): Flow<List<SessionEntity>>
 
     /**
      * The reverse-chronological session feed as a Room [PagingSource] — the History (Pro) list.
@@ -34,25 +35,25 @@ interface SessionDao {
         ORDER BY startedAt DESC
         """,
     )
-    fun pagedSessions(type: String?): PagingSource<Int, Session>
+    fun pagedSessions(type: String?): PagingSource<Int, SessionEntity>
 
     /** Templates only (D2) — for the template picker. Ordered by name since they have no real time. */
     @Query("SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 1 ORDER BY name")
-    fun observeTemplates(): Flow<List<Session>>
+    fun observeTemplates(): Flow<List<SessionEntity>>
 
     @Query("SELECT * FROM sessions WHERE id = :id")
-    fun observeById(id: String): Flow<Session?>
+    fun observeById(id: String): Flow<SessionEntity?>
 
     @Insert
-    suspend fun insert(session: Session)
+    suspend fun insert(sessionEntity: SessionEntity)
 
     /** Insert-or-replace, used by the pull path to apply a remote version of a row. */
     @Upsert
-    suspend fun upsert(session: Session)
+    suspend fun upsert(sessionEntity: SessionEntity)
 
     /** Read one row (may be soft-deleted) — the sync engine needs it to apply Last-Write-Wins. */
     @Query("SELECT * FROM sessions WHERE id = :id")
-    suspend fun getById(id: String): Session?
+    suspend fun getById(id: String): SessionEntity?
 
     /** Mark a set of sessions as synced after a successful push. */
     @Query("UPDATE sessions SET syncStatus = :status WHERE id IN (:ids)")

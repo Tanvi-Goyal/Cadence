@@ -71,12 +71,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 @Composable
-fun HistoryScreen(
-    onOpenDetail: (String) -> Unit,
-    onOpenProfile: () -> Unit,
-    onTab: (Tab) -> Unit,
-    viewModel: HistoryViewModel = koinViewModel(),
-) {
+fun HistoryScreen(onOpenDetail: (String) -> Unit, onOpenProfile: () -> Unit, onTab: (Tab) -> Unit, viewModel: HistoryViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MindSetTheme {
         Scaffold(
@@ -108,11 +103,7 @@ private fun screenPadding(inset: PaddingValues): PaddingValues {
 // ── Free tier ─────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun FreeHistory(
-    state: HistoryUiState,
-    onOpenDetail: (String) -> Unit,
-    inset: PaddingValues,
-) {
+private fun FreeHistory(state: HistoryUiState, onOpenDetail: (String) -> Unit, inset: PaddingValues) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .testTag("history_list"),
@@ -128,7 +119,7 @@ private fun FreeHistory(
             items(state.freeRows, key = { it.session.id }) { row ->
                 WorkoutFeedCard(
                     row,
-                    isPb = row.session.id in state.pbSessionIds
+                    isPb = row.session.id in state.pbSessionIds,
                 ) { onOpenDetail(row.session.id) }
             }
         }
@@ -139,12 +130,7 @@ private fun FreeHistory(
 // ── Pro tier ──────────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ProHistory(
-    state: HistoryUiState,
-    viewModel: HistoryViewModel,
-    onOpenDetail: (String) -> Unit,
-    inset: PaddingValues,
-) {
+private fun ProHistory(state: HistoryUiState, viewModel: HistoryViewModel, onOpenDetail: (String) -> Unit, inset: PaddingValues) {
     val paged = viewModel.pagedSessions.collectAsLazyPagingItems()
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -232,7 +218,7 @@ private fun FilterButton(filter: HistoryFilter, onFilterSelected: (HistoryFilter
                     text = {
                         Text(
                             filterLabel(option),
-                            color = if (option == filter) colors.primary else colors.onSurface
+                            color = if (option == filter) colors.primary else colors.onSurface,
                         )
                     },
                     onClick = {
@@ -254,12 +240,7 @@ private fun filterLabel(filter: HistoryFilter): String = when (filter) {
 }
 
 @Composable
-private fun HeaderIconButton(
-    icon: ImageVector,
-    contentDescription: String,
-    tint: Color,
-    onClick: () -> Unit
-) {
+private fun HeaderIconButton(icon: ImageVector, contentDescription: String, tint: Color, onClick: () -> Unit) {
     Box(
         modifier = Modifier.clip(CircleShape).size(24.dp).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -268,7 +249,7 @@ private fun HeaderIconButton(
             icon,
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -342,7 +323,7 @@ private fun ProStreakStrip(state: HistoryUiState) {
             StreakStat(
                 value = state.streakDays.toString(),
                 label = "Day streak",
-                icon = MindSetIcons.Flame
+                icon = MindSetIcons.Flame,
             )
             StreakStat(value = state.longestStreakDays.toString(), label = "Best", alignEnd = true)
         }
@@ -353,35 +334,32 @@ private fun ProStreakStrip(state: HistoryUiState) {
 }
 
 @Composable
-private fun StreakStat(
-    value: String,
-    label: String,
-    icon: ImageVector? = null,
-    alignEnd: Boolean = false
-) {
+private fun StreakStat(value: String, label: String, icon: ImageVector? = null, alignEnd: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     Column(horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start) {
         Text(
             label.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = colors.onSurfaceVariant
+            color = colors.onSurfaceVariant,
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs)
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
         ) {
             Text(
                 value,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = colors.onSurface
+                color = colors.onSurface,
             )
-            if (icon != null) Icon(
-                icon,
-                contentDescription = null,
-                tint = colors.primary,
-                modifier = Modifier.size(20.dp)
-            )
+            if (icon != null) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = colors.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
         }
     }
 }
@@ -396,7 +374,7 @@ private fun DayCellView(cell: WeekCell) {
         Text(
             cell.letter,
             style = MaterialTheme.typography.labelMedium,
-            color = colors.onSurfaceVariant
+            color = colors.onSurfaceVariant,
         )
         val base = Modifier.size(36.dp).clip(MaterialTheme.shapes.small)
         val boxModifier = when (cell.state) {
@@ -438,11 +416,11 @@ private fun WorkoutFeedCard(row: HistoryRow, isPb: Boolean, onClick: () -> Unit)
         IconMedallion(icon = typeIcon(row.session.type.name))
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs)
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
             ) {
                 Text(
                     text = row.session.name,
@@ -470,7 +448,7 @@ private fun WorkoutFeedCard(row: HistoryRow, isPb: Boolean, onClick: () -> Unit)
             MindSetIcons.ChevronRight,
             contentDescription = null,
             tint = colors.onSurfaceVariant,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(18.dp),
         )
     }
 }
@@ -486,7 +464,7 @@ private fun PbTag() {
             "PB",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = colors.primary
+            color = colors.primary,
         )
     }
 }
@@ -524,9 +502,9 @@ private fun PaywallCard() {
                     Brush.radialGradient(
                         listOf(
                             colors.primary.copy(alpha = glow),
-                            Color.Transparent
-                        )
-                    )
+                            Color.Transparent,
+                        ),
+                    ),
                 ),
         )
         Column(
@@ -547,7 +525,7 @@ private fun PaywallCard() {
                     MindSetIcons.Lock,
                     contentDescription = null,
                     tint = ObsidianCoral,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(28.dp),
                 )
             }
             Text(
@@ -594,12 +572,7 @@ private fun workoutMetric(row: HistoryRow, unit: com.mindset.domain.WeightUnit):
 }
 
 private enum class DayState { TODAY, TRAINED, IDLE }
-private data class WeekCell(
-    val epochDay: Long,
-    val letter: String,
-    val dayOfMonth: String,
-    val state: DayState
-)
+private data class WeekCell(val epochDay: Long, val letter: String, val dayOfMonth: String, val state: DayState)
 
 private const val DAY_MS = 86_400_000L
 
@@ -620,11 +593,7 @@ private fun cellFor(day: Long, today: Long, trained: Set<Long>): WeekCell {
 }
 
 /** [weeks] Monday-based rows, oldest first (top) → the week containing today last (bottom). */
-private fun buildCalendarWeeks(
-    todayEpochDay: Long,
-    trained: Set<Long>,
-    weeks: Int
-): List<List<WeekCell>> {
+private fun buildCalendarWeeks(todayEpochDay: Long, trained: Set<Long>, weeks: Int): List<List<WeekCell>> {
     // epoch-day 0 (1970-01-01) is a Thursday → Monday-based index 3.
     val mondayIndex = (((todayEpochDay % 7) + 3) % 7).toInt()
     val currentMonday = todayEpochDay - mondayIndex
@@ -638,5 +607,4 @@ private fun buildCalendarWeeks(
 private fun buildDayCells(todayEpochDay: Long, trained: Set<Long>, count: Int): List<WeekCell> =
     ((count - 1) downTo 0).map { back -> cellFor(todayEpochDay - back, todayEpochDay, trained) }
 
-private fun currentMonthLabel(): String =
-    SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date()).uppercase(Locale.getDefault())
+private fun currentMonthLabel(): String = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date()).uppercase(Locale.getDefault())

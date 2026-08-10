@@ -23,7 +23,7 @@ val MindSetIcons.Search: ImageVector
             defaultWidth = 18.dp,
             defaultHeight = 18.dp,
             viewportWidth = 18f,
-            viewportHeight = 18f
+            viewportHeight = 18f,
         ).apply {
             path(fill = SolidColor(Color.White)) {
                 moveTo(16.6f, 18f)

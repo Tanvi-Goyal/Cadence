@@ -9,8 +9,9 @@ import android.content.Context
  * assets never reach the APK. `context.assets` resolves against the merged app assets regardless of
  * which module supplied the file, so the reader stays here with the seeder while the file ships in the app.
  */
-fun androidExerciseAssetReader(context: Context): ExerciseAssetReader =
-    object : ExerciseAssetReader {
-        override fun readExercisesJson(): String =
-            context.assets.open("exercises.json").bufferedReader().use { it.readText() }
-    }
+fun androidExerciseAssetReader(context: Context): ExerciseAssetReader = object : ExerciseAssetReader {
+    override fun readExercisesJson(): String = context.assets
+        .open("exercises.json")
+        .bufferedReader()
+        .use { it.readText() }
+}

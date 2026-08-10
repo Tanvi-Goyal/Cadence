@@ -33,14 +33,11 @@ fun distanceBucketFor(distanceM: Int): Int = distanceM
  * template (target-only) sets naturally yield nothing.
  */
 fun detectPrs(exercise: Exercise, set: SetEntry, current: List<PersonalRecord>): List<PrCandidate> {
-    fun current(kind: PrKind, bucket: Int? = null): Double? =
-        current.firstOrNull { it.kind == kind && it.distanceBucketM == bucket }?.value
+    fun current(kind: PrKind, bucket: Int? = null): Double? = current.firstOrNull { it.kind == kind && it.distanceBucketM == bucket }?.value
 
     // "First record of its kind always counts; otherwise must strictly beat the standing one."
-    fun beatsHigher(value: Double, kind: PrKind, bucket: Int? = null): Boolean =
-        current(kind, bucket)?.let { value > it } ?: true
-    fun beatsLower(value: Double, kind: PrKind, bucket: Int? = null): Boolean =
-        current(kind, bucket)?.let { value < it } ?: true
+    fun beatsHigher(value: Double, kind: PrKind, bucket: Int? = null): Boolean = current(kind, bucket)?.let { value > it } ?: true
+    fun beatsLower(value: Double, kind: PrKind, bucket: Int? = null): Boolean = current(kind, bucket)?.let { value < it } ?: true
 
     return when (exercise.defaultMetric) {
         MetricType.WEIGHT_REPS -> buildList {

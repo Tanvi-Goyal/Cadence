@@ -12,11 +12,9 @@ import kotlinx.serialization.Serializable
  * Fails soft (empty) — enrichment is best-effort.
  */
 class WgerApi(private val client: HttpClient) {
-
-    suspend fun muscles(): List<WgerMuscle> =
-        runCatching {
-            client.get("$BASE/muscle/?format=json&limit=50").body<WgerMuscleResponse>().results
-        }.getOrElse { emptyList() }
+    suspend fun muscles(): List<WgerMuscle> = runCatching {
+        client.get("$BASE/muscle/?format=json&limit=50").body<WgerMuscleResponse>().results
+    }.getOrElse { emptyList() }
 
     private companion object {
         const val BASE = "https://wger.de/api/v2"

@@ -2,17 +2,17 @@ package com.mindset.sync
 
 import androidx.room3.Room
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.mindset.common.UuidV7Generator
 import com.mindset.contracts.BlockDto
 import com.mindset.contracts.ExerciseEntryDto
 import com.mindset.contracts.PullResponse
 import com.mindset.contracts.PushResponse
 import com.mindset.contracts.SessionDto
 import com.mindset.contracts.SetDto
-import com.mindset.common.UuidV7Generator
 import com.mindset.data.SessionRepositoryImpl
 import com.mindset.data.emptyExerciseAssetReader
 import com.mindset.data.local.AppDatabase
-import com.mindset.data.local.Session
+import com.mindset.data.local.SessionEntity
 import com.mindset.data.local.SessionType
 import com.mindset.data.local.SyncStatus
 import com.mindset.data.remote.SyncApi
@@ -35,17 +35,13 @@ class SyncEngineTest {
     private lateinit var database: AppDatabase
 
     /** Fake transport: records what was pushed, returns a scripted pull payload. */
-    private class FakeSyncApi(
-        var pullChanges: List<SessionDto> = emptyList(),
-        var nextCursor: Long = 0,
-    ) : SyncApi {
+    private class FakeSyncApi(var pullChanges: List<SessionDto> = emptyList(), var nextCursor: Long = 0) : SyncApi {
         val pushed = mutableListOf<SessionDto>()
         override suspend fun push(changes: List<SessionDto>): PushResponse {
             pushed += changes
             return PushResponse(accepted = changes.size)
         }
-        override suspend fun pull(cursor: Long?): PullResponse =
-            PullResponse(changes = pullChanges, nextCursor = nextCursor)
+        override suspend fun pull(cursor: Long?): PullResponse = PullResponse(changes = pullChanges, nextCursor = nextCursor)
     }
 
     private fun engineWith(api: SyncApi) = SyncEngine(
@@ -59,7 +55,10 @@ class SyncEngineTest {
     /** Repository under test, wired with the real UUIDv7 + system-clock seam. */
     @OptIn(kotlin.time.ExperimentalTime::class)
     private fun repo() = SessionRepositoryImpl(
-        database, emptyExerciseAssetReader, UuidV7Generator(kotlin.time.Clock.System), kotlin.time.Clock.System,
+        database,
+        emptyExerciseAssetReader,
+        UuidV7Generator(kotlin.time.Clock.System),
+        kotlin.time.Clock.System,
     )
 
     @BeforeTest
@@ -89,7 +88,7 @@ class SyncEngineTest {
 
     @Test
     fun pull_applies_newer_remote_row_and_ignores_stale_one() = runTest {
-        val local = Session(id = "s1", startedAt = 1, updatedAt = 100, syncStatus = SyncStatus.SYNCED)
+        val local = SessionEntity(id = "s1", startedAt = 1, updatedAt = 100, syncStatus = SyncStatus.SYNCED)
         database.sessionDao().upsert(local)
 
         // Remote sends a NEWER version (updatedAt 200) → should win.
@@ -103,11 +102,13 @@ class SyncEngineTest {
 
     @Test
     fun pulled_soft_delete_hides_row_from_the_observed_list() = runTest {
-        val local = Session(id = "s1", startedAt = 1, updatedAt = 100, syncStatus = SyncStatus.SYNCED)
+        val local = SessionEntity(id = "s1", startedAt = 1, updatedAt = 100, syncStatus = SyncStatus.SYNCED)
         database.sessionDao().upsert(local)
         assertEquals(1, database.sessionDao().observeAll().first().size)
 
-        engineWith(FakeSyncApi(pullChanges = listOf(dto("s1", updatedAt = 300, deletedAt = 300)), nextCursor = 1)).sync()
+        engineWith(
+            FakeSyncApi(pullChanges = listOf(dto("s1", updatedAt = 300, deletedAt = 300)), nextCursor = 1),
+        ).sync()
 
         assertTrue(
             database.sessionDao().observeAll().first().isEmpty(),
@@ -119,8 +120,11 @@ class SyncEngineTest {
     fun session_name_and_type_round_trip_through_push_and_pull() = runTest {
         val repo = repo()
         val plan = com.mindset.model.PlannedSession(
-            id = "p1", name = "Leg Day", type = com.mindset.model.SessionType.CONDITIONING,
-            targetDurationMin = 40, focus = "Pull focus",
+            id = "p1",
+            name = "Leg Day",
+            type = com.mindset.model.SessionType.CONDITIONING,
+            targetDurationMin = 40,
+            focus = "Pull focus",
         )
         val created = repo.startPlannedSession(plan)
 
@@ -170,13 +174,17 @@ class SyncEngineTest {
             FakeSyncApi(
                 pullChanges = listOf(
                     SessionDto(
-                        id = "remote1", startedAt = 1, updatedAt = 900,
+                        id = "remote1",
+                        startedAt = 1,
+                        updatedAt = 900,
                         blocks = listOf(
                             BlockDto(
                                 id = "rb1",
                                 entries = listOf(
                                     ExerciseEntryDto(
-                                        id = "re1", exerciseId = "back-squat", orderIndex = 0,
+                                        id = "re1",
+                                        exerciseId = "back-squat",
+                                        orderIndex = 0,
                                         sets = listOf(SetDto(id = "rs1", setNumber = 1, reps = 5, loadKg = 100.0)),
                                     ),
                                 ),
@@ -225,15 +233,23 @@ class SyncEngineTest {
             FakeSyncApi(
                 pullChanges = listOf(
                     SessionDto(
-                        id = "remoteT", startedAt = 1, name = "Remote Tmpl", updatedAt = 700,
-                        isTemplate = true, source = "MANUAL",
+                        id = "remoteT",
+                        startedAt = 1,
+                        name = "Remote Tmpl",
+                        updatedAt = 700,
+                        isTemplate = true,
+                        source = "MANUAL",
                         blocks = listOf(
                             BlockDto(
                                 id = "tb1",
                                 entries = listOf(
                                     ExerciseEntryDto(
-                                        id = "te1", exerciseId = "back-squat", orderIndex = 0,
-                                        sets = listOf(SetDto(id = "ts1", setNumber = 1, targetReps = 3, targetLoadKg = 140.0)),
+                                        id = "te1",
+                                        exerciseId = "back-squat",
+                                        orderIndex = 0,
+                                        sets = listOf(
+                                            SetDto(id = "ts1", setNumber = 1, targetReps = 3, targetLoadKg = 140.0),
+                                        ),
                                     ),
                                 ),
                             ),

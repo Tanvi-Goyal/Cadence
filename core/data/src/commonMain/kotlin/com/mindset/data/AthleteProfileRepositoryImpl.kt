@@ -8,14 +8,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
-class AthleteProfileRepositoryImpl(
-    private val database: AppDatabase,
-) : AthleteProfileRepository {
-
+class AthleteProfileRepositoryImpl(private val database: AppDatabase) : AthleteProfileRepository {
     private val dao get() = database.athleteProfileDao()
 
-    override fun observe(): Flow<AthleteProfile> =
-        dao.observe().map { it?.toDomain() ?: AthleteProfile() }
+    override fun observe(): Flow<AthleteProfile> = dao.observe().map { it?.toDomain() ?: AthleteProfile() }
 
     override suspend fun save(profile: AthleteProfile) = dao.upsert(profile.toEntity())
 }

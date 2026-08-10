@@ -5,6 +5,10 @@ package com.mindset.model
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
+enum class BlockType { STRAIGHT, INTERVAL, RUN }
+
+enum class BlockSection { WARMUP, MAIN, ACCESSORY, CONDITIONING, CORE }
+
 /**
  * A structural grouping of exercises within a [Session] — the level that makes supersets, circuits,
  * and intervals expressible (a flat exercise list cannot say "3 rounds of A+B+C"). Legacy pre-v8
@@ -19,13 +23,9 @@ data class Block(
     val type: BlockType,
     val orderIndex: Int,
     val rounds: Int?,
-    val restBetweenRoundsMs: Long?,
-    val label: String?,
-    /** v9: workout phase (warm-up/main/…) and conditioning shape. See [BlockSection]/[ConditioningFormat]. */
-    val section: BlockSection? = null,
-    val conditioningFormat: ConditioningFormat? = null,
     val capSeconds: Long? = null,
     val workSeconds: Long? = null,
+    val section: BlockSection? = null,
     override val createdAt: Instant,
     override val updatedAt: Instant,
     override val deletedAt: Instant?,

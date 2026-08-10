@@ -18,9 +18,7 @@ import com.mindset.GlassFill
 import com.mindset.spacing
 
 @Composable
-fun PrimaryButton(
-    text: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier
-) {
+fun PrimaryButton(text: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     val bg = if (enabled) colors.primary else colors.surfaceContainerHigh
     val fg = if (enabled) colors.onPrimary else colors.onSurfaceVariant.copy(alpha = 0.5f)

@@ -1,5 +1,6 @@
 package com.mindset
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -23,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontWeight
@@ -36,10 +36,7 @@ import com.mindset.presentation.StatsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun StatsScreen(
-    onTab: (Tab) -> Unit,
-    viewModel: StatsViewModel = koinViewModel(),
-) {
+fun StatsScreen(onTab: (Tab) -> Unit, viewModel: StatsViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MindSetTheme {
         Scaffold(
