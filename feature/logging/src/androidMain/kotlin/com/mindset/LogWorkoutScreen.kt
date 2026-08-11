@@ -65,14 +65,14 @@ import com.mindset.icons.Dumbbell
 import com.mindset.icons.Info
 import com.mindset.icons.LowerBody
 import com.mindset.icons.Rowing
+import com.mindset.icons.Run
 import com.mindset.icons.SkiErg
 import com.mindset.icons.SledPull
 import com.mindset.icons.WallBall
 import com.mindset.model.CaptureFields
-import com.mindset.model.MetricType
+import com.mindset.model.HyroxVariant
 import com.mindset.model.SessionType
 import com.mindset.model.SetEntry
-import com.mindset.presentation.LogWorkoutUiState
 import com.mindset.presentation.LogWorkoutViewModel
 import com.mindset.presentation.StationOption
 import org.koin.compose.viewmodel.koinViewModel
@@ -126,19 +126,27 @@ fun LogWorkoutScreen(
 
                 item(key = "add") { AddCta(onClick = { showAddSheet = true }) }
 
-                // Running station index for the "STATION n" tag.
+                if (stations.isNotEmpty()) {
+                    item(key = "quickAdd") { RaceQuickAdd(onPick = viewModel::addVariant) }
+                }
+
+                // Running station index for the "STATION n" tag — runs are not numbered.
                 var stationNo = 0
                 val numbered = cards.map { item ->
-                    val n = if (item.segmentKey != null) ++stationNo else null
+                    val key = item.segmentKey
+                    val n = if (key != null && "run" !in key) ++stationNo else null
                     item to n
                 }
-                items(numbered, key = {
-                    it.first.loggedItemId
-                }) { (item, n) ->
+                items(
+                    numbered,
+                    key = {
+                        it.first.loggedItemId
+                    },
+                ) { (item, n) ->
                     if (item.segmentKey != null) {
                         StationCard(
                             item = item,
-                            stationNumber = n ?: 0,
+                            stationNumber = n,
                             standard = standards[item.segmentKey],
                             onUpdate = viewModel::updateActual,
                             onRemove = { viewModel.removeEntry(item.loggedItemId) },
@@ -327,7 +335,7 @@ private fun Header(
 // ── Station card (Hyrox) ────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StationCard(item: LoggedItemUi, stationNumber: Int, standard: String?, onUpdate: (SetEntry) -> Unit, onRemove: () -> Unit) {
+private fun StationCard(item: LoggedItemUi, stationNumber: Int?, standard: String?, onUpdate: (SetEntry) -> Unit, onRemove: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val unit = LocalWeightUnit.current
     val shape = MaterialTheme.shapes.medium
@@ -387,11 +395,13 @@ private fun StationCard(item: LoggedItemUi, stationNumber: Int, standard: String
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                "STATION $stationNumber",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.outline,
-            )
+            if (stationNumber != null) {
+                Text(
+                    "STATION $stationNumber",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.outline,
+                )
+            }
 
             ConfirmChip(logged) {
                 if (set != null) {
@@ -503,6 +513,7 @@ private fun DeleteButton(onClick: () -> Unit) {
 /** Per-station glyph (SledPush/Farmers/Sandbag have no bespoke icon → nearest sensible fallback). */
 private fun stationIcon(segmentKey: String?): androidx.compose.ui.graphics.vector.ImageVector = when {
     segmentKey == null -> MindSetIcons.Bolt
+    "run" in segmentKey -> MindSetIcons.Run
     "ski" in segmentKey -> MindSetIcons.SkiErg
     "sled" in segmentKey -> MindSetIcons.SledPull
     "burpee" in segmentKey -> MindSetIcons.Burpee
@@ -917,6 +928,48 @@ private fun AddCta(onClick: () -> Unit) {
             "Add Exercise or Station".uppercase(),
             style = MaterialTheme.typography.labelMedium,
             color = colors.primary,
+        )
+    }
+}
+
+/** One-tap seeding of a whole Hyrox race format (runs + stations) so the athlete only edits actuals. */
+@Composable
+private fun RaceQuickAdd(onPick: (HyroxVariant) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
+        Text(
+            "Quick add race".uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.outline,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+        ) {
+            VariantChip("Full", Modifier.weight(1f)) { onPick(HyroxVariant.FULL) }
+            VariantChip("1st Half", Modifier.weight(1f)) { onPick(HyroxVariant.FIRST_HALF) }
+            VariantChip("2nd Half", Modifier.weight(1f)) { onPick(HyroxVariant.SECOND_HALF) }
+            VariantChip("Halved", Modifier.weight(1f)) { onPick(HyroxVariant.HALVED) }
+        }
+    }
+}
+
+@Composable
+private fun VariantChip(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.medium
+    Box(
+        modifier = modifier.clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape)
+            .clickable(onClick = onClick).padding(vertical = MaterialTheme.spacing.smd),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

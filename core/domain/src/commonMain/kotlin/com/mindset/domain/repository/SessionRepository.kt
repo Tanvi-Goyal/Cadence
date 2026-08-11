@@ -24,6 +24,13 @@ interface SessionRepository {
     /** The single source of truth for the UI: a reactive stream of non-deleted, non-template sessions. */
     fun observeSessions(): Flow<List<Session>>
 
+    /**
+     * The most recent [limit] live sessions (newest first) — Home's "Recent" widget. Bounded in SQL, so
+     * it observes only what the fixed-size preview shows. Deliberately NOT Paging: the widget doesn't
+     * scroll, so there's no page to load — Paging belongs on the unbounded History list ([pagedSessions]).
+     */
+    fun observeRecentSessions(limit: Int = 4): Flow<List<Session>>
+
     /** Reactive stream of the user's templates (D2) — for the template picker. */
     fun observeTemplates(): Flow<List<Session>>
 
@@ -98,6 +105,15 @@ interface SessionRepository {
      * tables via [hyroxStations].
      */
     suspend fun addStation(sessionId: String, divisionKey: String, segmentKey: String, raceMode: RaceMode, gender: Gender)
+
+    /**
+     * Seeds an entire Hyrox race [variant] into a session in one transaction: every segment the variant
+     * covers (runs **and** stations, in race order) is added as a ghost-target entry from the [divisionKey]
+     * standard. Order indices continue contiguously after any existing entries. Unlike [addStation] this
+     * includes run segments and applies the variant's targets (e.g. [HyroxVariant.HALVED] halves each
+     * distance/rep). Resolved from the seeded reference tables via [hyroxFormat].
+     */
+    suspend fun addHyroxVariant(sessionId: String, divisionKey: String, variant: HyroxVariant, raceMode: RaceMode, gender: Gender)
 
     /**
      * The 8 Hyrox stations for [divisionKey] (division-accurate standards) — the "Stations" section of

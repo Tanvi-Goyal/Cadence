@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -38,6 +40,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.components.BottomNavBar
+import com.mindset.components.MindSetTopBar
+import com.mindset.components.QuickStartFab
 import com.mindset.domain.ThemeMode
 import com.mindset.domain.WeightUnit
 import com.mindset.icons.ChevronRight
@@ -52,6 +57,7 @@ import com.mindset.icons.Ruler
 import com.mindset.icons.Shield
 import com.mindset.icons.Sync
 import com.mindset.icons.Watch
+import com.mindset.model.BottomNavTab
 import com.mindset.presentation.PreferencesViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -68,7 +74,7 @@ import org.koin.compose.viewmodel.koinViewModel
 private val Gutter = 20.dp
 
 @Composable
-fun ProfileScreen(onTab: (Tab) -> Unit, onOpenCredits: () -> Unit, viewModel: PreferencesViewModel = koinViewModel()) {
+fun ProfileScreen(onTab: (BottomNavTab) -> Unit, onOpenCredits: () -> Unit, viewModel: PreferencesViewModel = koinViewModel()) {
     val prefs by viewModel.preferences.collectAsStateWithLifecycle()
     MindSetTheme {
         val colors = MaterialTheme.colorScheme
@@ -76,8 +82,16 @@ fun ProfileScreen(onTab: (Tab) -> Unit, onOpenCredits: () -> Unit, viewModel: Pr
         var healthConnected by remember { mutableStateOf(true) }
 
         Scaffold(
-            containerColor = colors.background,
-            bottomBar = { MindSetBottomBar(current = Tab.Profile, onTab = onTab) },
+            contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                MindSetTopBar(
+                    onProfileClick = { onTab(BottomNavTab.Profile) },
+                )
+            },
+            bottomBar = {
+                BottomNavBar(current = BottomNavTab.Profile, onTabClick = onTab)
+            },
         ) { inner ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -215,22 +229,13 @@ private fun IconButton48(icon: ImageVector, size: androidx.compose.ui.unit.Dp, m
 private fun HeaderCard(name: String, tier: String) {
     val colors = MaterialTheme.colorScheme
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Gutter)
-            .clip(MaterialTheme.shapes.large)
-            .background(colors.surfaceContainer)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Gutter).clip(MaterialTheme.shapes.large).background(colors.surfaceContainer)
             .padding(vertical = 24.dp, horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Avatar placeholder (green ring + person glyph) until a real profile photo is provided.
         Box(
-            modifier = Modifier
-                .size(96.dp)
-                .clip(CircleShape)
-                .border(2.dp, colors.primary, CircleShape)
-                .padding(4.dp)
-                .clip(CircleShape)
+            modifier = Modifier.size(96.dp).clip(CircleShape).border(2.dp, colors.primary, CircleShape).padding(4.dp).clip(CircleShape)
                 .background(colors.surfaceContainerHigh),
             contentAlignment = Alignment.Center,
         ) {
@@ -264,11 +269,8 @@ private fun StatsRow() {
 private fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.surfaceContainerLow)
-            .border(1.dp, colors.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.medium)
-            .padding(vertical = 16.dp),
+        modifier = modifier.clip(MaterialTheme.shapes.medium).background(colors.surfaceContainerLow)
+            .border(1.dp, colors.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.medium).padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
@@ -302,10 +304,7 @@ private fun SettingsSection(title: String, content: @Composable () -> Unit) {
         )
         Spacer(Modifier.height(12.dp))
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(MaterialTheme.shapes.medium)
-                .background(colors.surfaceContainer)
+            modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(colors.surfaceContainer)
                 .border(1.dp, colors.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.medium),
         ) {
             content()

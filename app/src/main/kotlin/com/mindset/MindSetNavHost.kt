@@ -6,7 +6,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
+import com.mindset.components.LocalQuickStart
 import com.mindset.domain.repository.SessionRepository
+import com.mindset.model.BottomNavTab
 import com.mindset.model.SessionType
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -46,7 +48,7 @@ fun MindSetNavHost() {
                 onOpenTemplates = { nav.navigate(Templates) },
                 onOpenTemplate = { id -> nav.openTemplateDetail(id) },
                 onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
-                onSeeAll = { nav.switchTab(Tab.History) },
+                onSeeAll = { nav.switchTab(BottomNavTab.History) },
                 onTab = nav::switchTab,
             )
 
@@ -58,7 +60,7 @@ fun MindSetNavHost() {
 
             historyScreen(
                 onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
-                onOpenProfile = { nav.switchTab(Tab.Profile) },
+                onOpenProfile = { nav.switchTab(BottomNavTab.Profile) },
                 onTab = nav::switchTab,
             )
 
@@ -162,12 +164,12 @@ private fun NavController.openTemplateDetail(id: String) {
  * multi-back-stack pattern (`popUpTo(startDestination){saveState}` + `restoreState` +
  * `launchSingleTop`) so each tab keeps its own back stack and tapping between tabs doesn't grow one.
  */
-private fun NavController.switchTab(tab: Tab) {
+private fun NavController.switchTab(tab: BottomNavTab) {
     val route: Any = when (tab) {
-        Tab.Home -> Home
-        Tab.History -> History
-        Tab.Stations -> Stats
-        Tab.Profile -> Profile
+        BottomNavTab.Home -> Home
+        BottomNavTab.History -> History
+        BottomNavTab.Stations -> Stats
+        BottomNavTab.Profile -> Profile
     }
     navigate(route) {
         // Anchor each tab's back stack on Home (the tab root), not the graph start — the graph now

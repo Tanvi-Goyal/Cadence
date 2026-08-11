@@ -13,15 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -30,25 +29,32 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.components.BottomNavBar
+import com.mindset.components.MindSetTopBar
+import com.mindset.model.BottomNavTab
 import com.mindset.model.VolumePoint
 import com.mindset.presentation.StatsUiState
 import com.mindset.presentation.StatsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun StatsScreen(onTab: (Tab) -> Unit, viewModel: StatsViewModel = koinViewModel()) {
+fun StatsScreen(onTab: (BottomNavTab) -> Unit, viewModel: StatsViewModel = koinViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MindSetTheme {
         Scaffold(
+            contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
             containerColor = MaterialTheme.colorScheme.background,
-            bottomBar = { MindSetBottomBar(current = Tab.Stations, onTab = onTab) },
+            topBar = {
+                MindSetTopBar(
+                    onProfileClick = { onTab(BottomNavTab.Profile) },
+                )
+            },
+            bottomBar = {
+                BottomNavBar(current = BottomNavTab.Stations, onTabClick = onTab)
+            },
         ) { padding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(padding)
-                    .padding(20.dp),
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(padding).padding(20.dp),
             ) {
                 Text("Trends", color = MaterialTheme.colorScheme.onSurface, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
@@ -90,11 +96,9 @@ private fun ExerciseSelector(state: StatsUiState, onSelect: (String) -> Unit) {
                 color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(12.dp))
+                modifier = Modifier.clip(RoundedCornerShape(12.dp))
                     .background(if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer)
-                    .clickable { onSelect(ex.id) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                    .clickable { onSelect(ex.id) }.padding(horizontal = 14.dp, vertical = 8.dp),
             )
         }
     }

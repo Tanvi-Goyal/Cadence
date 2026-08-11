@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,6 +31,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
+import com.mindset.components.BottomNavBar
 import com.mindset.components.MindSetTopBar
 import com.mindset.components.PrimaryButton
 import com.mindset.domain.Units
@@ -60,6 +61,7 @@ import com.mindset.icons.ChevronRight
 import com.mindset.icons.Flame
 import com.mindset.icons.Lock
 import com.mindset.icons.Tune
+import com.mindset.model.BottomNavTab
 import com.mindset.presentation.HistoryFilter
 import com.mindset.presentation.HistoryRow
 import com.mindset.presentation.HistoryUiState
@@ -71,13 +73,26 @@ import java.util.Locale
 import java.util.TimeZone
 
 @Composable
-fun HistoryScreen(onOpenDetail: (String) -> Unit, onOpenProfile: () -> Unit, onTab: (Tab) -> Unit, viewModel: HistoryViewModel = koinViewModel()) {
+fun HistoryScreen(
+    onOpenDetail: (String) -> Unit,
+    onOpenProfile: () -> Unit,
+    onTab: (BottomNavTab) -> Unit,
+    viewModel: HistoryViewModel = koinViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     MindSetTheme {
         Scaffold(
+            contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
             containerColor = MaterialTheme.colorScheme.background,
-            topBar = { MindSetTopBar(onProfileClick = onOpenProfile) },
-//            bottomBar = { MindSetBottomBar(current = Tab.History, onTab = onTab) },
+            topBar = {
+                MindSetTopBar(
+                    onProfileClick = { onTab(BottomNavTab.Profile) },
+                )
+            },
+            bottomBar = {
+                BottomNavBar(current = BottomNavTab.History, onTabClick = onTab)
+            },
         ) { padding ->
             if (state.isPro) {
                 ProHistory(state, viewModel, onOpenDetail, padding)

@@ -13,17 +13,23 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,16 +39,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.components.BottomNavBar
+import com.mindset.components.LocalQuickStart
+import com.mindset.components.MindSetTopBar
+import com.mindset.components.QuickStartFab
 import com.mindset.domain.ActiveWorkout
+import com.mindset.icons.Add
 import com.mindset.icons.Bolt
 import com.mindset.icons.ChevronRight
 import com.mindset.icons.Grid
+import com.mindset.model.BottomNavTab
 import com.mindset.model.PlannedSession
 import com.mindset.model.Session
 import com.mindset.presentation.HomeUiState
 import com.mindset.presentation.HomeViewModel
 import kotlinx.coroutines.flow.StateFlow
 import org.koin.compose.viewmodel.koinViewModel
+
 
 @Composable
 fun HomeScreen(
@@ -52,17 +65,29 @@ fun HomeScreen(
     onOpenTemplate: (String) -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
-    onTab: (Tab) -> Unit,
+    onTab: (BottomNavTab) -> Unit,
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val quickStart = LocalQuickStart.current
 
     MindSetTheme {
         Scaffold(
+            contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
             containerColor = MaterialTheme.colorScheme.background,
-            bottomBar = { MindSetBottomBar(current = Tab.Home, onTab = onTab) },
+            topBar = {
+                MindSetTopBar(
+                    onProfileClick = { onTab(BottomNavTab.Profile) },
+                )
+            },
+            bottomBar = {
+                BottomNavBar(current = BottomNavTab.Home, onTabClick = onTab)
+            },
+            floatingActionButton = {
+                QuickStartFab(onClick = quickStart)
+            },
+            floatingActionButtonPosition = FabPosition.Center,
         ) { padding ->
-
             HomeContent(
                 state = state,
                 onExpandWorkout = viewModel::onExpandWorkout,
@@ -97,7 +122,7 @@ private fun HomeContent(
             start = spacing.md,
             end = spacing.md,
             top = contentPadding.calculateTopPadding() + spacing.sm,
-            bottom = contentPadding.calculateBottomPadding() + spacing.lg,
+            bottom = contentPadding.calculateBottomPadding() + spacing.md,
         ),
         verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {

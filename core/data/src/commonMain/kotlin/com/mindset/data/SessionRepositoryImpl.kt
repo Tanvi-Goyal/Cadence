@@ -144,6 +144,9 @@ class SessionRepositoryImpl(
 
     override fun observeSessions(): Flow<List<Session>> = sessions.observeAll().map { rows -> rows.map { it.toDomain() } }
 
+    override fun observeRecentSessions(limit: Int): Flow<List<Session>> =
+        sessions.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }
+
     override fun observeTemplates(): Flow<List<Session>> = sessions.observeTemplates().map { rows -> rows.map { it.toDomain() } }
 
     override fun observePlannedSession(): Flow<PlannedSession?> = plans.observeCurrent().map { it?.toDomain() }
@@ -297,6 +300,51 @@ class SessionRepositoryImpl(
                 blocks.insert(implicitBlock(sessionId, now))
                 entries.insert(entry)
                 setEntries.insert(set)
+                touchSession(sessionId)
+            }
+        }
+    }
+
+    override suspend fun addHyroxVariant(sessionId: String, divisionKey: String, variant: HyroxVariant, raceMode: RaceMode, gender: Gender) {
+        val segments = hyroxFormat(divisionKey, variant, raceMode, gender)
+            .filter { it.segmentKey != null }
+        if (segments.isEmpty()) return
+
+        val now = now()
+        val blockId = implicitBlockId(sessionId)
+        val base = entries.countForBlock(blockId) // read once → contiguous order, no read-modify-write race
+
+        val rows = segments.mapIndexed { i, seg ->
+            val entryId = uuid.newId()
+            val entry = ExerciseEntryEntity(
+                id = entryId,
+                blockId = blockId,
+                exerciseId = seg.exerciseId,
+                orderIndex = base + i,
+                segmentKey = seg.segmentKey,
+                createdAt = now,
+                updatedAt = now,
+            )
+            val set = SetEntryEntity(
+                id = uuid.newId(),
+                exerciseEntryId = entryId,
+                setNumber = 1,
+                targetReps = seg.targetReps,
+                targetLoadKg = seg.targetLoadKg,
+                targetDistanceM = seg.targetDistanceM,
+                createdAt = now,
+                updatedAt = now,
+            )
+            entry to set
+        }
+
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                blocks.insert(implicitBlock(sessionId, now))
+                rows.forEach { (entry, set) ->
+                    entries.insert(entry)
+                    setEntries.insert(set)
+                }
                 touchSession(sessionId)
             }
         }

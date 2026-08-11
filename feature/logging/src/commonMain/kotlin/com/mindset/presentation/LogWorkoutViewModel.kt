@@ -8,6 +8,7 @@ import com.mindset.domain.repository.PreferencesRepository
 import com.mindset.domain.repository.SessionRepository
 import com.mindset.domain.toLogSections
 import com.mindset.model.HyroxStationModel
+import com.mindset.model.HyroxVariant
 import com.mindset.model.SessionType
 import com.mindset.model.SetEntry
 import kotlinx.coroutines.FlowPreview
@@ -72,8 +73,8 @@ class LogWorkoutViewModel(
                                 divisionKey,
                                 raceMode,
                                 gender,
-                            )[station.segmentKey]
-                        station.copy(standard = standard!!)
+                            )[station.segmentKey] ?: station.standard
+                        station.copy(standard = standard)
                     } else {
                         station
                     }
@@ -127,6 +128,20 @@ class LogWorkoutViewModel(
                 sessionId = sessionId,
                 divisionKey = raceInfo.first!!,
                 segmentKey = segmentKey,
+                raceMode = raceInfo.third!!,
+                gender = raceInfo.second!!,
+            )
+        }
+    }
+
+    /** One-tap: seed a whole Hyrox race [variant] (runs + stations, in order) into the session. */
+    fun addVariant(variant: HyroxVariant) {
+        viewModelScope.launch {
+            val raceInfo = preferencesRepository.getRaceInfo()
+            repository.addHyroxVariant(
+                sessionId = sessionId,
+                divisionKey = raceInfo.first!!,
+                variant = variant,
                 raceMode = raceInfo.third!!,
                 gender = raceInfo.second!!,
             )

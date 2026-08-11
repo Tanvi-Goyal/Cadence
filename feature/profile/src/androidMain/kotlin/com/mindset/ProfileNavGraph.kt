@@ -2,6 +2,7 @@ package com.mindset
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.mindset.model.BottomNavTab
 
 /*
  * Navigation entry points the profile feature contributes to the app graph. The app supplies the
@@ -9,7 +10,7 @@ import androidx.navigation.compose.composable
  */
 
 /** The Profile tab (string-routed, like the other bottom-nav tabs). */
-fun NavGraphBuilder.profileScreen(onTab: (Tab) -> Unit, onOpenCredits: () -> Unit) {
+fun NavGraphBuilder.profileScreen(onTab: (BottomNavTab) -> Unit, onOpenCredits: () -> Unit) {
     composable<Profile> {
         ProfileScreen(onTab = onTab, onOpenCredits = onOpenCredits)
     }
