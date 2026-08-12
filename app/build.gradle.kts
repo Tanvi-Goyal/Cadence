@@ -32,7 +32,7 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.navigation)
     implementation(projects.feature.profile)
-    implementation(projects.feature.stats)
+    implementation(projects.feature.stations)
     implementation(projects.feature.history)
     implementation(projects.feature.exercises)
     implementation(projects.feature.logging)

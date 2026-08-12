@@ -542,10 +542,11 @@ object ExerciseImporter {
             "sandbag",
         ),
         station(
+            // Fixed 100 reps, scored by completion time → REPS_TIME (the PB is a best time, not max reps).
             "hyrox-wall-balls",
             "Wall Balls",
             Modality.CONDITIONING,
-            MetricType.REPS_ONLY,
+            MetricType.REPS_TIME,
             HyroxStation.WALL_BALLS,
             "medicine ball",
         ),

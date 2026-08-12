@@ -64,7 +64,7 @@ fun MindSetNavHost() {
                 onTab = nav::switchTab,
             )
 
-            statsScreen(onTab = nav::switchTab)
+            stationsScreen(onTab = nav::switchTab)
 
             profileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Credits) })
 
@@ -168,7 +168,7 @@ private fun NavController.switchTab(tab: BottomNavTab) {
     val route: Any = when (tab) {
         BottomNavTab.Home -> Home
         BottomNavTab.History -> History
-        BottomNavTab.Stations -> Stats
+        BottomNavTab.Stations -> Stations
         BottomNavTab.Profile -> Profile
     }
     navigate(route) {

@@ -27,7 +27,7 @@ class BaselineProfileGenerator {
         device
             .findObject(
                 androidx.test.uiautomator.By
-                    .text("Stats"),
+                    .text("Stations"),
             )?.click()
         device.waitForIdle()
     }

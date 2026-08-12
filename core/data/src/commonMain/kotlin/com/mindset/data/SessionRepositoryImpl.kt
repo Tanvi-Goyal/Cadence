@@ -39,6 +39,7 @@ import com.mindset.model.SegmentKind
 import com.mindset.model.Session
 import com.mindset.model.SessionDetail
 import com.mindset.model.SetEntry
+import com.mindset.model.StationRecord
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -60,13 +61,7 @@ class SessionRepositoryImpl(
     private fun now(): Long = clock.now().toEpochMilliseconds()
 
     private companion object {
-        /**
-         * Bump when [ExerciseImporter] output changes (v3 adds HyFit rows; v4 adds their muscles;
-         * v5 adds the `hyrox-run` leg).
-         */
-        const val CATALOG_SEED_VERSION = 5
-
-        /** Bump when [TemplateSeed] output changes (v2 adds per-day session goals). */
+        const val CATALOG_SEED_VERSION = 6
         const val TEMPLATE_SEED_VERSION = 2
     }
 
@@ -107,14 +102,19 @@ class SessionRepositoryImpl(
      * kind/bucket so a record updates in place rather than piling up. Template (target-only) sets
      * yield no candidates, so this is a no-op for them.
      */
-    private suspend fun detectAndStorePrs(set: SetEntry, now: Long) {
+    private suspend fun detectAndStorePrs(sessionId: String, set: SetEntry, now: Long) {
         val entry = entries.getById(set.exerciseEntryId) ?: return
         val exercise = exercises.getById(entry.exerciseId)?.toDomain() ?: return
+
+        val divisionKey = sessions.getById(sessionId)?.divisionKey
         val current = personalRecords.getForExercise(entry.exerciseId).map { it.toDomain() }
-        detectPrs(exercise, set, current).forEach { candidate ->
+        detectPrs(exercise, set, current, divisionKey).forEach { candidate ->
             val existing = current.firstOrNull {
-                it.kind == candidate.kind && it.distanceBucketM == candidate.distanceBucketM
+                it.kind == candidate.kind &&
+                    it.distanceBucketM == candidate.distanceBucketM &&
+                    it.divisionKey == candidate.divisionKey
             }
+
             personalRecords.upsert(
                 PersonalRecordEntity(
                     id = existing?.id ?: uuid.newId(),
@@ -122,6 +122,7 @@ class SessionRepositoryImpl(
                     kind = candidate.kind.name,
                     value = candidate.value,
                     distanceBucketM = candidate.distanceBucketM,
+                    divisionKey = candidate.divisionKey,
                     achievedAt = now,
                     sourceSetId = set.id,
                     createdAt = existing?.createdAt?.toEpochMilliseconds() ?: now,
@@ -144,8 +145,14 @@ class SessionRepositoryImpl(
 
     override fun observeSessions(): Flow<List<Session>> = sessions.observeAll().map { rows -> rows.map { it.toDomain() } }
 
+    override fun observeStationRecords(): Flow<List<StationRecord>> =
+        personalRecords.observeHyroxRecords().map { rows -> rows.mapNotNull { it.toStationRecord() } }
+
     override fun observeRecentSessions(limit: Int): Flow<List<Session>> =
         sessions.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeSessionsSince(startMillis: Long): Flow<List<Session>> =
+        sessions.observeSince(startMillis).map { rows -> rows.map { it.toDomain() } }
 
     override fun observeTemplates(): Flow<List<Session>> = sessions.observeTemplates().map { rows -> rows.map { it.toDomain() } }
 
@@ -449,7 +456,7 @@ class SessionRepositoryImpl(
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 setEntries.insert(set)
-                detectAndStorePrs(set.toDomain(), now)
+                detectAndStorePrs(sessionId, set.toDomain(), now)
                 touchSession(sessionId)
             }
         }
@@ -482,7 +489,7 @@ class SessionRepositoryImpl(
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 setEntries.update(set.toEntity())
-                detectAndStorePrs(set, now)
+                detectAndStorePrs(sessionId, set, now)
                 touchSession(sessionId)
             }
         }

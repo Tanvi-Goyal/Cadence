@@ -14,6 +14,7 @@ class CaptureFieldsTest {
         assertEquals(CaptureFields.WeightReps, CaptureFields.of(MetricType.WEIGHT_REPS))
         assertEquals(CaptureFields.RepsOnly, CaptureFields.of(MetricType.REPS_ONLY))
         assertEquals(CaptureFields.DistanceTime, CaptureFields.of(MetricType.DISTANCE_TIME))
+        assertEquals(CaptureFields.RepsTime, CaptureFields.of(MetricType.REPS_TIME))
         assertEquals(CaptureFields.Duration, CaptureFields.of(MetricType.DURATION))
         assertEquals(CaptureFields.Calories, CaptureFields.of(MetricType.CALORIES))
     }

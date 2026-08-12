@@ -2,6 +2,7 @@ package com.mindset.data.local
 
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
@@ -14,7 +15,9 @@ import platform.Foundation.NSUserDomainMask
  */
 fun iosDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
     val dbFilePath = documentDirectory() + "/mindset.db"
+    // Native has no framework SQLite; the bundled driver is the only option (and matches Android release).
     return Room.databaseBuilder<AppDatabase>(name = dbFilePath)
+        .setDriver(BundledSQLiteDriver())
 }
 
 @OptIn(ExperimentalForeignApi::class)

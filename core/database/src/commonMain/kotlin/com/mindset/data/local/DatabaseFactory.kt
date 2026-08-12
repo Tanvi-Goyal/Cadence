@@ -1,10 +1,11 @@
 package com.mindset.data.local
 
 import androidx.room3.RoomDatabase
-import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 
+// The SQLite driver is set by each platform's builder (androidDatabaseBuilder / iosDatabaseBuilder),
+// not here: Android needs the framework driver in debug so the Database Inspector can attach, while
+// native must always use the bundled driver. Migrations stay centralized in this shared factory.
 fun buildDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase = builder
-    .setDriver(BundledSQLiteDriver())
     // Real versioned migration (no more destructive fallback): existing installs upgrade v7 → v8
     // without data loss. See [MIGRATION_7_8]. Future schema changes add the next migration here.
     .addMigrations(

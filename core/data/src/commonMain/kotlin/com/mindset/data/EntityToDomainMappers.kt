@@ -9,7 +9,9 @@ import com.mindset.model.BlockType
 import com.mindset.model.Exercise
 import com.mindset.model.ExerciseEntry
 import com.mindset.model.ExerciseEntryDetail
+import com.mindset.model.HyroxRecordRow
 import com.mindset.model.HyroxStation
+import com.mindset.model.StationRecord
 import com.mindset.model.MetricType
 import com.mindset.model.MetricType.WEIGHT_REPS
 import com.mindset.model.Modality
@@ -156,3 +158,18 @@ internal fun PersonalRecordEntity.toDomain(): PersonalRecord = PersonalRecord(
     updatedAt = ms(updatedAt),
     deletedAt = deletedAt?.let(::ms),
 )
+
+/** A Hyrox PB projection row → [StationRecord]; drops rows whose enum columns don't parse. */
+internal fun HyroxRecordRow.toStationRecord(): StationRecord? {
+    val station = safeEnum<HyroxStation>(hyroxStation) ?: return null
+    val prKind = safeEnum<PrKind>(kind) ?: return null
+    return StationRecord(
+        station = station,
+        displayName = exerciseName,
+        kind = prKind,
+        value = value,
+        bucket = distanceBucketM,
+        divisionKey = divisionKey,
+        achievedAtMillis = achievedAt,
+    )
+}

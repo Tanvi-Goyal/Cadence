@@ -1,6 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-/* :feature:stats — training stats. KMP VM in commonMain, Compose screen in androidMain. */
+/* :feature:stations — per-station Hyrox PB board. KMP VM in commonMain, Compose screen in androidMain. */
 plugins {
     id("mindset.kmp.library")
     alias(libs.plugins.composeMultiplatform)
@@ -9,7 +9,7 @@ plugins {
 
 kotlin {
     androidLibrary {
-        namespace = "com.mindset.feature.stats"
+        namespace = "com.mindset.feature.stations"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {

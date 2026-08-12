@@ -22,8 +22,10 @@ data class StatsUiState(
 )
 
 /**
- * Backs the Stats tab: a selector of exercises-with-history + the selected exercise's volume trend.
- * The chart flow re-queries whenever the selection changes ([flatMapLatest]).
+ * Legacy volume-trend ViewModel, retained only for the iOS `StatsView` (parity port is post-race —
+ * iOS keeps compiling). The Android surface has moved to [StationsViewModel]. A selector of
+ * exercises-with-history + the selected exercise's volume trend; the chart flow re-queries whenever
+ * the selection changes ([flatMapLatest]).
  */
 class StatsViewModel(private val repository: SessionRepository) : ViewModel() {
     private val selected = MutableStateFlow<String?>(null)

@@ -8,6 +8,13 @@ enum class MetricType {
     WEIGHT_REPS,
     REPS_ONLY,
     DISTANCE_TIME,
+
+    /**
+     * Fixed-rep work scored by completion time (e.g. Hyrox Wall Balls — 100 reps *for time*). The
+     * recorded variable is time; reps are the fixed target. Parallel to [DISTANCE_TIME], but the PB
+     * bucket is the rep target rather than a distance. Captures reps + time.
+     */
+    REPS_TIME,
     DURATION,
     CALORIES,
 }

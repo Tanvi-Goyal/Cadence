@@ -13,6 +13,7 @@ import com.mindset.model.Session
 import com.mindset.model.SessionDetail
 import com.mindset.model.SessionType
 import com.mindset.model.SetEntry
+import com.mindset.model.StationRecord
 import com.mindset.model.VolumePoint
 import kotlinx.coroutines.flow.Flow
 
@@ -25,11 +26,19 @@ interface SessionRepository {
     fun observeSessions(): Flow<List<Session>>
 
     /**
+     * All cached Hyrox station PBs, division-bucketed — the Station board's records list. Derived from
+     * the `personal_records` cache (the single source of PB truth); the UI groups them by station.
+     */
+    fun observeStationRecords(): Flow<List<StationRecord>>
+
+    /**
      * The most recent [limit] live sessions (newest first) — Home's "Recent" widget. Bounded in SQL, so
      * it observes only what the fixed-size preview shows. Deliberately NOT Paging: the widget doesn't
      * scroll, so there's no page to load — Paging belongs on the unbounded History list ([pagedSessions]).
      */
     fun observeRecentSessions(limit: Int = 4): Flow<List<Session>>
+
+    fun observeSessionsSince(startMillis: Long): Flow<List<Session>>
 
     /** Reactive stream of the user's templates (D2) — for the template picker. */
     fun observeTemplates(): Flow<List<Session>>

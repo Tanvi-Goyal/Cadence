@@ -695,6 +695,43 @@ private fun SetRow(capture: CaptureFields, set: SetEntry, showSetLabel: Boolean,
                 }
             }
 
+            CaptureFields.RepsTime -> {
+                var digits by remember(set.id) {
+                    mutableStateOf(
+                        secondsToDigits(
+                            set.timeSec ?: set.targetTimeSec,
+                        ),
+                    )
+                }
+                var reps by remember(set.id) { mutableStateOf(intText(set.reps ?: set.targetReps)) }
+                MetricField(
+                    "Time",
+                    digits,
+                    { digits = it.takeLast(6) },
+                    placeholder = "0:00",
+                    visualTransformation = ClockVisualTransformation,
+                    modifier = Modifier.weight(1f),
+                )
+                StepperField(
+                    reps,
+                    { reps = it },
+                    { reps = stepText(reps, it) },
+                    Modifier.weight(1f),
+                    caption = "Reps",
+                )
+                ConfirmButton(logged) {
+                    val secs = digitsToSeconds(digits)
+                    if (secs > 0 || reps.toIntOrNull() != null) {
+                        onUpdate(
+                            set.copy(
+                                timeSec = secs.takeIf { it > 0 },
+                                reps = reps.toIntOrNull(),
+                            ),
+                        )
+                    }
+                }
+            }
+
             CaptureFields.Calories -> {
                 var cal by remember(set.id) {
                     mutableStateOf(
@@ -994,6 +1031,7 @@ private fun isLogged(capture: CaptureFields, s: SetEntry): Boolean = when (captu
     CaptureFields.RepsOnly -> s.reps != null
     CaptureFields.Duration -> s.timeSec != null
     CaptureFields.DistanceTime -> s.timeSec != null || s.distanceM != null
+    CaptureFields.RepsTime -> s.timeSec != null || s.reps != null
     CaptureFields.Calories -> s.calories != null
 }
 

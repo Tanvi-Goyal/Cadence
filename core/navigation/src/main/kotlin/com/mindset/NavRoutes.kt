@@ -31,7 +31,7 @@ object Home
 object History
 
 @Serializable
-object Stats
+object Stations
 
 @Serializable
 object Profile

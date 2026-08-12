@@ -27,7 +27,8 @@ fun deriveSessionType(detail: SessionDetail?): SessionType {
 
     val allConditioning =
         metrics.all {
-            it == MetricType.DISTANCE_TIME || it == MetricType.DURATION || it == MetricType.CALORIES
+            it == MetricType.DISTANCE_TIME || it == MetricType.REPS_TIME ||
+                it == MetricType.DURATION || it == MetricType.CALORIES
         }
     if (allConditioning) return SessionType.CONDITIONING
 

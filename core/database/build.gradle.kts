@@ -33,6 +33,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.koin.android) // databasePlatformModule uses androidContext()
+            implementation(libs.androidx.sqlite.framework) // AndroidSQLiteDriver: debug-only, lets the Database Inspector attach
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

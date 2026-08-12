@@ -53,12 +53,13 @@ private fun set(reps: Int? = null, loadKg: Double? = null, timeSec: Int? = null,
     deletedAt = null,
 )
 
-private fun pr(kind: PrKind, value: Double, bucket: Int? = null) = PersonalRecord(
-    id = "pr-${kind.name}-$bucket",
+private fun pr(kind: PrKind, value: Double, bucket: Int? = null, divisionKey: String? = null) = PersonalRecord(
+    id = "pr-${kind.name}-$bucket-$divisionKey",
     exerciseId = "x",
     kind = kind,
     value = value,
     distanceBucketM = bucket,
+    divisionKey = divisionKey,
     achievedAt = EPOCH,
     sourceSetId = "s0",
     createdAt = EPOCH,
@@ -140,6 +141,40 @@ class PbDetectionTest {
             2000,
             detectPrs(ex, set(distanceM = 2000, timeSec = 500), current).first().distanceBucketM,
         )
+    }
+
+    @Test
+    fun best_time_prs_are_independent_per_division() {
+        val ex = exercise(MetricType.DISTANCE_TIME)
+        val menRecord = listOf(pr(PrKind.BEST_TIME, 135.0, bucket = 50, divisionKey = "MEN"))
+        // A women set at the same distance is a different weight class → a PR even though it's slower.
+        val women = detectPrs(ex, set(distanceM = 50, timeSec = 160), menRecord, divisionKey = "WOMEN")
+        assertEquals(160.0, women.first().value)
+        assertEquals("WOMEN", women.first().divisionKey, "candidate carries its division")
+        // Same division: only a strictly faster time wins; a slower one doesn't overwrite it.
+        assertTrue(
+            detectPrs(ex, set(distanceM = 50, timeSec = 140), menRecord, divisionKey = "MEN").isEmpty(),
+            "slower @MEN is not a PR",
+        )
+        assertEquals(
+            130.0,
+            detectPrs(ex, set(distanceM = 50, timeSec = 130), menRecord, divisionKey = "MEN").first().value,
+        )
+    }
+
+    @Test
+    fun reps_time_records_best_time_bucketed_by_reps() {
+        val ex = exercise(MetricType.REPS_TIME)
+        val first = detectPrs(ex, set(reps = 100, timeSec = 300), emptyList())
+        assertEquals(PrKind.BEST_TIME, first.first().kind)
+        assertEquals(300.0, first.first().value)
+        assertEquals(100, first.first().distanceBucketM, "rep target is the bucket")
+
+        val current = listOf(pr(PrKind.BEST_TIME, 300.0, bucket = 100))
+        assertTrue(detectPrs(ex, set(reps = 100, timeSec = 300), current).isEmpty(), "tie is not a PR")
+        assertEquals(290.0, detectPrs(ex, set(reps = 100, timeSec = 290), current).first().value)
+        // A different rep count is a different bucket → still a PR.
+        assertEquals(50, detectPrs(ex, set(reps = 50, timeSec = 200), current).first().distanceBucketM)
     }
 
     @Test

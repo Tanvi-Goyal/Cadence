@@ -37,7 +37,7 @@ fun initKoin(config: KoinAppDeclaration? = null): KoinApplication = startKoin {
         templatesModule,
         exercisesModule,
         historyModule,
-        statsModule,
+        stationsModule,
         profileModule,
         onboardingModule,
     )

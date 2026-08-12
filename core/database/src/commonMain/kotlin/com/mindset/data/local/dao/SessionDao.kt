@@ -24,6 +24,25 @@ interface SessionDao {
     fun observeAll(): Flow<List<SessionEntity>>
 
     /**
+     * The most recent [limit] live sessions (newest first) — Home's "Recent" widget preview. Same
+     * predicate/ordering as [observeAll] with a SQL `LIMIT`, so the observer materializes only the few
+     * rows the widget shows, not the whole table. Full, scrollable history uses [pagedSessions].
+     */
+    @Query(
+        "SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 0 ORDER BY startedAt DESC LIMIT :limit",
+    )
+    fun observeRecent(limit: Int): Flow<List<SessionEntity>>
+
+    /**
+     * Live sessions on or after [startMillis] (newest first) — the Home "This Week" widget. Bounded by
+     * time in SQL so the observer reads only the current window, not the whole table as history grows.
+     */
+    @Query(
+        "SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 0 AND startedAt >= :startMillis ORDER BY startedAt DESC",
+    )
+    fun observeSince(startMillis: Long): Flow<List<SessionEntity>>
+
+    /**
      * The reverse-chronological session feed as a Room [PagingSource] — the History (Pro) list.
      * Same predicate/ordering as [observeAll]; [type] narrows by [SessionType] (null = all), guarded
      * the same way as the exercise search query.

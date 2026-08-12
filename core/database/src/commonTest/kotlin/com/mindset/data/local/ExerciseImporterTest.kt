@@ -66,7 +66,7 @@ class ExerciseImporterTest {
         val stations = seed.mapNotNull { it.hyroxStation }
         assertEquals(HyroxStation.entries.map { it.name }.toSet(), stations.toSet(), "all 8 stations")
         assertEquals(HyroxStation.entries.size, stations.size, "each station seeded exactly once")
-        assertEquals("REPS_ONLY", seed.first { it.hyroxStation == HyroxStation.WALL_BALLS.name }.defaultMetric)
+        assertEquals("REPS_TIME", seed.first { it.hyroxStation == HyroxStation.WALL_BALLS.name }.defaultMetric)
     }
 
     @Test
@@ -74,6 +74,6 @@ class ExerciseImporterTest {
         val metrics = (ExerciseImporter.parse(sample) + ExerciseImporter.supplementalSeed())
             .mapNotNull { it.defaultMetric }
             .toSet()
-        assertEquals(MetricType.entries.map { it.name }.toSet(), metrics, "all 5 capture metrics present")
+        assertEquals(MetricType.entries.map { it.name }.toSet(), metrics, "all capture metrics present")
     }
 }

@@ -47,7 +47,7 @@ kotlin {
             export(projects.feature.templates)
             export(projects.feature.exercises)
             export(projects.feature.history)
-            export(projects.feature.stats)
+            export(projects.feature.stations)
             export(projects.feature.profile)
         }
     }
@@ -75,7 +75,7 @@ kotlin {
             implementation(projects.contracts)
             // Feature modules — `api` so their ViewModels stay exported in Shared.framework for Swift (B11).
             api(projects.feature.profile)
-            api(projects.feature.stats)
+            api(projects.feature.stations)
             api(projects.feature.history)
             api(projects.feature.exercises)
             api(projects.feature.logging)
