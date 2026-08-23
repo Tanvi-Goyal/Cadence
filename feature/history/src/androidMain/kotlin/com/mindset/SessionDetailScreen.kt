@@ -1,19 +1,21 @@
 package com.mindset
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -23,14 +25,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.domain.LoggedItemUi
 import com.mindset.domain.Units
-import com.mindset.domain.WeightUnit
-import com.mindset.model.MetricType
-import com.mindset.model.SetEntry
+import com.mindset.domain.detailSummary
+import com.mindset.icons.ArrowBack
+import com.mindset.presentation.SessionDetailUiState
 import com.mindset.presentation.SessionDetailViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -39,52 +41,26 @@ import org.koin.core.parameter.parametersOf
 fun SessionDetailScreen(sessionId: String, onBack: () -> Unit, viewModel: SessionDetailViewModel = koinViewModel { parametersOf(sessionId) }) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MindSetTheme {
-        Scaffold(containerColor = MaterialTheme.colorScheme.background) { padding ->
+        val colors = MaterialTheme.colorScheme
+        Scaffold(containerColor = colors.background) { padding ->
             LazyColumn(
-                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    start = 20.dp,
-                    end = 20.dp,
-                    top = padding.calculateTopPadding() + 12.dp,
-                    bottom = padding.calculateBottomPadding() + 24.dp,
+                    start = MaterialTheme.spacing.md,
+                    end = MaterialTheme.spacing.md,
+                    top = padding.calculateTopPadding() + MaterialTheme.spacing.smd,
+                    bottom = padding.calculateBottomPadding() + MaterialTheme.spacing.lg,
                 ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
             ) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "‹",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 28.sp,
-                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack),
-                        )
-                        Spacer(Modifier.size(12.dp))
-                        Column {
-                            Text(
-                                state.name.ifEmpty {
-                                    "Session"
-                                },
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            val unit = LocalWeightUnit.current
-                            Text(
-                                "${relativeDate(
-                                    state.startedAt,
-                                )} · ${formatVolume(state.totalVolumeKg, unit)} ${Units.label(unit)}",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontSize = 13.sp,
-                            )
-                        }
-                    }
-                }
+                item(key = "header") { DetailHeader(state, onBack) }
+
                 if (state.items.isEmpty()) {
-                    item {
+                    item(key = "empty") {
                         Text(
                             "No exercises logged.",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 14.sp,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant,
                         )
                     }
                 } else {
@@ -96,37 +72,70 @@ fun SessionDetailScreen(sessionId: String, onBack: () -> Unit, viewModel: Sessio
 }
 
 @Composable
-private fun DetailCard(item: LoggedItemUi) {
-    val isStrength = item.metric == MetricType.WEIGHT_REPS.name
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(16.dp),
+private fun DetailHeader(state: SessionDetailUiState, onBack: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val unit = LocalWeightUnit.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
     ) {
-        Text(
-            item.exerciseName,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text("${item.sets.size} sets", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-        Spacer(Modifier.size(8.dp))
-        val unit = LocalWeightUnit.current
-        item.sets.forEach { set ->
+        Box(
+            Modifier.size(40.dp).clip(CircleShape).background(colors.surfaceContainerHigh)
+                .clickable(onClick = onBack),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                MindSetIcons.ArrowBack,
+                contentDescription = "Back",
+                tint = colors.onSurface,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Column {
             Text(
-                setLine(set, isStrength, unit),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 14.sp,
-                modifier = Modifier.padding(vertical = 2.dp),
+                state.name.ifEmpty { "Session" },
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface,
+            )
+            Text(
+                "${relativeDate(state.startedAt)} · ${formatVolume(state.totalVolumeKg, unit)} ${Units.label(unit)}",
+                style = MaterialTheme.typography.labelMedium,
+                color = colors.onSurfaceVariant,
             )
         }
     }
 }
 
-private fun setLine(set: SetEntry, isStrength: Boolean, unit: WeightUnit): String = if (isStrength) {
-    "Set ${set.setNumber}:  ${set.reps ?: 0} reps × ${formatVolume((set.loadKg ?: 0.0), unit)} ${Units.label(unit)}"
-} else {
-    "Set ${set.setNumber}:  ${set.timeSec ?: 0}s · ${set.distanceM ?: 0} m"
+@Composable
+private fun DetailCard(item: LoggedItemUi) {
+    val colors = MaterialTheme.colorScheme
+    val unit = LocalWeightUnit.current
+    val shape = MaterialTheme.shapes.medium
+    Column(
+        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill)
+            .border(1.dp, GlassBorder, shape).padding(MaterialTheme.spacing.md),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+    ) {
+        Text(
+            item.exerciseName,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            "${item.sets.size} sets",
+            style = MaterialTheme.typography.labelSmall,
+            color = colors.onSurfaceVariant,
+        )
+        item.sets.forEach { set ->
+            Text(
+                set.detailSummary(item.captureFields, unit),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurface,
+            )
+        }
+    }
 }

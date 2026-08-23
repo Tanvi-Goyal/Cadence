@@ -87,9 +87,7 @@ private fun HomeContent(
 ) {
     val spacing = MaterialTheme.spacing
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(
             start = spacing.md,
             end = spacing.md,
@@ -104,7 +102,6 @@ private fun HomeContent(
                 onOpenDetail = onOpenDetail,
                 onOpenTemplates = onOpenTemplates,
                 onSeeAll = onSeeAll,
-                modifier = Modifier.animateItem(),
             )
         }
     }
@@ -124,10 +121,13 @@ private fun WidgetSlotContent(
         is WidgetState.Content -> when (val widget = widgetState.widget) {
             is Widget.RaceGoalWidget ->
                 RaceGoalCard(widget, modifier)
+
             is Widget.PerformanceWidget ->
                 WeeklyPerformanceCard(widget, modifier)
+
             is Widget.BrowseTemplatesWidget ->
                 BrowseTemplatesCard(onOpenTemplates, modifier)
+
             is Widget.RecentSessionsWidget ->
                 RecentSessionsCard(widget, onOpenDetail, onSeeAll, modifier)
             // Self-sourcing live-workout card is wired separately (collects its own tick flow).
@@ -139,8 +139,7 @@ private fun WidgetSlotContent(
 @Composable
 private fun TemplatesSection(
     templates: List<Session>,
-    onOpenTemplate: (String) ->
-    Unit,
+    onOpenTemplate: (String) -> Unit,
     onOpenTemplates: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {

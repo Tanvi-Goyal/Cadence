@@ -1,6 +1,7 @@
 package com.mindset.domain
 
 import com.mindset.model.BlockSection
+import com.mindset.model.CaptureFields
 import com.mindset.model.ExerciseEntryDetail
 import com.mindset.model.SessionDetail
 import com.mindset.model.SetEntry
@@ -13,6 +14,10 @@ data class LoggedItemUi(
     val eachSide: Boolean = false,
     val note: String? = null,
     val segmentKey: String? = null,
+    // Which metric fields this item captures — drives metric-aware rendering (the same abstraction the
+    // Log Workout capture UI uses) instead of string-matching `metric`. Defaulted so test constructors
+    // that don't care stay valid; the real mapper always sets it from the exercise's default metric.
+    val captureFields: CaptureFields = CaptureFields.RepsOnly,
 )
 
 /**
@@ -45,6 +50,7 @@ private fun ExerciseEntryDetail.toLoggedItemUi(): LoggedItemUi = LoggedItemUi(
     sets = sets,
     eachSide = entry.eachSide,
     segmentKey = entry.segmentKey,
+    captureFields = captureFields,
 )
 
 private fun sectionLabel(section: BlockSection): String = when (section) {

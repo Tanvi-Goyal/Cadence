@@ -35,6 +35,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +56,8 @@ import com.mindset.components.StepperField
 import com.mindset.domain.LoggedItemUi
 import com.mindset.domain.Units
 import com.mindset.domain.WeightUnit
+import com.mindset.domain.digitsToSeconds
+import com.mindset.domain.secondsToDigits
 import com.mindset.icons.Add
 import com.mindset.icons.Bolt
 import com.mindset.icons.Burpee
@@ -74,6 +77,7 @@ import com.mindset.model.HyroxVariant
 import com.mindset.model.SessionType
 import com.mindset.model.SetEntry
 import com.mindset.presentation.LogWorkoutViewModel
+import com.mindset.presentation.StationDraft
 import com.mindset.presentation.StationOption
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -93,11 +97,19 @@ fun LogWorkoutScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val stations by viewModel.stations.collectAsStateWithLifecycle()
     val standards by viewModel.stationStandards.collectAsStateWithLifecycle()
+    val drafts by viewModel.drafts.collectAsStateWithLifecycle()
     var showAddSheet by remember { mutableStateOf(false) }
 
     MindSetTheme {
         val colors = MaterialTheme.colorScheme
-        val cards = remember(state.sections) { state.sections.flatMap { it.items } }
+        val numberedCards = remember(state.sections) {
+            var stationNo = 0
+            state.sections.flatMap { it.items }.map { item ->
+                val key = item.segmentKey
+                val n = if (key != null && "run" !in key) ++stationNo else null
+                item to n
+            }
+        }
 
         Scaffold(
             contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
@@ -130,25 +142,25 @@ fun LogWorkoutScreen(
                     item(key = "quickAdd") { RaceQuickAdd(onPick = viewModel::addVariant) }
                 }
 
-                // Running station index for the "STATION n" tag — runs are not numbered.
-                var stationNo = 0
-                val numbered = cards.map { item ->
-                    val key = item.segmentKey
-                    val n = if (key != null && "run" !in key) ++stationNo else null
-                    item to n
-                }
                 items(
-                    numbered,
+                    numberedCards,
                     key = {
                         it.first.loggedItemId
                     },
                 ) { (item, n) ->
-                    if (item.segmentKey != null) {
+                    val set = item.sets.firstOrNull()
+                    if (item.segmentKey != null && set != null) {
+                        val setId = set.id
                         StationCard(
                             item = item,
                             stationNumber = n,
                             standard = standards[item.segmentKey],
-                            onUpdate = viewModel::updateActual,
+                            draft = drafts[setId] ?: StationDraft(),
+                            onTime = { viewModel.onTimeChange(setId, it) },
+                            onReps = { viewModel.onRepsChange(setId, it) },
+                            onLoad = { viewModel.onLoadChange(setId, it) },
+                            onDist = { viewModel.onDistChange(setId, it) },
+                            onConfirm = { viewModel.confirmStation(setId) },
                             onRemove = { viewModel.removeEntry(item.loggedItemId) },
                         )
                     }
@@ -190,12 +202,12 @@ private fun Header(
     onNotesChange: (String) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    var noteText by remember(sessionId) {
+    var noteText by rememberSaveable(sessionId) {
         mutableStateOf(notes)
     }
 
     LaunchedEffect(notes) {
-        if (notes.isNotEmpty() && noteText.isEmpty()) noteText = notes
+        noteText = notes
     }
 
     Column(
@@ -335,39 +347,32 @@ private fun Header(
 // ── Station card (Hyrox) ────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun StationCard(item: LoggedItemUi, stationNumber: Int?, standard: String?, onUpdate: (SetEntry) -> Unit, onRemove: () -> Unit) {
+private fun StationCard(
+    item: LoggedItemUi,
+    stationNumber: Int?,
+    standard: String?,
+    draft: StationDraft,
+    onTime: (String) -> Unit,
+    onReps: (String) -> Unit,
+    onLoad: (String) -> Unit,
+    onDist: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onRemove: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     val unit = LocalWeightUnit.current
     val shape = MaterialTheme.shapes.medium
     val set = item.sets.firstOrNull()
 
-    // Fields the station captures: TIME always; + REPS (wall balls) or LOAD (loaded); + DIST if it has one.
+    // Which fields the station shows: TIME always; + REPS (wall balls) or LOAD (loaded); + DIST if it
+    // has one. Pure view decision — the edit state itself is owned by the ViewModel (see [StationDraft]),
+    // so it survives scroll and is flushed on Complete; ✓ commits this one card now.
     val second: SecondField = when {
         set?.targetReps != null -> SecondField.REPS
         set?.targetLoadKg != null -> SecondField.LOAD
         else -> SecondField.NONE
     }
     val hasDist = set?.targetDistanceM != null
-
-    // Hoisted so the header ✓ commits what the fields row holds. TIME is empty-until-typed (dimmed
-    // placeholder); the LOAD/REPS/DIST fields prefill their target (bright, editable).
-    var timeDigits by remember(set?.id) { mutableStateOf(secondsToDigits(set?.timeSec)) }
-    var reps by remember(set?.id) { mutableStateOf(intText(set?.reps ?: set?.targetReps)) }
-    var load by remember(set?.id) {
-        mutableStateOf(
-            kgPlain(
-                set?.loadKg ?: set?.targetLoadKg,
-                unit,
-            ),
-        )
-    }
-    var dist by remember(set?.id) {
-        mutableStateOf(
-            intText(
-                set?.distanceM ?: set?.targetDistanceM,
-            ),
-        )
-    }
     val logged = set?.timeSec != null
 
     Column(
@@ -403,24 +408,7 @@ private fun StationCard(item: LoggedItemUi, stationNumber: Int?, standard: Strin
                 )
             }
 
-            ConfirmChip(logged) {
-                if (set != null) {
-                    val secs = digitsToSeconds(timeDigits)
-                    onUpdate(
-                        set.copy(
-                            timeSec = secs.takeIf { it > 0 } ?: set.timeSec,
-                            reps = if (second == SecondField.REPS) reps.toIntOrNull() else set.reps,
-                            loadKg = if (second == SecondField.LOAD) {
-                                load.toDoubleOrNull()
-                                    ?.let { Units.toKg(it, unit) }
-                            } else {
-                                set.loadKg
-                            },
-                            distanceM = if (hasDist) dist.toIntOrNull() else set.distanceM,
-                        ),
-                    )
-                }
-            }
+            ConfirmChip(logged, onConfirm)
             DeleteButton(onRemove)
         }
         HorizontalDivider(color = GlassBorder)
@@ -432,8 +420,8 @@ private fun StationCard(item: LoggedItemUi, stationNumber: Int?, standard: Strin
         ) {
             MetricField(
                 "Time",
-                timeDigits,
-                { timeDigits = it.takeLast(6) },
+                draft.timeDigits,
+                onTime,
                 placeholder = "0:00",
                 visualTransformation = ClockVisualTransformation,
                 modifier = Modifier.weight(1f),
@@ -441,16 +429,16 @@ private fun StationCard(item: LoggedItemUi, stationNumber: Int?, standard: Strin
             when (second) {
                 SecondField.REPS -> MetricField(
                     "Reps",
-                    reps,
-                    { reps = it },
+                    draft.reps,
+                    onReps,
                     placeholder = "0",
                     modifier = Modifier.weight(1f),
                 )
 
                 SecondField.LOAD -> MetricField(
                     "Load ${Units.label(unit)}",
-                    load,
-                    { load = it },
+                    draft.load,
+                    onLoad,
                     placeholder = "0",
                     modifier = Modifier.weight(1f),
                 )
@@ -460,8 +448,8 @@ private fun StationCard(item: LoggedItemUi, stationNumber: Int?, standard: Strin
             if (hasDist) {
                 MetricField(
                     "Dist (m)",
-                    dist,
-                    { dist = it },
+                    draft.dist,
+                    onDist,
                     placeholder = "0",
                     modifier = Modifier.weight(1f),
                 )
@@ -1044,22 +1032,6 @@ private fun kgPlain(kg: Double?, unit: WeightUnit): String {
     if (kg == null) return ""
     val v = Units.toDisplay(kg, unit)
     return if (v % 1.0 == 0.0) v.toInt().toString() else ((v * 10).toInt() / 10.0).toString()
-}
-
-/** Seconds → the raw digit buffer the ClockField edits (e.g. 150 → "230", 45 → "45"). */
-private fun secondsToDigits(sec: Int?): String {
-    if (sec == null || sec <= 0) return ""
-    val m = sec / 60
-    val s = sec % 60
-    return if (m == 0) s.toString() else "$m${s.toString().padStart(2, '0')}"
-}
-
-private fun digitsToSeconds(digits: String): Int {
-    val d = digits.filter { it.isDigit() }
-    if (d.isEmpty()) return 0
-    val ss = d.takeLast(2).toInt()
-    val mm = d.dropLast(2).ifEmpty { "0" }.toInt()
-    return mm * 60 + ss
 }
 
 private fun digitsToClock(digits: String): String {
