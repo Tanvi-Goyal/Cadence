@@ -4,6 +4,7 @@ package com.mindset.data
 
 import com.mindset.domain.ActiveWorkout
 import com.mindset.domain.ActiveWorkoutController
+import com.mindset.domain.repository.PreferencesRepository
 import com.mindset.domain.repository.SessionRepository
 import com.mindset.model.Gender
 import com.mindset.model.HyroxStationModel
@@ -33,7 +34,11 @@ import kotlin.time.Instant
  * so they serialize and the plain `var` anchors are never touched concurrently.
  */
 @OptIn(ExperimentalTime::class)
-class ActiveWorkoutControllerImpl(private val repository: SessionRepository, private val clock: Clock) : ActiveWorkoutController {
+class ActiveWorkoutControllerImpl(
+    private val repository: SessionRepository,
+    private val preferences: PreferencesRepository,
+    private val clock: Clock,
+) : ActiveWorkoutController {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
 
     private val _state = MutableStateFlow<ActiveWorkout?>(null)
@@ -57,28 +62,52 @@ class ActiveWorkoutControllerImpl(private val repository: SessionRepository, pri
     private var finished = false
     private var tickJob: Job? = null
 
-//    override fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String) {
-//        scope.launch {
-//            val id = repository.startHyroxSession(divisionKey, variant, templateId)
-//            val format = repository.hyroxFormat(
-//                divisionKey, variant,
-//                RaceMode.SINGLES, gender = Gender.WOMEN
-//            )
-//            sessionId = id
-//            this@ActiveWorkoutControllerImpl.divisionKey = divisionKey
-//            this@ActiveWorkoutControllerImpl.variant = variant
-//            steps = format
-//            currentIndex = 0
-//            totalAccumMs = 0L
-//            splitAccumMs = 0L
-//            runStartMark = clock.now()
-//            paused = false
-//            finished = false
-//            _expanded.value = true   // a fresh workout opens the full sheet
-//            emit()
-//            startTicking()
-//        }
-//    }
+    // Guards the async gap inside startHyrox. [scope] is limitedParallelism(1), which serializes
+    // DISPATCH but not a coroutine across its suspension points — so two quick Start taps would both
+    // pass a `steps.isEmpty()` check while the first awaits the DB, creating two sessions and
+    // orphaning the first. Set before the first suspension point; only ever touched on [scope].
+    private var starting = false
+
+    override fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String) = onScope {
+        // Already racing (or mid-start): surface the running race instead of replacing it.
+        if (starting || steps.isNotEmpty()) {
+            _expanded.value = true
+            return@onScope
+        }
+        starting = true
+        try {
+            // Mode + gender come from the athlete's profile. Note hyroxFormat ignores `gender` today
+            // (it keys standards off divisionKey + raceMode), so an overridden division cannot desync
+            // from the profile gender — the parameter is forward-looking API only.
+            val raceInfo = preferences.getRaceInfo()
+            val raceMode = raceInfo.third ?: RaceMode.SINGLES
+            val gender = raceInfo.second
+                ?: if (divisionKey.startsWith("WOMEN")) Gender.WOMEN else Gender.MEN
+
+            val format = repository.hyroxFormat(divisionKey, variant, raceMode, gender)
+            if (format.isEmpty()) return@onScope // unseeded format — nothing to run
+
+            val id = repository.startHyroxSession(divisionKey, variant, raceMode, gender, templateId)
+
+            // Re-initialise EVERY anchor: dismiss() clears only `steps`/`_state`, so a second race
+            // would otherwise inherit the first one's elapsed time and step index.
+            sessionId = id
+            this@ActiveWorkoutControllerImpl.divisionKey = divisionKey
+            this@ActiveWorkoutControllerImpl.variant = variant
+            steps = format
+            currentIndex = 0
+            totalAccumMs = 0L
+            splitAccumMs = 0L
+            runStartMark = clock.now()
+            paused = false
+            finished = false
+            _expanded.value = true // a fresh workout opens the full sheet
+            emit()
+            startTicking()
+        } finally {
+            starting = false
+        }
+    }
 
     override fun pause() = onScope {
         if (paused || finished || steps.isEmpty()) return@onScope

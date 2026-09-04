@@ -12,7 +12,7 @@ fun NavGraphBuilder.historyScreen(
     onTab: (BottomNavTab) -> Unit,
 ) {
     composable<History> {
-        HistoryScreen(onOpenDetail = onOpenDetail, onOpenProfile = onOpenProfile, onTab = onTab)
+        HistoryScreen(onOpenDetail = onOpenDetail, onTab = onTab)
     }
 }
 

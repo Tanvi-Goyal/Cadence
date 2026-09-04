@@ -28,7 +28,7 @@ val dataModule =
     module {
         single { SessionRepositoryImpl(get(), get(), get(), get()) } bind SessionRepository::class
         // App-scoped live-workout timer: a single instance shared by every surface (owns its own scope).
-        single { ActiveWorkoutControllerImpl(get(), get()) } bind ActiveWorkoutController::class
+        single { ActiveWorkoutControllerImpl(get(), get(), get()) } bind ActiveWorkoutController::class
         single { PreferencesRepositoryImpl(get()) } bind PreferencesRepository::class
         single { AthleteProfileRepositoryImpl(get()) } bind AthleteProfileRepository::class
         single { RaceGoalRepositoryImpl(get(), get(), get()) } bind RaceGoalRepository::class

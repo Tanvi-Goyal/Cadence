@@ -219,6 +219,29 @@ interface SessionRepository {
      * tables (distances, reps, and division-accurate weights). This is the single source both the
      * detail screen and the live timer consume — replacing the in-code `HyroxStandards`.
      */
+    /**
+     * Synthesizes a live HYROX race session and returns its id: type HYROX, `source = RACE_SIM`, and
+     * one target-carrying entry+set per segment of [variant] at [divisionKey]'s standards.
+     *
+     * Delegates the per-segment seeding to [addHyroxVariant], so the live timer and Log Session's
+     * quick-add share ONE seeder. That shared seeder is what guarantees `orderIndex` is contiguous
+     * from 0, which is the contract [recordHyroxSplit] resolves a split by (`orderIndex == stepIndex`)
+     * — duplicating the seeding here would mean two implementations of an invariant the timer depends
+     * on silently.
+     *
+     * Consequence of that reuse: the session row and its segments land in two transactions rather than
+     * one, so a crash in between can leave a HYROX session with no entries. That is already covered —
+     * such a row is hidden from every live feed (no entries, no `finishedAt`) and reaped by
+     * [discardSessionIfEmpty]. Do not "fix" this back into a single transaction by inlining the seeding.
+     */
+    suspend fun startHyroxSession(
+        divisionKey: String,
+        variant: HyroxVariant,
+        raceMode: RaceMode,
+        gender: Gender,
+        templateId: String? = null,
+    ): String
+
     suspend fun hyroxFormat(divisionKey: String, variant: HyroxVariant, raceMode: RaceMode, gender: Gender): List<HyroxStationModel>
 
     /** Records the elapsed split ([elapsedSec]) for the step at [stepIndex] onto its set. */

@@ -45,8 +45,17 @@ interface ActiveWorkoutController {
      */
     val expanded: StateFlow<Boolean>
 
-    /* Synthesizes + starts a HYROX workout for the chosen division/variant and begins the clock. */
-//    fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String)
+    /**
+     * Synthesizes + persists a HYROX race for [divisionKey]/[variant] and starts the clock.
+     * [templateId] records which sim it came from.
+     *
+     * Race mode and gender are NOT parameters — they are read from the athlete's preferences by the
+     * implementation, so every start surface gets a correctly configured race for free.
+     *
+     * Idempotent while a race is live: a second call re-[expand]s the running one rather than
+     * starting a second race.
+     */
+    fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String)
 
     /** Pause / resume the running clock (both total and current split). */
     fun pause()

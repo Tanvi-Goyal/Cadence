@@ -86,10 +86,12 @@ fun SessionRow(
                 )
             }
 
-            Column {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+            ) {
                 Text(
                     text = session.name,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = colors.onSurface,
                     maxLines = 1,
@@ -102,7 +104,10 @@ fun SessionRow(
                 )
             }
         }
-        Column(horizontalAlignment = Alignment.End) {
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+        ) {
             if (volumeKg > 0.0) {
                 val unit = LocalWeightUnit.current
                 Text(
@@ -113,13 +118,34 @@ fun SessionRow(
             } else if (durationSec != null && durationSec > 0) {
                 Text(
                     text = formatDuration(durationSec * 1000L),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurface,
                 )
             }
+            if (isPb) PbTag()
+
         }
     }
 }
+
+@Composable
+private fun PbTag() {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        Modifier
+            .clip(CircleShape)
+            .background(colors.primary.copy(alpha = 0.15f))
+            .padding(horizontal = MaterialTheme.spacing.sm, vertical = MaterialTheme.spacing.xs),
+    ) {
+        Text(
+            "PB",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.primary,
+        )
+    }
+}
+
 
 /** Live count-up clock: "mm:ss", or "h:mm:ss" past an hour. Used by the timer sheet and Home widget. */
 fun formatClock(ms: Long): String {

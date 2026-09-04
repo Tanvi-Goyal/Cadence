@@ -22,6 +22,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.mindset.data.local.SessionEntity as SessionEntity
@@ -411,6 +412,110 @@ class SessionRepositoryTest {
             wallBalls.loadDisplay?.contains("kg") == true,
             "wall balls expose the ball weight: ${wallBalls.loadDisplay}",
         )
+    }
+
+    /**
+     * The live timer resolves a split by `orderIndex == stepIndex`, so the seeded race must be
+     * contiguous from 0. That contract is why [SessionRepository.startHyroxSession] delegates to the
+     * same seeder as Log Session's quick-add rather than owning a second copy of it.
+     */
+    @Test
+    fun startHyroxSession_seedsRaceWithContiguousOrderIndex() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+
+        val id = repo.startHyroxSession(
+            divisionKey = "MEN",
+            variant = HyroxVariant.FULL,
+            raceMode = RaceMode.SINGLES,
+            gender = Gender.MEN,
+            templateId = "full-hyrox-simulation",
+        )
+
+        val row = database.sessionDao().getById(id)
+        assertEquals(SessionType.HYROX, row?.type)
+        assertEquals(SessionSource.RACE_SIM.name, row?.source, "provenance: started from a sim")
+        assertEquals("full-hyrox-simulation", row?.templateId)
+        assertEquals("MEN", row?.divisionKey, "stamped, so splits detect division-bucketed PBs")
+        assertNull(row?.finishedAt, "a race in progress is not finished")
+
+        val entries = database.exerciseEntryDao().getBySession(id)
+        val expected = repo.hyroxFormat("MEN", HyroxVariant.FULL, RaceMode.SINGLES, Gender.MEN)
+            .filter { it.segmentKey != null }
+        assertEquals(expected.size, entries.size, "one entry per segment, runs included")
+        assertEquals(
+            List(entries.size) { it },
+            entries.map { it.orderIndex },
+            "orderIndex must be contiguous from 0 — recordHyroxSplit resolves splits by it",
+        )
+        assertTrue(entries.all { it.segmentKey != null }, "every entry is tagged with its segment")
+        assertTrue(
+            database.outboxDao().getAll().any { it.entityId == id },
+            "the race enqueues its own outbox row",
+        )
+    }
+
+    /**
+     * A race run on the timer must produce records like any other logged work. Wall Balls is the
+     * regression that matters: it is the only REPS_TIME station, so it only records a PB if the split
+     * write promotes `targetReps` to an actual — without that, seven stations work and it silently
+     * does not.
+     */
+    @Test
+    fun recordHyroxSplit_detectsPbsIncludingRepsScoredWallBalls() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val id = repo.startHyroxSession("MEN", HyroxVariant.FULL, RaceMode.SINGLES, Gender.MEN, null)
+        val entries = database.exerciseEntryDao().getBySession(id)
+
+        val ski = entries.first { it.segmentKey?.contains("ski") == true }
+        repo.recordHyroxSplit(id, ski.orderIndex, 250)
+
+        val skiSet = database.setEntryDao().getForEntry(ski.id).first()
+        assertEquals(250, skiSet.timeSec)
+        assertEquals(1000, skiSet.distanceM, "the full distance is recorded so pace is derivable")
+
+        val skiPb = database.personalRecordDao().getForExercise(ski.exerciseId)
+            .first { it.kind == PrKind.BEST_TIME.name }
+        assertEquals(250.0, skiPb.value)
+        assertEquals("MEN", skiPb.divisionKey, "bucketed by the race's division")
+        assertEquals(1000, skiPb.distanceBucketM)
+
+        // Wall Balls: rep-scored, so the split must carry the rep count for detectPrs to fire.
+        val wallBalls = entries.first { it.segmentKey?.contains("wall-ball") == true }
+        repo.recordHyroxSplit(id, wallBalls.orderIndex, 300)
+
+        val wbSet = database.setEntryDao().getForEntry(wallBalls.id).first()
+        assertEquals(100, wbSet.reps, "targetReps promoted to an actual — detectPrs needs it")
+        val wbPb = database.personalRecordDao().getForExercise(wallBalls.exerciseId)
+            .firstOrNull { it.kind == PrKind.BEST_TIME.name }
+        assertEquals(300.0, wbPb?.value, "wall balls records a PB too, bucketed by reps")
+        assertEquals(100, wbPb?.distanceBucketM)
+
+        // A faster re-run of the same segment improves the record in place.
+        repo.recordHyroxSplit(id, ski.orderIndex, 240)
+        val improved = database.personalRecordDao().getForExercise(ski.exerciseId)
+            .filter { it.kind == PrKind.BEST_TIME.name }
+        assertEquals(1, improved.size, "improved in place, not duplicated")
+        assertEquals(240.0, improved.first().value)
+    }
+
+    /** Race total is the sum of its splits, so it reflects training time and excludes paused time. */
+    @Test
+    fun finishedRace_totalTimeIsSumOfSplits() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val id = repo.startHyroxSession("MEN", HyroxVariant.FIRST_HALF, RaceMode.SINGLES, Gender.MEN, null)
+        val entries = database.exerciseEntryDao().getBySession(id)
+
+        val splits = entries.mapIndexed { i, entry -> entry to (60 + i * 5) }
+        splits.forEach { (entry, sec) -> repo.recordHyroxSplit(id, entry.orderIndex, sec) }
+        repo.finishSession(id)
+
+        assertEquals(
+            splits.sumOf { it.second },
+            repo.observeDurationsBySession().first()[id],
+            "total time is the sum of the logged splits",
+        )
+        assertEquals(SessionType.HYROX, database.sessionDao().getById(id)?.type, "type is preserved")
+        assertNotNull(database.sessionDao().getById(id)?.finishedAt)
     }
 
     @Test

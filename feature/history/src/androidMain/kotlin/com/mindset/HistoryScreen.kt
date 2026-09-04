@@ -2,12 +2,6 @@
 
 package com.mindset
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,9 +10,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -41,13 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
@@ -55,15 +46,10 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.mindset.components.BottomNavBar
 import com.mindset.components.MindSetTopBar
-import com.mindset.components.PrimaryButton
-import com.mindset.domain.Units
-import com.mindset.icons.ChevronRight
 import com.mindset.icons.Flame
-import com.mindset.icons.Lock
 import com.mindset.icons.Tune
 import com.mindset.model.BottomNavTab
 import com.mindset.presentation.HistoryFilter
-import com.mindset.presentation.HistoryRow
 import com.mindset.presentation.HistoryUiState
 import com.mindset.presentation.HistoryViewModel
 import org.koin.compose.viewmodel.koinViewModel
@@ -74,7 +60,6 @@ import java.util.Locale
 @Composable
 fun HistoryScreen(
     onOpenDetail: (String) -> Unit,
-    onOpenProfile: () -> Unit,
     onTab: (BottomNavTab) -> Unit,
     viewModel: HistoryViewModel = koinViewModel(),
 ) {
@@ -102,66 +87,85 @@ fun HistoryScreen(
     }
 }
 
-/** Screen edge padding — the app standard (16dp) on all four sides, plus the scaffold insets. */
-@Composable
-private fun screenPadding(inset: PaddingValues): PaddingValues {
-    val md = MaterialTheme.spacing.md
-    return PaddingValues(
-        start = md,
-        end = md,
-        top = inset.calculateTopPadding() + md,
-        bottom = inset.calculateBottomPadding() + md,
-    )
-}
-
-// ── Free tier ─────────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun FreeHistory(state: HistoryUiState, onOpenDetail: (String) -> Unit, inset: PaddingValues) {
+    val spacer = MaterialTheme.spacing.md
+
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .testTag("history_list"),
-        contentPadding = screenPadding(inset),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.lg),
+        contentPadding = PaddingValues(
+            start = MaterialTheme.spacing.md,
+            end = MaterialTheme.spacing.md,
+            top = inset.calculateTopPadding() + MaterialTheme.spacing.md,
+            bottom = inset.calculateBottomPadding() + MaterialTheme.spacing.md,
+        ),
     ) {
         item { PerformanceHistoryHeader("Review your mental and physical data logs.") }
+        item { Spacer(modifier = Modifier.size(spacer)) }
+
         item { BentoStreakCalendar(state.trainedEpochDays, state.todayEpochDay) }
+        item { Spacer(modifier = Modifier.size(spacer)) }
+
         item { SectionHeader("Recent workouts (30 days)") }
+        item { Spacer(modifier = Modifier.size(spacer)) }
+
         if (state.freeRows.isEmpty()) {
             item { EmptyHint("No sessions logged yet.", Modifier.fillMaxWidth()) }
         } else {
             items(state.freeRows, key = { it.session.id }) { row ->
-                WorkoutFeedCard(
-                    row,
-                    isPb = row.session.id in state.pbSessionIds,
-                ) { onOpenDetail(row.session.id) }
+                SessionRow(
+                    session = row.session,
+                    volumeKg = 0.0,
+                    durationSec = row.durationSec,
+                    onClick = { onOpenDetail(row.session.id) },
+                    isPb = false,
+                )
             }
         }
-        item { PaywallCard() }
     }
 }
 
-// ── Pro tier ──────────────────────────────────────────────────────────────────────────────────
-
 @Composable
-private fun ProHistory(state: HistoryUiState, viewModel: HistoryViewModel, onOpenDetail: (String) -> Unit, inset: PaddingValues) {
+private fun ProHistory(
+    state: HistoryUiState,
+    viewModel: HistoryViewModel,
+    onOpenDetail: (String) -> Unit,
+    inset: PaddingValues,
+) {
     val paged = viewModel.pagedSessions.collectAsLazyPagingItems()
     LazyColumn(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .testTag("history_list"),
-        contentPadding = screenPadding(inset),
+        contentPadding = PaddingValues(
+            start = MaterialTheme.spacing.md,
+            end = MaterialTheme.spacing.md,
+            top = inset.calculateTopPadding() + MaterialTheme.spacing.md,
+            bottom = inset.calculateBottomPadding() + MaterialTheme.spacing.md,
+        ),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.lg),
     ) {
-        item { PerformanceHistoryHeader("Unlimited Pro Tier access to your training evolution.") }
+        item {
+            PerformanceHistoryHeader(
+                "Unlimited Pro Tier access to your training evolution.",
+            )
+        }
         item { ProStreakStrip(state) }
         item { FilterRow(state.filter, viewModel::onFilterSelected) }
 
         items(paged.itemCount, key = paged.itemKey { it.id }) { index ->
             val session = paged[index] ?: return@items
-            WorkoutFeedCard(
-                row = HistoryRow(session, state.volumes[session.id] ?: 0.0, state.durations[session.id]),
+            SessionRow(
+                session = session,
+                volumeKg = 0.0,
+                durationSec = state.durations[session.id],
+                onClick = { onOpenDetail(session.id) },
                 isPb = session.id in state.pbSessionIds,
-            ) { onOpenDetail(session.id) }
+            )
         }
 
         if (paged.loadState.append is LoadState.Loading) {
@@ -173,21 +177,19 @@ private fun ProHistory(state: HistoryUiState, viewModel: HistoryViewModel, onOpe
     }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun PerformanceHistoryHeader(subtitle: String) {
     val colors = MaterialTheme.colorScheme
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs)) {
         Text(
             text = "Performance History",
-            style = MaterialTheme.typography.headlineMedium,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = colors.onSurface,
         )
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = colors.onSurfaceVariant,
         )
     }
@@ -212,8 +214,6 @@ private fun FilterRow(filter: HistoryFilter, onFilterSelected: (HistoryFilter) -
         FilterButton(filter, onFilterSelected)
     }
 }
-
-// ── Filter control (reused) ─────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun FilterButton(filter: HistoryFilter, onFilterSelected: (HistoryFilter) -> Unit) {
@@ -254,7 +254,12 @@ private fun filterLabel(filter: HistoryFilter): String = when (filter) {
 }
 
 @Composable
-private fun HeaderIconButton(icon: ImageVector, contentDescription: String, tint: Color, onClick: () -> Unit) {
+private fun HeaderIconButton(
+    icon: ImageVector,
+    contentDescription: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = Modifier.clip(CircleShape).size(24.dp).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -268,14 +273,12 @@ private fun HeaderIconButton(icon: ImageVector, contentDescription: String, tint
     }
 }
 
-// ── Streak calendars ────────────────────────────────────────────────────────────────────────────
-
-/** Free tier: a 7-wide × 4-week bento grid inside a glass card. */
 @Composable
 private fun BentoStreakCalendar(trained: Set<Long>, todayEpochDay: Long) {
     val colors = MaterialTheme.colorScheme
-    val weeks =
-        remember(trained, todayEpochDay) { buildCalendarWeeks(todayEpochDay, trained, weeks = 4) }
+    val weeks = remember(trained, todayEpochDay) {
+        buildCalendarWeeks(todayEpochDay, trained, weeks = 4)
+    }
     Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
         StreakHeaderRow()
         Column(
@@ -283,8 +286,10 @@ private fun BentoStreakCalendar(trained: Set<Long>, todayEpochDay: Long) {
                 .fillMaxWidth()
                 .clip(MaterialTheme.shapes.medium)
                 .background(colors.surfaceContainerLow)
-                .border(1.dp, colors.outlineVariant.copy(alpha = 0.4f), MaterialTheme.shapes.medium)
-                .padding(MaterialTheme.spacing.md),
+                .border(
+                    1.dp, colors.outlineVariant.copy(alpha = 0.4f),
+                    MaterialTheme.shapes.medium,
+                ).padding(MaterialTheme.spacing.md),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
         ) {
             weeks.forEach { week ->
@@ -313,7 +318,6 @@ private fun StreakHeaderRow() {
     }
 }
 
-/** Pro tier: streak + best-streak stats over a horizontally-scrollable strip of recent days. */
 @Composable
 private fun ProStreakStrip(state: HistoryUiState) {
     val colors = MaterialTheme.colorScheme
@@ -325,8 +329,10 @@ private fun ProStreakStrip(state: HistoryUiState) {
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .background(colors.surfaceContainerLow)
-            .border(1.dp, colors.outlineVariant.copy(alpha = 0.4f), MaterialTheme.shapes.medium)
-            .padding(MaterialTheme.spacing.md),
+            .border(
+                1.dp, colors.outlineVariant.copy(alpha = 0.4f),
+                MaterialTheme.shapes.medium,
+            ).padding(MaterialTheme.spacing.md),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
     ) {
         Row(
@@ -348,7 +354,11 @@ private fun ProStreakStrip(state: HistoryUiState) {
 }
 
 @Composable
-private fun StreakStat(value: String, label: String, icon: ImageVector? = null, alignEnd: Boolean = false) {
+private fun StreakStat(
+    value: String, label: String,
+    icon: ImageVector? = null,
+    alignEnd: Boolean = false,
+) {
     val colors = MaterialTheme.colorScheme
     Column(horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start) {
         Text(
@@ -385,17 +395,17 @@ private fun DayCellView(cell: WeekCell) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
     ) {
-        Text(
-            cell.letter,
-            style = MaterialTheme.typography.labelMedium,
-            color = colors.onSurfaceVariant,
-        )
         val base = Modifier.size(36.dp).clip(MaterialTheme.shapes.small)
         val boxModifier = when (cell.state) {
             DayState.TODAY -> base.background(colors.primary)
-            DayState.TRAINED -> base.border(1.dp, colors.primary, MaterialTheme.shapes.small)
+            DayState.TRAINED -> base.border(
+                1.dp, colors.primary,
+                MaterialTheme.shapes.small,
+            )
+
             DayState.IDLE -> base.background(GlassFill)
         }
+
         Box(boxModifier, contentAlignment = Alignment.Center) {
             Text(
                 text = cell.dayOfMonth,
@@ -411,78 +421,6 @@ private fun DayCellView(cell: WeekCell) {
     }
 }
 
-// ── Workout row (reused across tiers) ───────────────────────────────────────────────────────────
-
-@Composable
-private fun WorkoutFeedCard(row: HistoryRow, isPb: Boolean, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val unit = LocalWeightUnit.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.surfaceContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = MaterialTheme.spacing.md, vertical = MaterialTheme.spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
-    ) {
-        IconMedallion(icon = typeIcon(row.session.type.name))
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
-            ) {
-                Text(
-                    text = row.session.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (isPb) PbTag()
-            }
-            Text(
-                text = workoutMetric(row, unit),
-                style = MaterialTheme.typography.bodyMedium,
-                fontFamily = FontFamily.Monospace,
-                color = colors.primary,
-            )
-        }
-        Text(
-            text = relativeDate(row.session.startedAt.toEpochMilliseconds()),
-            style = MaterialTheme.typography.labelMedium,
-            color = colors.onSurfaceVariant,
-        )
-        Icon(
-            MindSetIcons.ChevronRight,
-            contentDescription = null,
-            tint = colors.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-@Composable
-private fun PbTag() {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        Modifier.clip(CircleShape).background(colors.primary.copy(alpha = 0.15f))
-            .padding(horizontal = MaterialTheme.spacing.sm, vertical = MaterialTheme.spacing.xs),
-    ) {
-        Text(
-            "PB",
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = colors.primary,
-        )
-    }
-}
-
 @Composable
 private fun LoadingRow() {
     Text(
@@ -493,95 +431,7 @@ private fun LoadingRow() {
     )
 }
 
-// ── Paywall (free tier) ─────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun PaywallCard() {
-    val colors = MaterialTheme.colorScheme
-    // Slow-pulsing glow behind the card (mirrors the onboarding radial-gradient backdrop idiom).
-    val transition = rememberInfiniteTransition(label = "paywall-glow")
-    val glow by transition.animateFloat(
-        initialValue = 0.06f,
-        targetValue = 0.16f,
-        animationSpec = infiniteRepeatable(tween(2200, easing = LinearEasing), RepeatMode.Reverse),
-        label = "glow-alpha",
-    )
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-                .align(Alignment.Center)
-                .background(
-                    Brush.radialGradient(
-                        listOf(
-                            colors.primary.copy(alpha = glow),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(MaterialTheme.shapes.large)
-                .background(GlassFill)
-                .border(1.dp, GlassBorder, MaterialTheme.shapes.large)
-                .padding(MaterialTheme.spacing.lg),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
-        ) {
-            Box(
-                Modifier.size(64.dp).clip(CircleShape).background(colors.surfaceContainerHigh),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    MindSetIcons.Lock,
-                    contentDescription = null,
-                    tint = ObsidianCoral,
-                    modifier = Modifier.size(28.dp),
-                )
-            }
-            Text(
-                text = "Unlock full history",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = colors.onSurface,
-            )
-            Text(
-                text = "Go Pro for unlimited history, filters, and your complete training evolution.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            PrimaryButton(
-                text = "Unlock Pro — Coming Soon",
-                enabled = false,
-                onClick = {},
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Text(
-                text = "In-app purchases arrive in a future update.",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-// ── metric + calendar formatting ────────────────────────────────────────────────────────────────
-
-/** Strength → "12,450 kg vol." (grouped, full number); timed workout → total duration; else "—". */
-private fun workoutMetric(row: HistoryRow, unit: com.mindset.domain.WeightUnit): String {
-    if (row.volumeKg > 0.0) {
-        val display = Units.toDisplay(row.volumeKg, unit).toInt()
-        return "${String.format(Locale.getDefault(), "%,d", display)} ${Units.label(unit)} vol."
-    }
-    // Σ of the logged splits (runs included), not the wall clock between creating the session and
-    // completing it.
-    val durationSec = row.durationSec
-    return if (durationSec != null && durationSec > 0) formatDuration(durationSec * 1000L) else "—"
-}
-
-
-private fun currentMonthLabel(): String = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date()).uppercase(Locale.getDefault())
+private fun currentMonthLabel(): String = SimpleDateFormat(
+    "MMMM yyyy",
+    Locale.getDefault(),
+).format(Date()).uppercase(Locale.getDefault())

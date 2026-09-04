@@ -555,6 +555,7 @@ class SessionRepositoryImpl(
         isTemplate: Boolean = false,
         source: String = SessionSource.MANUAL,
         templateId: String? = null,
+        formatKey: String? = null,
     ): SessionEntity {
         val now = now()
         val session = SessionEntity(
@@ -565,6 +566,7 @@ class SessionRepositoryImpl(
             isTemplate = isTemplate,
             source = source,
             templateId = templateId,
+            formatKey = formatKey,
             createdAt = now,
             updatedAt = now,
         )
@@ -769,19 +771,48 @@ class SessionRepositoryImpl(
         }
     }
 
+    override suspend fun startHyroxSession(
+        divisionKey: String,
+        variant: HyroxVariant,
+        raceMode: RaceMode,
+        gender: Gender,
+        templateId: String?,
+    ): String {
+        val session = insertSession(
+            name = displayName(SessionType.HYROX),
+            type = SessionType.HYROX,
+            source = SessionSource.RACE_SIM,
+            templateId = templateId,
+            formatKey = EventFormat.HYROX,
+        )
+        // Reuses the one segment seeder (see the interface KDoc): contiguous orderIndex from 0 — the
+        // contract recordHyroxSplit resolves splits by — plus division stamping and the outbox row.
+        addHyroxVariant(session.id, divisionKey, variant, raceMode, gender)
+        return session.id
+    }
+
     override suspend fun recordHyroxSplit(sessionId: String, stepIndex: Int, elapsedSec: Int) {
         val entry =
             entries.getBySession(sessionId).firstOrNull { it.orderIndex == stepIndex } ?: return
         val set = setEntries.getForEntry(entry.id).firstOrNull() ?: return
         val now = now()
+        // Promote the segment's targets to actuals alongside the split. `reps` is load-bearing, not
+        // tidiness: Wall Balls is the only REPS_TIME station and detectPrs's REPS_TIME branch needs a
+        // rep count, so without it that one station would silently never record a PB while the other
+        // seven did. `loadKg` is display parity with the manual path (no station is weight-scored).
         val updated = set.copy(
             timeSec = elapsedSec,
             distanceM = set.targetDistanceM ?: set.distanceM, // record the full distance for pace
+            reps = set.targetReps ?: set.reps,
+            loadKg = set.targetLoadKg ?: set.loadKg,
             updatedAt = now,
         )
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 setEntries.update(updated)
+                // Same as addSet/updateSet — without this a timed race logged splits but produced no
+                // records at all, so nothing from the live timer ever reached the Station board.
+                detectAndStorePrs(sessionId, updated.toDomain(), now)
                 touchSession(sessionId)
             }
         }

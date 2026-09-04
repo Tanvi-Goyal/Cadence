@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import com.mindset.domain.repository.PreferencesRepository
+import kotlinx.coroutines.launch
 import com.mindset.model.HyroxVariant as RaceVariant
 
 /*
@@ -59,12 +61,26 @@ data class TemplateHyroxDetailUiState(
     val finishLabel: String,
 )
 
-class TemplateHyroxDetailViewModel(private val controller: ActiveWorkoutController, private val templateId: String) : ViewModel() {
+class TemplateHyroxDetailViewModel(
+    private val controller: ActiveWorkoutController,
+    private val preferences: PreferencesRepository,
+    private val templateId: String,
+) : ViewModel() {
 
     private val isHalf: Boolean = templateId == "half-hyrox-sim"
 
     private val division = MutableStateFlow(HyroxDivision.MEN)
     private val variant = MutableStateFlow(if (isHalf) HyroxVariant.FIRST_HALF else HyroxVariant.FULL)
+
+    init {
+        // Open on the athlete's own division rather than the MEN default, so the previewed weights —
+        // and the race started from them — match their race weight without touching the picker.
+        // The enum names are the seeded `event_division` keys (WOMEN / MEN / WOMEN_PRO / MEN_PRO).
+        viewModelScope.launch {
+            val key = preferences.getRaceInfo().first ?: return@launch
+            HyroxDivision.entries.firstOrNull { it.name == key }?.let { division.value = it }
+        }
+    }
 
     /**
      * Start a live workout for the current division/variant. Hands off to the app-scoped
@@ -73,11 +89,22 @@ class TemplateHyroxDetailViewModel(private val controller: ActiveWorkoutControll
      * [HyroxDivision]/[HyroxVariant] enums map by name onto the DB division key / domain [RaceVariant].
      */
     fun startWorkout() {
-//        controller.startHyrox(
-//            divisionKey = division.value.name,
-//            variant = RaceVariant.valueOf(variant.value.name),
-//            templateId = templateId,
-//        )
+        controller.startHyrox(
+            divisionKey = division.value.name,
+            variant = variant.value.toDomain(),
+            templateId = templateId,
+        )
+    }
+
+    /**
+     * Feature-local [HyroxVariant] → domain [RaceVariant]. Mapped exhaustively rather than by
+     * `valueOf(name)` so renaming either enum is a compile error instead of a runtime crash.
+     */
+    private fun HyroxVariant.toDomain(): RaceVariant = when (this) {
+        HyroxVariant.FULL -> RaceVariant.FULL
+        HyroxVariant.FIRST_HALF -> RaceVariant.FIRST_HALF
+        HyroxVariant.SECOND_HALF -> RaceVariant.SECOND_HALF
+        HyroxVariant.HALVED -> RaceVariant.HALVED
     }
 
     val uiState: StateFlow<TemplateHyroxDetailUiState> =
