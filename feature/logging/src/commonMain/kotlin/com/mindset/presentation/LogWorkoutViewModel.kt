@@ -119,6 +119,12 @@ class LogWorkoutViewModel(
     // Display unit for `load` (stored canonically in kg). Snapshotted for the synchronous commit path.
     private var currentUnit: WeightUnit = WeightUnit.KG
 
+    // Newest note the user typed, ahead of the debounced DB write. Null = never edited this session.
+    private var lastNotes: String? = null
+
+    // Both exits suspend before navigating, so guard against a second tap (or back) re-entering them.
+    private var exiting = false
+
     init {
         notesInput
             .debounce(400)
@@ -199,8 +205,12 @@ class LogWorkoutViewModel(
         }
     }
 
-    /** One-tap: seed a whole Hyrox race [variant] (runs + stations, in order) into the session. */
-    fun addVariant(variant: HyroxVariant) {
+    /**
+     * One-tap: seed a whole Hyrox race [variant] (runs + stations, in order) into the session. Quick-add
+     * seeds a *whole* race, so picking one while the session already has content is a swap, not an
+     * append — [replaceExisting] clears the session first (the UI confirms before passing it).
+     */
+    fun addVariant(variant: HyroxVariant, replaceExisting: Boolean = false) {
         viewModelScope.launch {
             val raceInfo = preferencesRepository.getRaceInfo()
             repository.addHyroxVariant(
@@ -209,6 +219,7 @@ class LogWorkoutViewModel(
                 variant = variant,
                 raceMode = raceInfo.third!!,
                 gender = raceInfo.second!!,
+                replaceExisting = replaceExisting,
             )
         }
     }
@@ -240,7 +251,20 @@ class LogWorkoutViewModel(
         uiState.value.sections.flatMap { it.items }.flatMap { it.sets }.associateBy { it.id }
 
     fun onNotesChange(notes: String) {
+        lastNotes = notes
         notesInput.tryEmit(notes)
+    }
+
+    fun close(onDone: () -> Unit) {
+        if (exiting) return
+        exiting = true
+        viewModelScope.launch {
+            if (!repository.discardSessionIfEmpty(sessionId)) {
+                lastNotes?.takeIf { it != uiState.value.notes }
+                    ?.let { repository.updateSessionNotes(sessionId, it) }
+            }
+            onDone()
+        }
     }
 
     fun removeEntry(entryId: String) {
@@ -252,6 +276,8 @@ class LogWorkoutViewModel(
      * stamp finished + persist the auto-derived type, then hand control back.
      */
     fun finish(onDone: () -> Unit) {
+        if (exiting) return
+        exiting = true
         viewModelScope.launch {
             val sets = currentSets()
             _drafts.value.forEach { (setId, draft) ->

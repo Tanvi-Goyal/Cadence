@@ -31,6 +31,7 @@ kotlin {
             implementation(projects.core.ui) // TypeCard
             implementation(projects.core.designsystem) // NumberField + tokens + LocalWeightUnit
             implementation(projects.core.navigation) // NewSession/LogWorkout/ExercisePicker routes + PICKED_EXERCISE
+            implementation(libs.androidx.activity.compose) // BackHandler on Log Session
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)

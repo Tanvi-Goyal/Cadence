@@ -14,12 +14,29 @@ import kotlinx.coroutines.flow.Flow
  * Reads/writes for [SessionEntity]. [observeAll] returns a [Flow] so the UI observes the DB reactively
  * and never has to poll — the single-source-of-truth contract in AGENTS.md. The class-level converter
  * lets a [PagingSource]-returning query compile in commonMain (Room-KMP requirement, same as ExerciseDao).
+ *
+ * Every live-feed read ([observeAll], [observeRecent], [observeSince], [pagedSessions]) shares one
+ * predicate: live, non-template, and **substantive** — either finished, or carrying at least one live
+ * entry. The FAB creates the session row *before* Log Session opens, so an abandoned open leaves an
+ * empty row behind; the repository tombstones it on exit, and this clause is the safety net for the
+ * ones that escape (process death, rows predating the fix). Kept as a correlated `EXISTS` rather than
+ * a JOIN so it short-circuits on the first matching entry and can't fan out duplicate session rows;
+ * it rides the existing `blocks(sessionId)` and `exercise_entries(blockId)` indices.
  */
 @Dao
 @DaoReturnTypeConverters(PagingSourceDaoReturnTypeConverter::class)
 interface SessionDao {
     @Query(
-        "SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 0 ORDER BY startedAt DESC",
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0
+          AND (finishedAt IS NOT NULL OR EXISTS (
+            SELECT 1 FROM exercise_entries e
+            INNER JOIN blocks b ON e.blockId = b.id
+            WHERE b.sessionId = sessions.id AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+          ))
+        ORDER BY startedAt DESC
+        """,
     )
     fun observeAll(): Flow<List<SessionEntity>>
 
@@ -29,7 +46,16 @@ interface SessionDao {
      * rows the widget shows, not the whole table. Full, scrollable history uses [pagedSessions].
      */
     @Query(
-        "SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 0 ORDER BY startedAt DESC LIMIT :limit",
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0
+          AND (finishedAt IS NOT NULL OR EXISTS (
+            SELECT 1 FROM exercise_entries e
+            INNER JOIN blocks b ON e.blockId = b.id
+            WHERE b.sessionId = sessions.id AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+          ))
+        ORDER BY startedAt DESC LIMIT :limit
+        """,
     )
     fun observeRecent(limit: Int): Flow<List<SessionEntity>>
 
@@ -38,7 +64,16 @@ interface SessionDao {
      * time in SQL so the observer reads only the current window, not the whole table as history grows.
      */
     @Query(
-        "SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 0 AND startedAt >= :startMillis ORDER BY startedAt DESC",
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0 AND startedAt >= :startMillis
+          AND (finishedAt IS NOT NULL OR EXISTS (
+            SELECT 1 FROM exercise_entries e
+            INNER JOIN blocks b ON e.blockId = b.id
+            WHERE b.sessionId = sessions.id AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+          ))
+        ORDER BY startedAt DESC
+        """,
     )
     fun observeSince(startMillis: Long): Flow<List<SessionEntity>>
 
@@ -51,6 +86,11 @@ interface SessionDao {
         """
         SELECT * FROM sessions
         WHERE deletedAt IS NULL AND isTemplate = 0 AND (:type IS NULL OR type = :type)
+          AND (finishedAt IS NOT NULL OR EXISTS (
+            SELECT 1 FROM exercise_entries e
+            INNER JOIN blocks b ON e.blockId = b.id
+            WHERE b.sessionId = sessions.id AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+          ))
         ORDER BY startedAt DESC
         """,
     )

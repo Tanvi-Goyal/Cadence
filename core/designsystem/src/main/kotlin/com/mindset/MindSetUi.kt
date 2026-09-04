@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -42,31 +41,6 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.outline,
         modifier = modifier,
     )
-}
-
-/** Compact metric tile: big value over a muted label, on a low tonal surface. */
-@Composable
-fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(MaterialTheme.spacing.md),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = MaterialTheme.spacing.xs),
-        )
-    }
 }
 
 /** Small pill on the primary color for a status/type tag, e.g. the "STRENGTH" chip. */
@@ -145,17 +119,6 @@ fun IconMedallion(
     ) {
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
     }
-}
-
-/** 4dp separator dot used between inline metadata (e.g. "Push focus · 55 min"). */
-@Composable
-fun MetaDot(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(4.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.outlineVariant),
-    )
 }
 
 /** Centered helper for empty states. */

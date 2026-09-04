@@ -121,8 +121,20 @@ interface SessionRepository {
      * standard. Order indices continue contiguously after any existing entries. Unlike [addStation] this
      * includes run segments and applies the variant's targets (e.g. [HyroxVariant.HALVED] halves each
      * distance/rep). Resolved from the seeded reference tables via [hyroxFormat].
+     *
+     * With [replaceExisting] the session's current contents are tombstoned first (every live entry and
+     * its sets, across all blocks) and the new segments start at order 0 — so picking a second variant
+     * *swaps* the race instead of appending a second one. Still one transaction: the session is never
+     * observable in a half-cleared state.
      */
-    suspend fun addHyroxVariant(sessionId: String, divisionKey: String, variant: HyroxVariant, raceMode: RaceMode, gender: Gender)
+    suspend fun addHyroxVariant(
+        sessionId: String,
+        divisionKey: String,
+        variant: HyroxVariant,
+        raceMode: RaceMode,
+        gender: Gender,
+        replaceExisting: Boolean = false,
+    )
 
     /**
      * The 8 Hyrox stations for [divisionKey] (division-accurate standards) — the "Stations" section of
@@ -204,6 +216,16 @@ interface SessionRepository {
      * [deriveSessionType]); the Hyrox timer passes null to leave its HYROX type untouched.
      */
     suspend fun finishSession(sessionId: String, derivedType: SessionType? = null)
+
+    /**
+     * Drops a session that was opened but never used — the quick-start FAB persists the row *before*
+     * Log Session opens, so backing out of an untouched screen would otherwise leave an empty session
+     * in History. Tombstones it (soft delete + outbox touch, one transaction) when it is live,
+     * non-template and has no live entries; returns whether it discarded. Notes do not count as
+     * content — a note against nothing logged is still not a session. Idempotent, so the exit path
+     * can call it unconditionally.
+     */
+    suspend fun discardSessionIfEmpty(sessionId: String): Boolean
 
     /** Inserts a sensible default plan + the exercise catalog if absent. */
     suspend fun ensureSeeded()

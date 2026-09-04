@@ -17,6 +17,8 @@ data class SessionDetailUiState(
     val name: String = "",
     val type: String = "",
     val startedAt: Long = 0L,
+    /** Wall-clock duration (finishedAt − startedAt); null when the session was never finished. */
+    val totalTimeMs: Long? = null,
     val totalVolumeKg: Double = 0.0,
     val items: List<LoggedItemUi> = emptyList(),
 )
@@ -35,15 +37,13 @@ class SessionDetailViewModel(private val repository: SessionRepository, private 
                     itemUis.sumOf { item ->
                         item.sets.sumOf { (it.reps ?: 0) * (it.loadKg ?: 0.0) }
                     }
+                val session = detail?.session
+                val startedAt = session?.startedAt?.toEpochMilliseconds() ?: 0L
                 SessionDetailUiState(
-                    name = detail?.session?.name.orEmpty(),
-                    type =
-                    detail
-                        ?.session
-                        ?.type
-                        ?.name
-                        .orEmpty(),
-                    startedAt = detail?.session?.startedAt?.toEpochMilliseconds() ?: 0L,
+                    name = session?.name.orEmpty(),
+                    type = session?.type?.name.orEmpty(),
+                    startedAt = startedAt,
+                    totalTimeMs = session?.finishedAt?.toEpochMilliseconds()?.minus(startedAt),
                     totalVolumeKg = volume,
                     items = itemUis,
                 )

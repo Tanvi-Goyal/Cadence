@@ -9,6 +9,9 @@ import com.mindset.data.local.ExerciseAssetReader
 import com.mindset.data.local.ExerciseEntryEntity
 import com.mindset.data.local.SessionType
 import com.mindset.data.local.SetEntryEntity
+import com.mindset.model.Gender
+import com.mindset.model.HyroxVariant
+import com.mindset.model.RaceMode
 import com.mindset.model.SessionSource
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -55,10 +58,83 @@ class SessionRepositoryTest {
 
         val created = repository.createSession(SessionType.STRENGTH)
 
-        val sessions = repository.observeSessions().first()
-        assertEquals(1, sessions.size, "session should be persisted")
-        assertEquals(created.id, sessions.first().id, "persisted session should match returned one")
+        // Asserted against the row, not the history feed: the feed deliberately hides a session with
+        // nothing logged in it (see the next two tests), so it can't stand in for "was persisted".
+        val row = database.sessionDao().getById(created.id)
+        assertEquals(created.id, row?.id, "session should be persisted")
         assertEquals(1, database.outboxDao().count(), "outbox entry should be enqueued in the same write")
+    }
+
+    /**
+     * The quick-start FAB persists the session row *before* Log Session opens, so an abandoned open
+     * would otherwise surface as an empty session. The live feeds require a session to be substantive
+     * — finished, or carrying at least one live entry — which is the safety net for rows the exit path
+     * misses (process death, rows predating the fix).
+     */
+    @Test
+    fun observeSessions_hidesSessionWithNothingLogged() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+
+        val session = repo.createSession(SessionType.STRENGTH)
+
+        assertTrue(
+            repo.observeSessions().first().none { it.id == session.id },
+            "a session with no entries must not appear in history",
+        )
+        assertTrue(
+            repo.observeRecentSessions().first().none { it.id == session.id },
+            "nor in Home's recent widget",
+        )
+
+        repo.updateSessionNotes(session.id, "felt strong")
+
+        assertTrue(
+            repo.observeSessions().first().none { it.id == session.id },
+            "a note alone doesn't make it a session either",
+        )
+
+        repo.addExercise(session.id, "bench-press")
+
+        assertTrue(
+            repo.observeSessions().first().any { it.id == session.id },
+            "logging anything into it makes it substantive",
+        )
+    }
+
+    /**
+     * The write-path half of the same fix: backing out of an untouched session drops the row outright
+     * (tombstone + outbox touch), so it never reaches the server either. Guarded so it can only ever
+     * discard a session that is genuinely untouched.
+     */
+    @Test
+    fun discardSessionIfEmpty_dropsUntouchedSessionOnly() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+
+        val untouched = repo.createSession(SessionType.STRENGTH)
+        assertTrue(repo.discardSessionIfEmpty(untouched.id), "an untouched session is discarded")
+        assertTrue(
+            database.sessionDao().getById(untouched.id)?.deletedAt != null,
+            "discarding tombstones the row so the deletion re-syncs",
+        )
+        assertTrue(
+            database.outboxDao().getAll().any { it.entityId == untouched.id },
+            "the tombstone leaves an outbox row",
+        )
+        assertTrue(!repo.discardSessionIfEmpty(untouched.id), "idempotent — already discarded")
+
+        val withEntry = repo.createSession(SessionType.STRENGTH)
+        repo.addExercise(withEntry.id, "bench-press")
+        assertTrue(!repo.discardSessionIfEmpty(withEntry.id), "a logged session is kept")
+
+        val notesOnly = repo.createSession(SessionType.STRENGTH)
+        repo.updateSessionNotes(notesOnly.id, "felt strong")
+        assertTrue(
+            repo.discardSessionIfEmpty(notesOnly.id),
+            "a note against nothing logged is still not a session",
+        )
+
+        val template = repo.createTemplate(name = "Upper A", type = SessionType.STRENGTH)
+        assertTrue(!repo.discardSessionIfEmpty(template.id), "templates are never touched")
     }
 
     /**
@@ -67,6 +143,73 @@ class SessionRepositoryTest {
      * spawned row is a real (non-template) session that records its `templateId` provenance and,
      * unlike the template, appears in the history list.
      */
+    /**
+     * Quick-add seeds a *whole* race, so a second pick has to swap the session's contents rather than
+     * stack a second race on top of the first (the append default stays for the add-a-station path).
+     * Replacing clears everything logged — including hand-added exercises — and re-indexes from 0.
+     */
+    @Test
+    fun addHyroxVariant_replaceExisting_swapsTheRaceInsteadOfAppending() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val session = repo.createSession(SessionType.HYROX)
+
+        repo.addHyroxVariant(session.id, "MEN", HyroxVariant.FULL, RaceMode.SINGLES, Gender.MEN)
+        val full = database.exerciseEntryDao().getBySession(session.id)
+        assertTrue(full.isNotEmpty(), "the full race seeded its segments")
+
+        // A hand-added exercise is part of "everything logged" and must go too.
+        repo.addExercise(session.id, "bench-press")
+        val staleIds = database.exerciseEntryDao().getBySession(session.id).map { it.id }.toSet()
+
+        repo.addHyroxVariant(
+            session.id,
+            "MEN",
+            HyroxVariant.FIRST_HALF,
+            RaceMode.SINGLES,
+            Gender.MEN,
+            replaceExisting = true,
+        )
+
+        val after = database.exerciseEntryDao().getBySession(session.id)
+        val expected = repo.hyroxFormat("MEN", HyroxVariant.FIRST_HALF, RaceMode.SINGLES, Gender.MEN)
+            .count { it.segmentKey != null }
+        assertEquals(expected, after.size, "only the new variant's segments remain")
+        assertTrue(after.none { it.id in staleIds }, "every previous entry was tombstoned")
+        assertEquals(
+            List(after.size) { it },
+            after.map { it.orderIndex },
+            "the new race re-indexes from 0 rather than continuing past the cleared entries",
+        )
+        assertTrue(
+            staleIds.all { database.setEntryDao().getForEntry(it).isEmpty() },
+            "the cleared entries' sets are tombstoned too, so no orphans survive",
+        )
+        assertTrue(
+            database.outboxDao().getAll().any { it.entityId == session.id },
+            "the swap leaves an outbox row so it re-syncs",
+        )
+    }
+
+    /** The default stays append — adding a station must not wipe the race already in the session. */
+    @Test
+    fun addHyroxVariant_withoutReplace_appendsAfterExistingEntries() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val session = repo.createSession(SessionType.HYROX)
+
+        repo.addHyroxVariant(session.id, "MEN", HyroxVariant.FIRST_HALF, RaceMode.SINGLES, Gender.MEN)
+        val first = database.exerciseEntryDao().getBySession(session.id)
+        repo.addHyroxVariant(session.id, "MEN", HyroxVariant.SECOND_HALF, RaceMode.SINGLES, Gender.MEN)
+
+        val after = database.exerciseEntryDao().getBySession(session.id)
+        assertTrue(after.size > first.size, "the second variant appended")
+        assertTrue(first.all { old -> after.any { it.id == old.id } }, "the first half survived")
+        assertEquals(
+            List(after.size) { it },
+            after.map { it.orderIndex },
+            "order stays contiguous across the two adds",
+        )
+    }
+
     @Test
     fun instantiateTemplate_deepCopiesTargetsAndLeavesActualsNull() = runTest {
         val repo = repo(emptyExerciseAssetReader)

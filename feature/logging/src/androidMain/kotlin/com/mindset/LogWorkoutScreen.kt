@@ -1,5 +1,6 @@
 package com.mindset
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,6 +31,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -52,30 +55,17 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.components.GlassTextField
 import com.mindset.components.PrimaryButton
-import com.mindset.components.StepperField
 import com.mindset.domain.LoggedItemUi
 import com.mindset.domain.Units
-import com.mindset.domain.WeightUnit
-import com.mindset.domain.digitsToSeconds
-import com.mindset.domain.secondsToDigits
+import com.mindset.helpers.UIHelper
 import com.mindset.icons.Add
-import com.mindset.icons.Bolt
-import com.mindset.icons.Burpee
 import com.mindset.icons.Check
 import com.mindset.icons.Close
 import com.mindset.icons.Delete
 import com.mindset.icons.Dumbbell
 import com.mindset.icons.Info
-import com.mindset.icons.LowerBody
-import com.mindset.icons.Rowing
-import com.mindset.icons.Run
-import com.mindset.icons.SkiErg
-import com.mindset.icons.SledPull
-import com.mindset.icons.WallBall
-import com.mindset.model.CaptureFields
 import com.mindset.model.HyroxVariant
 import com.mindset.model.SessionType
-import com.mindset.model.SetEntry
 import com.mindset.presentation.LogWorkoutViewModel
 import com.mindset.presentation.StationDraft
 import com.mindset.presentation.StationOption
@@ -99,6 +89,13 @@ fun LogWorkoutScreen(
     val standards by viewModel.stationStandards.collectAsStateWithLifecycle()
     val drafts by viewModel.drafts.collectAsStateWithLifecycle()
     var showAddSheet by remember { mutableStateOf(false) }
+    // Non-null while a Quick-add pick waits on the replace confirmation.
+    var pendingVariant by remember { mutableStateOf<HyroxVariant?>(null) }
+
+    // Leaving without completing has to clean up after itself — the quick-start FAB persisted the
+    // session row before this screen opened. Both exits (the X and system back) share one path.
+    val onClose = { viewModel.close(onBack) }
+    BackHandler(onBack = onClose)
 
     MindSetTheme {
         val colors = MaterialTheme.colorScheme
@@ -131,7 +128,7 @@ fun LogWorkoutScreen(
                         startedAtMillis = state.startedAtMillis,
                         notes = state.notes,
                         sessionId = sessionId,
-                        onBack = onBack,
+                        onBack = onClose,
                         onNotesChange = viewModel::onNotesChange,
                     )
                 }
@@ -139,7 +136,19 @@ fun LogWorkoutScreen(
                 item(key = "add") { AddCta(onClick = { showAddSheet = true }) }
 
                 if (stations.isNotEmpty()) {
-                    item(key = "quickAdd") { RaceQuickAdd(onPick = viewModel::addVariant) }
+                    item(key = "quickAdd") {
+                        // Quick-add seeds a whole race, so it replaces rather than appends — confirm
+                        // first whenever that would discard something already logged.
+                        RaceQuickAdd(
+                            onPick = { variant ->
+                                if (state.sections.any { it.items.isNotEmpty() }) {
+                                    pendingVariant = variant
+                                } else {
+                                    viewModel.addVariant(variant)
+                                }
+                            },
+                        )
+                    }
                 }
 
                 items(
@@ -187,7 +196,38 @@ fun LogWorkoutScreen(
                 )
             }
         }
+
+        pendingVariant?.let { variant ->
+            ReplaceRaceDialog(
+                variant = variant,
+                loggedCount = state.sections.sumOf { it.items.size },
+                onConfirm = {
+                    viewModel.addVariant(variant, replaceExisting = true)
+                    pendingVariant = null
+                },
+                onDismiss = { pendingVariant = null },
+            )
+        }
     }
+}
+
+/** Confirms that a Quick-add pick may clear what the session already holds. */
+@Composable
+private fun ReplaceRaceDialog(variant: HyroxVariant, loggedCount: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Replace current log?") },
+        text = {
+            Text(
+                "Quick-adding ${variant.label} clears the $loggedCount " +
+                    "${if (loggedCount == 1) "entry" else "entries"} already in this session.",
+            )
+        },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Replace") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Keep") } },
+        containerColor = colors.surfaceContainerHigh,
+    )
 }
 
 // ── Header ────────────────────────────────────────────────────────────────────────────────────
@@ -364,9 +404,6 @@ private fun StationCard(
     val shape = MaterialTheme.shapes.medium
     val set = item.sets.firstOrNull()
 
-    // Which fields the station shows: TIME always; + REPS (wall balls) or LOAD (loaded); + DIST if it
-    // has one. Pure view decision — the edit state itself is owned by the ViewModel (see [StationDraft]),
-    // so it survives scroll and is flushed on Complete; ✓ commits this one card now.
     val second: SecondField = when {
         set?.targetReps != null -> SecondField.REPS
         set?.targetLoadKg != null -> SecondField.LOAD
@@ -380,13 +417,12 @@ private fun StationCard(
             .border(1.dp, GlassBorder, shape).padding(MaterialTheme.spacing.md),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
     ) {
-        // Header: icon + name + STATION n + ✓ confirm + ✕ remove.
         Row(
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                stationIcon(item.segmentKey),
+                UIHelper.stationIcon(item.segmentKey),
                 contentDescription = null,
                 tint = colors.primary,
                 modifier = Modifier.size(20.dp),
@@ -413,13 +449,12 @@ private fun StationCard(
         }
         HorizontalDivider(color = GlassBorder)
 
-        // Metric fields, equally divided.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
         ) {
             MetricField(
-                "Time",
+                "Time (mins)",
                 draft.timeDigits,
                 onTime,
                 placeholder = "0:00",
@@ -462,12 +497,13 @@ private fun StationCard(
 
 private enum class SecondField { REPS, LOAD, NONE }
 
-/** Smaller confirm circle (station header). Red once the effort is logged. */
 @Composable
 private fun ConfirmChip(logged: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Box(
-        Modifier.size(24.dp).clip(CircleShape)
+        Modifier
+            .size(24.dp)
+            .clip(CircleShape)
             .background(if (logged) colors.primary else colors.surfaceContainerHigh)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -486,7 +522,10 @@ private fun ConfirmChip(logged: Boolean, onClick: () -> Unit) {
 private fun DeleteButton(onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Box(
-        Modifier.size(24.dp).clip(CircleShape).clickable(onClick = onClick),
+        Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -496,20 +535,6 @@ private fun DeleteButton(onClick: () -> Unit) {
             modifier = Modifier.size(16.dp),
         )
     }
-}
-
-/** Per-station glyph (SledPush/Farmers/Sandbag have no bespoke icon → nearest sensible fallback). */
-private fun stationIcon(segmentKey: String?): androidx.compose.ui.graphics.vector.ImageVector = when {
-    segmentKey == null -> MindSetIcons.Bolt
-    "run" in segmentKey -> MindSetIcons.Run
-    "ski" in segmentKey -> MindSetIcons.SkiErg
-    "sled" in segmentKey -> MindSetIcons.SledPull
-    "burpee" in segmentKey -> MindSetIcons.Burpee
-    "rowing" in segmentKey -> MindSetIcons.Rowing
-    "farmers" in segmentKey -> MindSetIcons.Dumbbell
-    "sandbag" in segmentKey || "lunge" in segmentKey -> MindSetIcons.LowerBody
-    "wall-ball" in segmentKey -> MindSetIcons.WallBall
-    else -> MindSetIcons.Bolt
 }
 
 /** The reference "standard" as its own bordered, primary-tinted view with an info glyph. */
@@ -540,254 +565,6 @@ private fun StandardView(standard: String) {
 }
 
 @Composable
-private fun EsBadge() {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        Modifier.clip(CircleShape).background(colors.surfaceContainerHighest)
-            .padding(horizontal = MaterialTheme.spacing.xs, vertical = MaterialTheme.spacing.xs),
-    ) {
-        Text("ES", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
-    }
-}
-
-// ── Set rows (metric-aware, ghost target → actual) ──────────────────────────────────────────────
-
-@Composable
-private fun SetRow(capture: CaptureFields, set: SetEntry, showSetLabel: Boolean, unit: WeightUnit, onUpdate: (SetEntry) -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val logged = isLogged(capture, set)
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
-    ) {
-        if (showSetLabel) {
-            Text(
-                "SET ${set.setNumber}",
-                style = MaterialTheme.typography.labelMedium,
-                color = colors.onSurfaceVariant,
-                modifier = Modifier.width(44.dp),
-            )
-        }
-        when (capture) {
-            CaptureFields.WeightReps -> {
-                var load by remember(set.id) {
-                    mutableStateOf(
-                        kgPlain(
-                            set.loadKg ?: set.targetLoadKg,
-                            unit,
-                        ),
-                    )
-                }
-                var reps by remember(set.id) { mutableStateOf(intText(set.reps ?: set.targetReps)) }
-                StepperField(
-                    load,
-                    { load = it },
-                    { load = stepText(load, it) },
-                    Modifier.weight(1f),
-                    caption = "Load (${Units.label(unit)})",
-                )
-                StepperField(
-                    reps,
-                    { reps = it },
-                    { reps = stepText(reps, it) },
-                    Modifier.weight(1f),
-                    caption = "Reps",
-                )
-                ConfirmButton(logged) {
-                    reps.toIntOrNull()?.let { r ->
-                        onUpdate(
-                            set.copy(
-                                reps = r,
-                                loadKg = load.toDoubleOrNull()?.let { Units.toKg(it, unit) },
-                            ),
-                        )
-                    }
-                }
-            }
-
-            CaptureFields.RepsOnly -> {
-                var reps by remember(set.id) { mutableStateOf(intText(set.reps ?: set.targetReps)) }
-                StepperField(
-                    reps,
-                    { reps = it },
-                    { reps = stepText(reps, it) },
-                    Modifier.weight(1f),
-                    caption = "Reps",
-                )
-                ConfirmButton(logged) { reps.toIntOrNull()?.let { onUpdate(set.copy(reps = it)) } }
-            }
-
-            CaptureFields.Duration -> {
-                var digits by remember(set.id) {
-                    mutableStateOf(
-                        secondsToDigits(
-                            set.timeSec ?: set.targetTimeSec,
-                        ),
-                    )
-                }
-                MetricField(
-                    "Time",
-                    digits,
-                    { digits = it.takeLast(6) },
-                    placeholder = "0:00",
-                    visualTransformation = ClockVisualTransformation,
-                    modifier = Modifier.weight(1f),
-                )
-                ConfirmButton(logged) {
-                    digitsToSeconds(digits).takeIf { it > 0 }
-                        ?.let { onUpdate(set.copy(timeSec = it)) }
-                }
-            }
-
-            CaptureFields.DistanceTime -> {
-                var digits by remember(set.id) {
-                    mutableStateOf(
-                        secondsToDigits(
-                            set.timeSec ?: set.targetTimeSec,
-                        ),
-                    )
-                }
-                var dist by remember(set.id) {
-                    mutableStateOf(
-                        intText(
-                            set.distanceM ?: set.targetDistanceM,
-                        ),
-                    )
-                }
-                MetricField(
-                    "Time",
-                    digits,
-                    { digits = it.takeLast(6) },
-                    placeholder = "0:00",
-                    visualTransformation = ClockVisualTransformation,
-                    modifier = Modifier.weight(1f),
-                )
-                MetricField(
-                    "Dist (m)",
-                    dist,
-                    { dist = it },
-                    placeholder = "0",
-                    modifier = Modifier.weight(1f),
-                )
-                ConfirmButton(logged) {
-                    val secs = digitsToSeconds(digits)
-                    if (secs > 0 || dist.toIntOrNull() != null) {
-                        onUpdate(
-                            set.copy(
-                                timeSec = secs.takeIf { it > 0 },
-                                distanceM = dist.toIntOrNull(),
-                            ),
-                        )
-                    }
-                }
-            }
-
-            CaptureFields.RepsTime -> {
-                var digits by remember(set.id) {
-                    mutableStateOf(
-                        secondsToDigits(
-                            set.timeSec ?: set.targetTimeSec,
-                        ),
-                    )
-                }
-                var reps by remember(set.id) { mutableStateOf(intText(set.reps ?: set.targetReps)) }
-                MetricField(
-                    "Time",
-                    digits,
-                    { digits = it.takeLast(6) },
-                    placeholder = "0:00",
-                    visualTransformation = ClockVisualTransformation,
-                    modifier = Modifier.weight(1f),
-                )
-                StepperField(
-                    reps,
-                    { reps = it },
-                    { reps = stepText(reps, it) },
-                    Modifier.weight(1f),
-                    caption = "Reps",
-                )
-                ConfirmButton(logged) {
-                    val secs = digitsToSeconds(digits)
-                    if (secs > 0 || reps.toIntOrNull() != null) {
-                        onUpdate(
-                            set.copy(
-                                timeSec = secs.takeIf { it > 0 },
-                                reps = reps.toIntOrNull(),
-                            ),
-                        )
-                    }
-                }
-            }
-
-            CaptureFields.Calories -> {
-                var cal by remember(set.id) {
-                    mutableStateOf(
-                        intText(
-                            set.calories ?: set.targetCalories,
-                        ),
-                    )
-                }
-                MetricField(
-                    "Cal",
-                    cal,
-                    { cal = it },
-                    placeholder = "0",
-                    modifier = Modifier.weight(1f),
-                )
-                ConfirmButton(logged) {
-                    cal.toIntOrNull()?.let { onUpdate(set.copy(calories = it)) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConfirmButton(logged: Boolean, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier.size(48.dp).clip(CircleShape)
-            .background(if (logged) colors.primary else colors.surfaceContainerHigh)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            MindSetIcons.Check,
-            contentDescription = "Confirm",
-            tint = if (logged) colors.onPrimary else colors.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
-        )
-    }
-}
-
-@Composable
-private fun AddSetButton(onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
-            .padding(vertical = MaterialTheme.spacing.sm),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            MindSetIcons.Add,
-            contentDescription = null,
-            tint = colors.primary,
-            modifier = Modifier.size(14.dp),
-        )
-        Spacer(Modifier.width(MaterialTheme.spacing.sm))
-        Text(
-            "Add Set".uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = colors.primary,
-        )
-    }
-}
-
-// ── Glass metric input (label top-left, value with dimmed placeholder) ───────────────────────────
-
-@Composable
 private fun MetricField(
     label: String,
     value: String,
@@ -799,7 +576,10 @@ private fun MetricField(
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
     Column(
-        modifier.clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape)
+        modifier
+            .clip(shape)
+            .background(GlassFill)
+            .border(1.dp, GlassBorder, shape)
             .padding(horizontal = MaterialTheme.spacing.smd, vertical = MaterialTheme.spacing.sm),
     ) {
         Text(
@@ -883,7 +663,7 @@ private fun AddToSessionSheet(stations: List<StationOption>, onBrowseExercises: 
                 SheetRow(
                     title = station.name,
                     subtitle = station.standard,
-                    leading = stationIcon(station.segmentKey),
+                    leading = UIHelper.stationIcon(station.segmentKey),
                     onClick = { onPickStation(station.segmentKey) },
                 )
             }
@@ -971,13 +751,21 @@ private fun RaceQuickAdd(onPick: (HyroxVariant) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
         ) {
-            VariantChip("Full", Modifier.weight(1f)) { onPick(HyroxVariant.FULL) }
-            VariantChip("1st Half", Modifier.weight(1f)) { onPick(HyroxVariant.FIRST_HALF) }
-            VariantChip("2nd Half", Modifier.weight(1f)) { onPick(HyroxVariant.SECOND_HALF) }
-            VariantChip("Halved", Modifier.weight(1f)) { onPick(HyroxVariant.HALVED) }
+            HyroxVariant.entries.forEach { variant ->
+                VariantChip(variant.label, Modifier.weight(1f)) { onPick(variant) }
+            }
         }
     }
 }
+
+/** Chip caption for a variant — also the noun the replace dialog names. */
+private val HyroxVariant.label: String
+    get() = when (this) {
+        HyroxVariant.FULL -> "Full"
+        HyroxVariant.FIRST_HALF -> "1st Half"
+        HyroxVariant.SECOND_HALF -> "2nd Half"
+        HyroxVariant.HALVED -> "Halved"
+    }
 
 @Composable
 private fun VariantChip(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
@@ -1009,29 +797,6 @@ private fun CompleteCta(onClick: () -> Unit, modifier: Modifier = Modifier) {
             .navigationBarsPadding()
             .padding(MaterialTheme.spacing.md),
     )
-}
-
-// ── Metric helpers ──────────────────────────────────────────────────────────────────────────────
-
-/** Whether a set already holds a logged actual (vs. a target-only ghost). */
-private fun isLogged(capture: CaptureFields, s: SetEntry): Boolean = when (capture) {
-    CaptureFields.WeightReps -> s.reps != null || s.loadKg != null
-    CaptureFields.RepsOnly -> s.reps != null
-    CaptureFields.Duration -> s.timeSec != null
-    CaptureFields.DistanceTime -> s.timeSec != null || s.distanceM != null
-    CaptureFields.RepsTime -> s.timeSec != null || s.reps != null
-    CaptureFields.Calories -> s.calories != null
-}
-
-private fun intText(v: Int?): String = v?.toString().orEmpty()
-
-/** Nudge a numeric text value by [delta], clamped at 0. Empty → treated as 0. */
-private fun stepText(current: String, delta: Int): String = ((current.toIntOrNull() ?: 0) + delta).coerceAtLeast(0).toString()
-
-private fun kgPlain(kg: Double?, unit: WeightUnit): String {
-    if (kg == null) return ""
-    val v = Units.toDisplay(kg, unit)
-    return if (v % 1.0 == 0.0) v.toInt().toString() else ((v * 10).toInt() / 10.0).toString()
 }
 
 private fun digitsToClock(digits: String): String {

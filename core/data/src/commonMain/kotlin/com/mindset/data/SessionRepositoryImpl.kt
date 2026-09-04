@@ -312,14 +312,25 @@ class SessionRepositoryImpl(
         }
     }
 
-    override suspend fun addHyroxVariant(sessionId: String, divisionKey: String, variant: HyroxVariant, raceMode: RaceMode, gender: Gender) {
+    override suspend fun addHyroxVariant(
+        sessionId: String,
+        divisionKey: String,
+        variant: HyroxVariant,
+        raceMode: RaceMode,
+        gender: Gender,
+        replaceExisting: Boolean,
+    ) {
         val segments = hyroxFormat(divisionKey, variant, raceMode, gender)
             .filter { it.segmentKey != null }
         if (segments.isEmpty()) return
 
         val now = now()
         val blockId = implicitBlockId(sessionId)
-        val base = entries.countForBlock(blockId) // read once → contiguous order, no read-modify-write race
+        // Replacing clears the whole session (every block, not just the implicit one), so the new race
+        // starts at order 0; appending continues after what's there. Read once either way → contiguous
+        // order, no read-modify-write race.
+        val stale = if (replaceExisting) entries.getBySession(sessionId) else emptyList()
+        val base = if (replaceExisting) 0 else entries.countForBlock(blockId)
 
         val rows = segments.mapIndexed { i, seg ->
             val entryId = uuid.newId()
@@ -347,6 +358,10 @@ class SessionRepositoryImpl(
 
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
+                stale.forEach { old ->
+                    setEntries.softDeleteForEntry(old.id, now)
+                    entries.softDelete(old.id, now)
+                }
                 blocks.insert(implicitBlock(sessionId, now))
                 rows.forEach { (entry, set) ->
                     entries.insert(entry)
@@ -750,6 +765,25 @@ class SessionRepositoryImpl(
                 enqueueOutbox(sessionId, now)
             }
         }
+    }
+
+    override suspend fun discardSessionIfEmpty(sessionId: String): Boolean {
+        val current = sessions.getById(sessionId) ?: return false
+        // Idempotent + narrow: a live, real session with nothing logged. Notes are deliberately NOT
+        // content — a note against no entries is still not a training session — so they don't stay it.
+        if (current.deletedAt != null || current.isTemplate) return false
+        if (entries.getBySession(sessionId).isNotEmpty()) return false
+
+        val now = now()
+        database.useWriterConnection { connection ->
+            connection.immediateTransaction {
+                sessions.upsert(
+                    current.copy(deletedAt = now, updatedAt = now, syncStatus = SyncStatus.PENDING),
+                )
+                enqueueOutbox(sessionId, now)
+            }
+        }
+        return true
     }
 
     /** Marks a session dirty (new updatedAt + PENDING) and refreshes its single outbox row. */

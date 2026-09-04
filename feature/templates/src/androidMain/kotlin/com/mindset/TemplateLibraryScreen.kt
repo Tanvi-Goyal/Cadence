@@ -8,6 +8,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,66 +18,48 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.mindset.icons.Add
 import com.mindset.icons.ArrowBack
 import com.mindset.icons.Barbell
-import com.mindset.icons.ChevronRight
 import com.mindset.icons.Dumbbell
 import com.mindset.icons.EngineRun
-import com.mindset.icons.Grid
 import com.mindset.icons.LongRun
 import com.mindset.icons.LowerBody
-import com.mindset.icons.Search
 import com.mindset.icons.Stretch
 import com.mindset.icons.Timer
-import com.mindset.icons.Tune
 import com.mindset.presentation.FeaturedTemplate
-import com.mindset.presentation.GridTemplate
 import com.mindset.presentation.LibraryTemplate
-import com.mindset.presentation.RecentTemplate
 import com.mindset.presentation.TemplateCategory
 import com.mindset.presentation.TemplateGlyph
 import com.mindset.presentation.TemplateLibraryUiState
 import com.mindset.presentation.TemplateLibraryViewModel
 import com.mindset.ui.R
 import org.koin.compose.viewmodel.koinViewModel
-
-/*
- * Template Library (Figma 33:1068) — the redesigned Templates surface. A single scrolling library of
- * curated + self-programmed templates grouped into four category sections, with a search field, a
- * category-chip filter, and a "Create Custom" action. Reached as a push from Home (back arrow, no
- * bottom nav — the mock's bottom bar is a design-file artifact for a pushed screen).
- *
- * The content is design-accurate sample data from a StateFlow (see [TemplateLibraryViewModel]); the
- * layout is stateless ([TemplateLibraryContent]) so it previews and tests without Koin.
- */
-
-/** Edge gutter — 20dp like Home (not the 16dp grid), matching the Figma frame's px-20 margins. */
-private val Gutter = 20.dp
 
 @Composable
 fun TemplateLibraryScreen(
@@ -105,96 +88,107 @@ private fun TemplateLibraryContent(
     onOpenTemplate: (String) -> Unit,
     onCategorySelected: (TemplateCategory) -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
     Scaffold(
-        containerColor = colors.background,
-        floatingActionButton = { CreateCustomFab(onClick = onNewTemplate) },
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = { TemplateLibraryTopBar(onBack = onBack) },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding(),
-                // Clear the overlaid FAB so the last section is fully scrollable into view.
-                bottom = padding.calculateBottomPadding() + 88.dp,
-            ),
-        ) {
-            item(key = "top-bar", contentType = "top-bar") { TopBar(onBack = onBack) }
-            item(key = "search", contentType = "search") { SearchField(Modifier.padding(top = 8.dp)) }
-            item(key = "chips", contentType = "chips") {
-                CategoryChips(
-                    selected = state.selectedCategory,
-                    onSelected = onCategorySelected,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
+        TemplateLibraryList(
+            state = state,
+            onOpenTemplate = onOpenTemplate,
+            onCategorySelected = onCategorySelected,
+            contentPadding = padding,
+        )
+    }
+}
 
-            val featured = state.featured
-            if (state.showClass && featured != null) {
-                categorySection(
-                    key = "class",
-                    title = "Class Templates",
-                    action = "See all",
-                ) {
-                    FeaturedCard(featured, onClick = { onOpenTemplate(featured.id) })
-                    Spacer(Modifier.height(12.dp))
-                    CardStack(state.classTemplates) { t ->
-                        ClassTemplateCard(t, onClick = { onOpenTemplate(t.id) })
-                    }
+@Composable
+private fun TemplateLibraryList(
+    state: TemplateLibraryUiState,
+    onOpenTemplate: (String) -> Unit,
+    onCategorySelected: (TemplateCategory) -> Unit,
+    contentPadding: PaddingValues,
+) {
+    val spacing = MaterialTheme.spacing
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = spacing.md,
+            end = spacing.md,
+            top = contentPadding.calculateTopPadding() + spacing.sm,
+            bottom = contentPadding.calculateBottomPadding() + spacing.md,
+        ),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
+    ) {
+        item(key = "chips", contentType = "chips") {
+            CategoryChips(selected = state.selectedCategory, onSelected = onCategorySelected)
+        }
+
+        val featured = state.featured
+        if (state.showClass && featured != null) {
+            categorySection(key = "class", title = "Class Templates") {
+                FeaturedCard(featured, onClick = { onOpenTemplate(featured.id) })
+                state.classTemplates.forEach { template ->
+                    ClassTemplateCard(template, onClick = { onOpenTemplate(template.id) })
                 }
             }
+        }
 
-            if (state.showStrength) {
-                categorySection(
-                    key = "strength",
-                    title = "Strength Blocks",
-                    action = "Manage",
-                ) {
-                    CardStack(state.strengthBlocks) { t ->
-                        BlockCard(t, onClick = { onOpenTemplate(t.id) })
-                    }
+        if (state.showStrength) {
+            categorySection(key = "strength", title = "Strength Blocks") {
+                state.strengthBlocks.forEach { template ->
+                    BlockCard(template, onClick = { onOpenTemplate(template.id) })
                 }
             }
+        }
 
-            if (state.showEndurance) {
-                categorySection(
-                    key = "endurance",
-                    title = "Endurance",
-                ) {
-                    CardStack(state.endurance) { t ->
-                        EnduranceCard(t, onClick = { onOpenTemplate(t.id) })
-                    }
-                }
-            }
-
-            if (state.showSelfProgrammed) {
-                categorySection(
-                    key = "self",
-                    title = "Self-Programmed",
-                    action = "Manage",
-                ) {
-                    state.recent?.let { LargeFeatureCard(it, onClick = { onOpenTemplate(it.id) }) }
-                    if (state.recent != null && state.grid != null) Spacer(Modifier.height(12.dp))
-                    state.grid?.let { GridCard(it, onClick = { onOpenTemplate(it.id) }) }
+        if (state.showEndurance) {
+            categorySection(key = "endurance", title = "Endurance") {
+                state.endurance.forEach { template ->
+                    EnduranceCard(template, onClick = { onOpenTemplate(template.id) })
                 }
             }
         }
     }
 }
 
-// ── Section scaffold ────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun TemplateLibraryTopBar(onBack: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    TopAppBar(
+        title = { Text("Template Library") },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    MindSetIcons.ArrowBack,
+                    contentDescription = "Back",
+                    tint = colors.onSurface,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = colors.surface,
+            scrolledContainerColor = colors.surface,
+            titleContentColor = colors.onSurface,
+        ),
+    )
+}
 
-/** A LazyList item holding one titled category section (header + 40dp top gap + gutter-padded body). */
-private fun androidx.compose.foundation.lazy.LazyListScope.categorySection(
+private fun LazyListScope.categorySection(
     key: String,
     title: String,
     action: String? = null,
     body: @Composable () -> Unit,
 ) {
     item(key = "section-$key", contentType = "section") {
-        Column(Modifier.fillMaxWidth().padding(top = 40.dp)) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+        ) {
             SectionHeader(title = title, action = action)
-            Spacer(Modifier.height(16.dp))
-            Column(Modifier.padding(horizontal = Gutter)) { body() }
+            body()
         }
     }
 }
@@ -203,103 +197,34 @@ private fun androidx.compose.foundation.lazy.LazyListScope.categorySection(
 private fun SectionHeader(title: String, action: String?) {
     val colors = MaterialTheme.colorScheme
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Gutter),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom,
     ) {
         Text(
             text = title.uppercase(),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 0.7.sp,
+            style = MaterialTheme.typography.labelMedium,
             color = colors.onSurfaceVariant,
         )
         if (action != null) {
             Text(
                 text = action,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.labelMedium,
                 color = colors.primary,
             )
         }
     }
 }
 
-/** Stack a list of cards with the standard 12dp inter-card gap. */
 @Composable
-private fun <T> CardStack(items: List<T>, card: @Composable (T) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items.forEach { card(it) }
-    }
-}
-
-// ── Top bar / search / chips ──────────────────────────────────────────────────────────────────
-
-@Composable
-private fun TopBar(onBack: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+private fun CategoryChips(
+    selected: TemplateCategory,
+    onSelected: (TemplateCategory) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton48(icon = MindSetIcons.ArrowBack, tint = colors.onSurface, size = 16.dp, onClick = onBack)
-            Spacer(Modifier.size(4.dp))
-            Text(
-                text = "Template Library",
-                style = MaterialTheme.typography.titleLarge,
-                color = colors.onSurface,
-            )
-        }
-        IconButton48(icon = MindSetIcons.Tune, tint = colors.onSurface, size = 18.dp, onClick = {})
-    }
-}
-
-/** 48dp circular touch target with a centered glyph (top-app-bar buttons). */
-@Composable
-private fun IconButton48(icon: ImageVector, tint: Color, size: Dp, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(size))
-    }
-}
-
-@Composable
-private fun SearchField(modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = Gutter)
-            .height(56.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.surfaceContainerHigh)
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Icon(
-            MindSetIcons.Search,
-            contentDescription = null,
-            tint = colors.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            text = "Search name, muscle, equipment",
-            style = MaterialTheme.typography.bodyLarge,
-            color = colors.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun CategoryChips(selected: TemplateCategory, onSelected: (TemplateCategory) -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()).padding(horizontal = Gutter),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
     ) {
         TemplateCategory.entries.forEach { category ->
             CategoryChip(
@@ -321,21 +246,19 @@ private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) 
         base.background(colors.surfaceContainer).border(1.dp, colors.outlineVariant, CircleShape)
     }
     Box(
-        modifier = styled.clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 9.dp),
+        modifier = styled
+            .clickable(onClick = onClick)
+            .padding(horizontal = MaterialTheme.spacing.md, vertical = MaterialTheme.spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.labelSmall,
             color = if (selected) colors.onPrimaryContainer else colors.onSurface,
         )
     }
 }
 
-// ── Cards ───────────────────────────────────────────────────────────────────────────────────────
-
-/** Shared shell for the bordered detail cards: rounded, low tonal surface, hairline outline. */
 @Composable
 private fun cardShell(onClick: () -> Unit): Modifier {
     val colors = MaterialTheme.colorScheme
@@ -345,44 +268,25 @@ private fun cardShell(onClick: () -> Unit): Modifier {
         .background(colors.surfaceContainerLow)
         .border(1.dp, colors.outlineVariant, MaterialTheme.shapes.medium)
         .clickable(onClick = onClick)
-        .padding(17.dp)
+        .padding(MaterialTheme.spacing.md)
 }
 
 @Composable
 private fun FeaturedCard(featured: FeaturedTemplate, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(224.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .clickable(onClick = onClick),
+    PhotoCard(
+        painter = R.drawable.template_full_hyrox,
+        height = 224.dp,
+        onClick = onClick,
     ) {
-        Image(
-            painter = painterResource(R.drawable.template_full_hyrox),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-        Box(Modifier.fillMaxSize().background(scrimBrush()))
-        Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp)) {
-            FlagBadge(featured.flag)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = featured.title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = colors.onSurface,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = featured.subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                featured.tags.forEach { FloatingTag(it) }
-            }
+        FlagBadge(featured.flag)
+        Spacer(Modifier.height(MaterialTheme.spacing.sm))
+        Text(featured.title, style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
+        Spacer(Modifier.height(MaterialTheme.spacing.xs))
+        Text(featured.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        Spacer(Modifier.height(MaterialTheme.spacing.sm))
+        Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
+            featured.tags.forEach { FloatingTag(it) }
         }
     }
 }
@@ -390,21 +294,22 @@ private fun FeaturedCard(featured: FeaturedTemplate, onClick: () -> Unit) {
 @Composable
 private fun ClassTemplateCard(template: LibraryTemplate, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Column(cardShell(onClick)) {
+    Column(
+        cardShell(onClick),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(bottom = MaterialTheme.spacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top,
         ) {
             Medallion(template.glyph, size = 40.dp, bgAlpha = 0.2f)
             TagBadge(template.badge.name)
         }
-        Spacer(Modifier.height(12.dp))
-        Text(template.title, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-        Spacer(Modifier.height(4.dp))
+        Text(template.title, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
         Text(template.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         if (template.pill != null) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(MaterialTheme.spacing.smd))
             PillBadge(template.pill)
         }
     }
@@ -413,21 +318,22 @@ private fun ClassTemplateCard(template: LibraryTemplate, onClick: () -> Unit) {
 @Composable
 private fun BlockCard(template: LibraryTemplate, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    Column(cardShell(onClick), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        cardShell(onClick),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = MaterialTheme.spacing.xs),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BareGlyph(template.glyph)
+            Text(template.title, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
             TagBadge(template.badge.name)
         }
-        Text(
-            template.title,
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.onSurface,
-            modifier = Modifier.padding(top = 8.dp),
-        )
+        Spacer(Modifier.height(MaterialTheme.spacing.xs))
         Text(template.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
     }
 }
@@ -437,115 +343,47 @@ private fun EnduranceCard(template: LibraryTemplate, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = cardShell(onClick),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Medallion(template.glyph, size = 48.dp, bgAlpha = 0.1f)
         Column(Modifier.weight(1f)) {
-            Text(template.title, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
+            Text(template.title, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
             Text(template.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
         }
         TagBadge(template.badge.name)
     }
 }
 
+/** Photo-backed hero card: cropped image, bottom scrim, bottom-anchored [content]. */
 @Composable
-private fun LargeFeatureCard(recent: RecentTemplate, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
+private fun PhotoCard(
+    painter: Int,
+    height: Dp,
+    onClick: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(192.dp)
+            .height(height)
             .clip(MaterialTheme.shapes.medium)
             .clickable(onClick = onClick),
     ) {
         Image(
-            painter = painterResource(R.drawable.template_heavy_squat),
+            painter = painterResource(painter),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
         Box(Modifier.fillMaxSize().background(scrimBrush()))
-        Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(colors.primaryContainer))
-                Text(
-                    text = "MOST RECENT",
-                    style = MaterialTheme.typography.labelSmall,
-                    letterSpacing = 0.5.sp,
-                    color = colors.primaryContainer,
-                )
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(recent.title, style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
-            Spacer(Modifier.height(4.dp))
-            Text(recent.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun GridCard(grid: GridTemplate, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.surfaceContainerHigh)
-            .border(1.dp, colors.outlineVariant, MaterialTheme.shapes.medium)
-            .clickable(onClick = onClick)
-            .padding(17.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                MindSetIcons.Grid,
-                contentDescription = null,
-                tint = colors.onSurfaceVariant,
-                modifier = Modifier.size(20.dp, 16.dp),
-            )
-            Icon(
-                MindSetIcons.ChevronRight,
-                contentDescription = null,
-                tint = colors.onSurfaceVariant,
-                modifier = Modifier.size(7.4.dp, 12.dp),
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(grid.title, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
-        Spacer(Modifier.height(16.dp))
-        Text(
-            grid.meta.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 0.5.sp,
-            color = colors.onSurfaceVariant,
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(MaterialTheme.spacing.md),
+            content = content,
         )
-    }
-}
-
-@Composable
-private fun CreateCustomFab(onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Row(
-        modifier = Modifier
-            .shadow(6.dp, MaterialTheme.shapes.medium)
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.primaryContainer)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            MindSetIcons.Add,
-            contentDescription = null,
-            tint = colors.onPrimaryContainer,
-            modifier = Modifier.size(24.dp),
-        )
-        Text("Create Custom", style = MaterialTheme.typography.titleMedium, color = colors.onPrimaryContainer)
     }
 }
 
@@ -562,82 +400,69 @@ private fun scrimBrush(): Brush {
     )
 }
 
-/** Rectangular type tag (SIM / ELITE / STRENGTH / RUN / FLOW) on the surface-highest chip. */
+/**
+ * One implementation behind the four card tags. They differ only in shape, colours and how tight the
+ * vertical padding is, so the named wrappers below stay one-liners and can't drift apart.
+ */
 @Composable
-private fun TagBadge(text: String) {
-    val colors = MaterialTheme.colorScheme
+private fun Badge(text: String, shape: Shape, container: Color, contentColor: Color, vertical: Dp) {
     Box(
         modifier = Modifier
-            .clip(MaterialTheme.shapes.extraSmall)
-            .background(colors.surfaceContainerHighest)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .clip(shape)
+            .background(container)
+            .padding(horizontal = MaterialTheme.spacing.sm, vertical = vertical),
     ) {
         Text(
             text.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 0.5.sp,
-            color = colors.onSurfaceVariant,
+            color = contentColor,
         )
     }
 }
+
+/** The rectangular tags sit tighter than [Spacing.xs]; 2dp is deliberate and has no token. */
+private val TagVerticalPadding = 2.dp
+
+/** Rectangular type tag (SIM / ELITE / STRENGTH / RUN / FLOW) on the surface-highest chip. */
+@Composable
+private fun TagBadge(text: String) = Badge(
+    text = text,
+    shape = MaterialTheme.shapes.extraSmall,
+    container = MaterialTheme.colorScheme.surfaceContainerHighest,
+    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    vertical = TagVerticalPadding,
+)
 
 /** Pill-shaped tag on the surface-highest chip (class-sim bottom tag). */
 @Composable
-private fun PillBadge(text: String) {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(colors.surfaceContainerHighest)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-    ) {
-        Text(
-            text.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 0.5.sp,
-            color = colors.onSurfaceVariant,
-        )
-    }
-}
+private fun PillBadge(text: String) = Badge(
+    text = text,
+    shape = CircleShape,
+    container = MaterialTheme.colorScheme.surfaceContainerHighest,
+    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    vertical = MaterialTheme.spacing.xs,
+)
 
 /** Accent flag on the featured card ("OFFICIAL SIM"). */
 @Composable
-private fun FlagBadge(text: String) {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .clip(MaterialTheme.shapes.extraSmall)
-            .background(colors.primaryContainer)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-    ) {
-        Text(
-            text.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 0.5.sp,
-            color = colors.onPrimaryContainer,
-        )
-    }
-}
+private fun FlagBadge(text: String) = Badge(
+    text = text,
+    shape = MaterialTheme.shapes.extraSmall,
+    container = MaterialTheme.colorScheme.primaryContainer,
+    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    vertical = TagVerticalPadding,
+)
 
 /** Translucent tag over the featured photo. No live backdrop-blur (a per-frame cost); the 0.8 alpha
  *  surface reads the same at this size. */
 @Composable
-private fun FloatingTag(text: String) {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .background(colors.surfaceContainerHigh.copy(alpha = 0.8f))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-    ) {
-        Text(
-            text.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 0.5.sp,
-            color = FloatingTagText,
-        )
-    }
-}
+private fun FloatingTag(text: String) = Badge(
+    text = text,
+    shape = CircleShape,
+    container = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f),
+    contentColor = FloatingTagText,
+    vertical = MaterialTheme.spacing.xs,
+)
 
 private val FloatingTagText = Color(0xFFCBEF97)
 
