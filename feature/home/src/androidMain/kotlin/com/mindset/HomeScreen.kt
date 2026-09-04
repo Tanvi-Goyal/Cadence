@@ -24,6 +24,7 @@ import com.mindset.components.LocalQuickStart
 import com.mindset.components.MindSetTopBar
 import com.mindset.components.QuickStartFab
 import com.mindset.icons.Grid
+import com.mindset.domain.ActiveWorkout
 import com.mindset.model.BottomNavTab
 import com.mindset.model.Session
 import com.mindset.presentation.HomeUiState
@@ -31,6 +32,7 @@ import com.mindset.presentation.HomeViewModel
 import com.mindset.presentation.Widget
 import com.mindset.presentation.WidgetSlot
 import com.mindset.presentation.WidgetState
+import kotlinx.coroutines.flow.StateFlow
 import org.koin.compose.viewmodel.koinViewModel
 
 
@@ -68,9 +70,14 @@ fun HomeScreen(
 
             HomeContent(
                 state = state,
+                activeWorkout = viewModel.activeWorkout,
                 onOpenDetail = onOpenDetail,
                 onOpenTemplates = onOpenTemplates,
                 onSeeAll = onSeeAll,
+                onExpandWorkout = viewModel::onExpandWorkout,
+                onResetWorkout = viewModel::onResetWorkout,
+                onToggleWorkoutPause = viewModel::onToggleWorkoutPause,
+                onAdvanceWorkout = viewModel::onAdvanceWorkout,
                 contentPadding = padding,
             )
         }
@@ -80,9 +87,14 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     state: HomeUiState,
+    activeWorkout: StateFlow<ActiveWorkout?>,
     onOpenDetail: (String) -> Unit,
     onOpenTemplates: () -> Unit,
     onSeeAll: () -> Unit,
+    onExpandWorkout: () -> Unit,
+    onResetWorkout: () -> Unit,
+    onToggleWorkoutPause: () -> Unit,
+    onAdvanceWorkout: () -> Unit,
     contentPadding: PaddingValues,
 ) {
     val spacing = MaterialTheme.spacing
@@ -99,9 +111,14 @@ private fun HomeContent(
         items(state.widgets, key = { it.type }) { slot ->
             WidgetSlotContent(
                 slot = slot,
+                activeWorkout = activeWorkout,
                 onOpenDetail = onOpenDetail,
                 onOpenTemplates = onOpenTemplates,
                 onSeeAll = onSeeAll,
+                onExpandWorkout = onExpandWorkout,
+                onResetWorkout = onResetWorkout,
+                onToggleWorkoutPause = onToggleWorkoutPause,
+                onAdvanceWorkout = onAdvanceWorkout,
             )
         }
     }
@@ -110,9 +127,14 @@ private fun HomeContent(
 @Composable
 private fun WidgetSlotContent(
     slot: WidgetSlot,
+    activeWorkout: StateFlow<ActiveWorkout?>,
     onOpenDetail: (String) -> Unit,
     onOpenTemplates: () -> Unit,
     onSeeAll: () -> Unit,
+    onExpandWorkout: () -> Unit,
+    onResetWorkout: () -> Unit,
+    onToggleWorkoutPause: () -> Unit,
+    onAdvanceWorkout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (val widgetState = slot.state) {
@@ -130,8 +152,17 @@ private fun WidgetSlotContent(
 
             is Widget.RecentSessionsWidget ->
                 RecentSessionsCard(widget, onOpenDetail, onSeeAll, modifier)
-            // Self-sourcing live-workout card is wired separately (collects its own tick flow).
-            Widget.LiveWorkoutWidget -> Unit
+            // Self-sourcing: the card collects the ticking flow itself, so the ~200 ms tick
+            // invalidates only its clock — never this LazyColumn or the sibling widgets.
+            Widget.LiveWorkoutWidget ->
+                LiveWorkoutSlot(
+                    activeWorkout = activeWorkout,
+                    onExpand = onExpandWorkout,
+                    onReset = onResetWorkout,
+                    onTogglePause = onToggleWorkoutPause,
+                    onNext = onAdvanceWorkout,
+                    modifier = modifier,
+                )
         }
     }
 }

@@ -49,14 +49,18 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.domain.ActiveWorkout
 import com.mindset.domain.ActiveWorkoutController
+import androidx.compose.ui.draw.rotate
 import com.mindset.icons.Barbell
 import com.mindset.icons.Burpee
+import com.mindset.icons.ChevronRight
+import com.mindset.icons.Close
 import com.mindset.icons.Dumbbell
 import com.mindset.icons.EngineRun
 import com.mindset.icons.LowerBody
 import com.mindset.icons.Rowing
 import com.mindset.icons.SkiErg
 import com.mindset.icons.SledPull
+import com.mindset.icons.Timer
 import com.mindset.icons.WallBall
 import com.mindset.model.HyroxStation
 import com.mindset.model.HyroxStationModel
@@ -95,6 +99,60 @@ fun ActiveWorkoutHost(controller: ActiveWorkoutController) {
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             last?.let { HyroxTimerSheet(it, controller) }
+        }
+        // Minimized: a compact pill so a running race is always reachable again. This lives in the
+        // host, not on Home, because the only screen a race is started from (the Hyrox sim detail)
+        // has no bottom nav — without it, minimizing there would strand a running workout with no
+        // route back. The host is a sibling of the NavHost and deliberately cannot read the route,
+        // so it can't (and shouldn't) gate itself per-screen.
+        AnimatedVisibility(
+            visible = workout != null && !expanded,
+            enter = slideInVertically(tween(240)) { it } + fadeIn(tween(240)),
+            exit = slideOutVertically(tween(200)) { it } + fadeOut(tween(200)),
+            modifier = Modifier.align(Alignment.BottomEnd),
+        ) {
+            last?.let { MinimizedPill(it, onClick = controller::expand) }
+        }
+    }
+}
+
+/**
+ * The minimized live-race affordance: tap to reopen the sheet. Reads `totalElapsedMs`, so it
+ * recomposes on each ~200 ms tick — but the host already collects that flow at the same rate, so
+ * this adds one `Text` to an existing tick rather than a new tick source.
+ */
+@Composable
+private fun MinimizedPill(workout: ActiveWorkout, onClick: () -> Unit) {
+    MindSetTheme {
+        val colors = MaterialTheme.colorScheme
+        Row(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(MaterialTheme.spacing.md)
+                .clip(CircleShape)
+                .background(colors.surfaceContainerHigh)
+                .clickable(onClick = onClick)
+                .padding(horizontal = MaterialTheme.spacing.md, vertical = MaterialTheme.spacing.smd),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+        ) {
+            Icon(
+                MindSetIcons.Timer,
+                contentDescription = null,
+                tint = colors.primary,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = formatClock(workout.totalElapsedMs),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface,
+            )
+            Text(
+                text = "Step ${workout.currentIndex + 1}/${workout.totalSteps}",
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant,
+            )
         }
     }
 }
@@ -177,16 +235,30 @@ private fun Header(index: Int, total: Int, finished: Boolean, onMinimize: () -> 
             // Minimize: keeps the workout running and hands off to the Home mini-card (only useful
             // while a workout is live, not after it finishes).
             if (!finished) {
-                HeaderCircleButton(glyph = "▾", onClick = onMinimize)
+                HeaderCircleButton(
+                    icon = MindSetIcons.ChevronRight,
+                    contentDescription = "Minimize",
+                    onClick = onMinimize,
+                    rotateDegrees = 90f, // chevron-right rotated into a chevron-down
+                )
             }
             // Close: ends/clears the live workout (a finished one still stays in History).
-            HeaderCircleButton(glyph = "✕", onClick = onClose)
+            HeaderCircleButton(
+                icon = MindSetIcons.Close,
+                contentDescription = "Close workout",
+                onClick = onClose,
+            )
         }
     }
 }
 
 @Composable
-private fun HeaderCircleButton(glyph: String, onClick: () -> Unit) {
+private fun HeaderCircleButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    rotateDegrees: Float = 0f,
+) {
     val colors = MaterialTheme.colorScheme
     Box(
         Modifier
@@ -196,7 +268,12 @@ private fun HeaderCircleButton(glyph: String, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(glyph, color = colors.onSurfaceVariant, fontWeight = FontWeight.Bold)
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = colors.onSurfaceVariant,
+            modifier = Modifier.size(14.dp).rotate(rotateDegrees),
+        )
     }
 }
 

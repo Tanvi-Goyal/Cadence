@@ -737,6 +737,7 @@ class SessionRepositoryImpl(
                 targetReps = reps,
                 targetLoadKg = standard?.loadKg,
                 loadDisplay = standard?.loadDisplay,
+                stationNumber = stationNumber,
                 segmentKey = seg.id,
             )
         }
@@ -754,6 +755,7 @@ class SessionRepositoryImpl(
                 targetDistanceM = dist,
                 targetLoadKg = standard.loadKg,
                 loadDisplay = standard.loadDisplay,
+                stationNumber = stationNumber,
                 segmentKey = seg.id,
             )
         } else {
@@ -766,6 +768,7 @@ class SessionRepositoryImpl(
                 detail = "${dist}m ${seg.descriptor}",
                 value = "${dist}m",
                 targetDistanceM = dist,
+                stationNumber = stationNumber,
                 segmentKey = seg.id,
             )
         }

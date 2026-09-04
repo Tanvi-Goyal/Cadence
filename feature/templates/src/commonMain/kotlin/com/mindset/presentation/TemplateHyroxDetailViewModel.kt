@@ -11,6 +11,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import com.mindset.domain.repository.PreferencesRepository
 import kotlinx.coroutines.launch
+import com.mindset.domain.repository.SessionRepository
+import com.mindset.model.Gender
+import com.mindset.model.HyroxStation
+import com.mindset.model.HyroxStationModel
+import com.mindset.model.HyroxStationType
+import com.mindset.model.RaceMode
 import com.mindset.model.HyroxVariant as RaceVariant
 
 /*
@@ -19,8 +25,10 @@ import com.mindset.model.HyroxVariant as RaceVariant
  * INTO each station, ×8 (or a slice, for the half sim).
  *
  * MVI: the screen picks a [HyroxDivision] and (half sim only) a [HyroxVariant]; the block list and its
- * division-accurate weights are derived by [HyroxStandards.buildBlocks]. Weights come from the verified
- * standards in HyroxStandards — illustrative-but-verified sample data, pending real seed data.
+ * division-accurate weights come from the SEEDED reference format (`SessionRepository.hyroxFormat`) —
+ * the same source the live timer runs from, so the weights previewed here are the ones actually raced.
+ * The division defaults to the athlete's profile and the picker overrides it for the preview.
+ * `HyroxStandards` now supplies only the @Preview's sample blocks, not runtime standards.
  */
 
 /** Which leading glyph a Hyrox row shows. Screen maps each to a `MindSetIcons` vector. */
@@ -63,6 +71,7 @@ data class TemplateHyroxDetailUiState(
 
 class TemplateHyroxDetailViewModel(
     private val controller: ActiveWorkoutController,
+    private val repository: SessionRepository,
     private val preferences: PreferencesRepository,
     private val templateId: String,
 ) : ViewModel() {
@@ -112,7 +121,9 @@ class TemplateHyroxDetailViewModel(
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = buildState(division.value, variant.value),
+                // The block list is now a suspend DB read, so the first frame renders the chrome with
+                // no rows rather than fabricating standards synchronously.
+                initialValue = emptyState(division.value, variant.value),
             )
 
     fun onDivisionSelected(d: HyroxDivision) {
@@ -124,7 +135,24 @@ class TemplateHyroxDetailViewModel(
         if (isHalf) variant.value = v
     }
 
-    private fun buildState(d: HyroxDivision, v: HyroxVariant): TemplateHyroxDetailUiState {
+    /**
+     * Builds the block list from the **seeded** reference format, so the weights previewed here are
+     * exactly the ones a race started from this screen will run (both now read [SessionRepository.hyroxFormat]).
+     * Replaces the in-code `HyroxStandards.buildBlocks` numbers; only the thematic block grouping below
+     * remains in code, because it is presentation and the seed carries no equivalent.
+     */
+    private suspend fun buildState(d: HyroxDivision, v: HyroxVariant): TemplateHyroxDetailUiState {
+        val raceInfo = preferences.getRaceInfo()
+        val segments = repository.hyroxFormat(
+            divisionKey = d.name,
+            variant = v.toDomain(),
+            raceMode = raceInfo.third ?: RaceMode.SINGLES,
+            gender = raceInfo.second ?: if (d.name.startsWith("WOMEN")) Gender.WOMEN else Gender.MEN,
+        )
+        return emptyState(d, v).copy(blocks = segments.toBlocks())
+    }
+
+    private fun emptyState(d: HyroxDivision, v: HyroxVariant): TemplateHyroxDetailUiState {
         val (title, duration, description) = meta(v)
         return TemplateHyroxDetailUiState(
             title = title,
@@ -134,9 +162,67 @@ class TemplateHyroxDetailViewModel(
             division = d,
             variant = v,
             showVariantSelector = isHalf,
-            blocks = HyroxStandards.buildBlocks(d, v),
+            blocks = emptyList(),
             finishLabel = "Finish Line",
         )
+    }
+
+    /**
+     * Groups the flat race order into the design's thematic blocks. A run belongs to the block of the
+     * station it leads INTO, which is why runs are buffered until their station arrives.
+     */
+    private fun List<HyroxStationModel>.toBlocks(): List<HyroxBlock> {
+        val grouped = LinkedHashMap<String, MutableList<HyroxRow>>()
+        val pendingRuns = mutableListOf<HyroxRow>()
+        forEach { segment ->
+            if (segment.stationType == HyroxStationType.RUN) {
+                pendingRuns += HyroxRow(
+                    kind = HyroxRowKind.RUN,
+                    glyph = HyroxGlyph.RUN,
+                    title = segment.title,
+                    detail = segment.detail,
+                    value = segment.value,
+                )
+                return@forEach
+            }
+            val rows = grouped.getOrPut(blockLabel(segment.stationNumber)) { mutableListOf() }
+            rows += pendingRuns
+            pendingRuns.clear()
+            rows += HyroxRow(
+                kind = HyroxRowKind.STATION,
+                glyph = segment.station.toGlyph(),
+                title = segment.title,
+                detail = segment.detail,
+                value = segment.value,
+            )
+        }
+        // A trailing run (a variant ending on a run) still needs a home.
+        if (pendingRuns.isNotEmpty()) {
+            grouped.getOrPut(blockLabel(null)) { mutableListOf() } += pendingRuns
+        }
+        return grouped.map { (label, rows) -> HyroxBlock(label, rows) }
+    }
+
+    /** Presentation-only: which thematic block a station's race number falls in. */
+    private fun blockLabel(stationNumber: Int?): String = when (stationNumber) {
+        1 -> "Block 1: Start"
+        2, 3 -> "Block 2: Strength"
+        4 -> "Block 3: Agility"
+        5 -> "Block 4: Engine"
+        6, 7 -> "Block 5: Grip & Core"
+        else -> "Block 6: The Finish"
+    }
+
+    private fun HyroxStation?.toGlyph(): HyroxGlyph = when (this) {
+        HyroxStation.SKI_ERG -> HyroxGlyph.SKI_ERG
+        HyroxStation.SLED_PUSH -> HyroxGlyph.SLED_PUSH
+        HyroxStation.SLED_PULL -> HyroxGlyph.SLED_PULL
+        HyroxStation.BURPEE_BROAD_JUMP -> HyroxGlyph.BURPEE
+        HyroxStation.ROWING -> HyroxGlyph.ROWING
+        HyroxStation.FARMERS_CARRY -> HyroxGlyph.FARMERS_CARRY
+        HyroxStation.SANDBAG_LUNGES -> HyroxGlyph.SANDBAG_LUNGES
+        HyroxStation.WALL_BALLS -> HyroxGlyph.WALL_BALLS
+        null -> HyroxGlyph.RUN
     }
 
     // Title/duration/description per variant. Durations are illustrative (not authoritative).

@@ -53,6 +53,9 @@ data class WidgetOrder(val types: List<WidgetType>) {
     companion object {
         val Default = WidgetOrder(
             listOf(
+                // A live race outranks everything: it is the only widget the athlete is mid-way
+                // through. Absent one, the VM's mapNotNull drops it and this list is unchanged.
+                WidgetType.LiveWorkout,
                 WidgetType.RaceGoal,
                 WidgetType.Performance,
                 WidgetType.BrowseTemplates,
@@ -113,8 +116,9 @@ sealed interface Widget {
 
     /**
      * Self-sourcing marker — carries no data. Its Composable collects the live workout StateFlow itself
-     * so the ~200 ms tick recomposes only that card and never rebuilds this widget list. (Not yet in
-     * [WidgetOrder.Default]; wiring the controller flow is the next step.)
+     * so the ~200 ms tick recomposes only that card and never rebuilds this widget list. The slot that
+     * emits it reduces the controller flow to a presence Boolean first, so this widget appears and
+     * disappears exactly twice per race rather than five times a second.
      */
     @Immutable
     data object LiveWorkoutWidget : Widget {

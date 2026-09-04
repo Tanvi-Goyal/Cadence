@@ -2,7 +2,9 @@ package com.mindset.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mindset.domain.ActiveWorkout
 import com.mindset.domain.ActiveWorkoutController
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.mindset.domain.repository.RaceGoalRepository
 import com.mindset.domain.repository.SessionRepository
 import com.mindset.model.RaceGoal
@@ -27,14 +29,22 @@ class HomeViewModel(
     private val raceGoalRepository: RaceGoalRepository,
 ) : ViewModel() {
 
+    /**
+     * The ticking live race, exposed RAW rather than folded into [HomeUiState]: the card collects this
+     * itself so the ~200 ms tick invalidates only the clock, never the widget list. See [liveWorkoutSlot].
+     */
+    val activeWorkout: StateFlow<ActiveWorkout?> = activeWorkoutController.state
+
     val uiState: StateFlow<HomeUiState> = combine(
         raceGoalSlot(),
         performanceSlot(),
         recentSessionsSlot(),
-    ) { race, performance, recent ->
+        liveWorkoutSlot(),
+    ) { race, performance, recent, liveWorkout ->
         // BrowseTemplates is a static entry point (no data source), so it's added directly, not via a flow.
         val browse = slot(WidgetType.BrowseTemplates, Widget.BrowseTemplatesWidget)
-        val bySlotType = (listOfNotNull(race, performance, recent) + browse).associateBy { it.type }
+        val bySlotType =
+            (listOfNotNull(race, performance, recent, liveWorkout) + browse).associateBy { it.type }
         HomeUiState(widgets = WidgetOrder.Default.types.mapNotNull { bySlotType[it] })
     }.stateIn(
         scope = viewModelScope,
@@ -109,6 +119,19 @@ class HomeViewModel(
         type: WidgetType,
         widget: Widget,
     ) = WidgetSlot(type, WidgetState.Content(widget))
+
+    /**
+     * Whether a live race exists — nothing more. The `map { it != null }` BEFORE
+     * [distinctUntilChanged] is load-bearing: comparing [ActiveWorkout] instances would let a new
+     * object through on every ~200 ms tick and rebuild the whole widget list five times a second.
+     * Reduced to a Boolean it emits twice per race (start, dismiss). The card sources its own data
+     * from [activeWorkout].
+     */
+    private fun liveWorkoutSlot(): Flow<WidgetSlot?> =
+        activeWorkoutController.state
+            .map { it != null }
+            .distinctUntilChanged()
+            .map { live -> if (live) slot(WidgetType.LiveWorkout, Widget.LiveWorkoutWidget) else null }
 
     private fun loading(type: WidgetType) = WidgetSlot(type, WidgetState.Loading)
     private fun error(type: WidgetType, message: String) = WidgetSlot(type, WidgetState.Error(message))
