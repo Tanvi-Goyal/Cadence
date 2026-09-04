@@ -210,6 +210,58 @@ class SessionRepositoryTest {
         )
     }
 
+    /**
+     * Total Time is the sum of the logged splits, and a Hyrox race is half running — so the run
+     * segments have to count. The old wall-clock derivation (`finishedAt − startedAt`) counted
+     * neither, which is what made a logged session read as seconds long.
+     */
+    @Test
+    fun observeDurationsBySession_sumsRunAndStationSplits() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val session = repo.createSession(SessionType.HYROX)
+        repo.addHyroxVariant(session.id, "MEN", HyroxVariant.FIRST_HALF, RaceMode.SINGLES, Gender.MEN)
+
+        val entries = database.exerciseEntryDao().getBySession(session.id)
+        val run = entries.first { it.segmentKey?.contains("run") == true }
+        val station = entries.first { it.segmentKey?.contains("run") != true }
+
+        suspend fun logSplit(entryId: String, seconds: Int) {
+            val set = database.setEntryDao().getForEntry(entryId).first()
+            repo.updateSet(session.id, set.toDomain().copy(timeSec = seconds))
+        }
+        logSplit(run.id, 260)
+        logSplit(station.id, 95)
+
+        assertEquals(
+            355,
+            repo.observeDurationsBySession().first()[session.id],
+            "the run split (260s) must be counted alongside the station split (95s)",
+        )
+
+        // Removing a segment retracts its split — the aggregate follows the tombstones.
+        repo.removeEntry(session.id, run.id)
+        assertEquals(
+            95,
+            repo.observeDurationsBySession().first()[session.id],
+            "a tombstoned segment stops contributing",
+        )
+    }
+
+    /** A strength session has no splits at all, so it reports no duration rather than a bogus one. */
+    @Test
+    fun observeDurationsBySession_omitsUntimedSession() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val session = repo.createSession(SessionType.STRENGTH)
+        repo.addExercise(session.id, "bench-press")
+        val entry = database.exerciseEntryDao().getBySession(session.id).first().id
+        repo.addSet(session.id, entry, reps = 5, loadKg = 100.0)
+
+        assertNull(
+            repo.observeDurationsBySession().first()[session.id],
+            "no timed sets → no duration (the row shows volume instead)",
+        )
+    }
+
     @Test
     fun instantiateTemplate_deepCopiesTargetsAndLeavesActualsNull() = runTest {
         val repo = repo(emptyExerciseAssetReader)

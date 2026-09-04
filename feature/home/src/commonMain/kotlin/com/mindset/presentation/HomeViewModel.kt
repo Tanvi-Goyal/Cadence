@@ -26,21 +26,6 @@ class HomeViewModel(
     private val activeWorkoutController: ActiveWorkoutController,
     private val raceGoalRepository: RaceGoalRepository,
 ) : ViewModel() {
-//
-//    val activeWorkout: StateFlow<ActiveWorkout?> get() = activeWorkoutController.state
-//
-//    private val _openSession = MutableSharedFlow<String>(extraBufferCapacity = 1)
-//    val openSession: SharedFlow<String> = _openSession.asSharedFlow()
-
-    //    private val homeData: Flow<HomeData> =
-//        combine(
-//            repository.observeSessions(),
-//            repository.observePlannedSession(),
-//            repository.observeVolumesBySession(),
-//            repository.observeTemplates(),
-//        ) { sessions, planned, volumes, templates ->
-//            HomeData(sessions, planned, volumes, templates)
-//        }
 
     val uiState: StateFlow<HomeUiState> = combine(
         raceGoalSlot(),
@@ -59,7 +44,7 @@ class HomeViewModel(
 
     private fun raceGoalSlot(): Flow<WidgetSlot?> =
         raceGoalRepository.observeUpcoming()
-            .map<RaceGoal?, WidgetSlot?> { goal ->
+            .map { goal ->
                 goal?.let { slot(WidgetType.RaceGoal, buildRaceGoalWidget(it)) }
             }
             .onStart { emit(loading(WidgetType.RaceGoal)) }
@@ -94,10 +79,14 @@ class HomeViewModel(
 
     private fun recentSessionsSlot(): Flow<WidgetSlot?> =
         combine(
-            repository.observeRecentSessions(),
+            repository.observeRecentSessions(5),
             repository.observeVolumesBySession(),
-        ) { sessions, volumes ->
-            slot(WidgetType.RecentSessions, Widget.RecentSessionsWidget(sessions, volumes))
+            repository.observeDurationsBySession(),
+        ) { sessions, volumes, durations ->
+            slot(
+                WidgetType.RecentSessions,
+                Widget.RecentSessionsWidget(sessions, volumes, durations),
+            )
         }
             .onStart { emit(loading(WidgetType.RecentSessions)) }
             .catch { emit(error(WidgetType.RecentSessions, "Couldn't load sessions")) }

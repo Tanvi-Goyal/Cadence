@@ -4,7 +4,6 @@ import androidx.paging.PagingData
 import com.mindset.model.Exercise
 import com.mindset.model.ExerciseRef
 import com.mindset.model.Gender
-import com.mindset.model.HyroxDivisionInfo
 import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxVariant
 import com.mindset.model.PlannedSession
@@ -36,7 +35,7 @@ interface SessionRepository {
      * it observes only what the fixed-size preview shows. Deliberately NOT Paging: the widget doesn't
      * scroll, so there's no page to load — Paging belongs on the unbounded History list ([pagedSessions]).
      */
-    fun observeRecentSessions(limit: Int = 4): Flow<List<Session>>
+    fun observeRecentSessions(limit: Int): Flow<List<Session>>
 
     fun observeSessionsSince(startMillis: Long): Flow<List<Session>>
 
@@ -55,6 +54,13 @@ interface SessionRepository {
 
     /** Strength volume (Σ reps×loadKg) keyed by session id, reactive — for Home stats/rows. */
     fun observeVolumesBySession(): Flow<Map<String, Double>>
+
+    /**
+     * Training time in seconds (Σ of the logged splits, **runs included**) keyed by session id,
+     * reactive — the duration a list row shows for a timed workout. Aggregated in SQL like
+     * [observeVolumesBySession]. A session with nothing timed is absent from the map.
+     */
+    fun observeDurationsBySession(): Flow<Map<String, Int>>
 
     /** Exercises that have logged data — for the Stats chart selector. */
     fun observeExercisesWithHistory(): Flow<List<ExerciseRef>>

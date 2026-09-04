@@ -4,6 +4,7 @@ import androidx.room3.Dao
 import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
+import com.mindset.data.local.SessionDuration
 import com.mindset.data.local.SessionVolume
 import com.mindset.data.local.SetEntryEntity
 import kotlinx.coroutines.flow.Flow
@@ -91,4 +92,22 @@ interface SetEntryDao {
         """,
     )
     fun observeSessionVolumes(): Flow<List<SessionVolume>>
+
+    /**
+     * Training time per session (Σ of every logged split, in seconds), reactive — the list rows'
+     * duration metric. Deliberately unfiltered by segment kind, so **run** splits count alongside
+     * station splits; the `timeSec IS NOT NULL` guard drops target-only (ghost) sets by construction.
+     * Replaces `finishedAt − startedAt`, which measured wall clock rather than training time.
+     */
+    @Query(
+        """
+        SELECT b.sessionId AS sessionId, COALESCE(SUM(s.timeSec), 0) AS durationSec
+        FROM set_entries s
+        INNER JOIN exercise_entries e ON s.exerciseEntryId = e.id
+        INNER JOIN blocks b ON e.blockId = b.id
+        WHERE s.timeSec IS NOT NULL AND s.deletedAt IS NULL AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+        GROUP BY b.sessionId
+        """,
+    )
+    fun observeSessionDurations(): Flow<List<SessionDuration>>
 }

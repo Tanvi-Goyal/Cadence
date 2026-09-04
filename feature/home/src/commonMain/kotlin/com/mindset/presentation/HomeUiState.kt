@@ -105,6 +105,8 @@ sealed interface Widget {
     data class RecentSessionsWidget(
         val sessions: List<Session>,
         val volumesById: Map<String, Double>,
+        /** Training time (Σ logged splits, runs included) per session id; absent = nothing timed. */
+        val durationsById: Map<String, Int>,
     ) : Widget {
         override val type: WidgetType get() = WidgetType.RecentSessions
     }

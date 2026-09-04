@@ -170,6 +170,9 @@ class SessionRepositoryImpl(
     override fun observeVolumesBySession(): Flow<Map<String, Double>> = setEntries.observeSessionVolumes()
         .map { list -> list.associate { it.sessionId to it.volume } }
 
+    override fun observeDurationsBySession(): Flow<Map<String, Int>> = setEntries.observeSessionDurations()
+        .map { list -> list.associate { it.sessionId to it.durationSec } }
+
     override fun observeExercisesWithHistory() = database.statsDao().exercisesWithHistory()
 
     override fun observeVolumeOverTime(exerciseId: String) = database.statsDao().volumeOverTime(exerciseId)

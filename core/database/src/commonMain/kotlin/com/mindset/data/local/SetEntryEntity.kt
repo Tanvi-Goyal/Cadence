@@ -26,3 +26,6 @@ data class SetEntryEntity(
 )
 
 data class SessionVolume(val sessionId: String, val volume: Double)
+
+/** Per-session total of the logged splits, in seconds — the projection behind Total Time. */
+data class SessionDuration(val sessionId: String, val durationSec: Int)

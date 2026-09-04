@@ -25,7 +25,7 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 /** A history row: the session plus its computed volume. */
-data class HistoryRow(val session: Session, val volumeKg: Double)
+data class HistoryRow(val session: Session, val volumeKg: Double, val durationSec: Int?)
 
 /** The workout-type filter behind the History header's filter control. */
 enum class HistoryFilter { ALL, STRENGTH, CONDITIONING, HYROX, MIXED }
@@ -44,6 +44,8 @@ data class HistoryUiState(
     val todayEpochDay: Long = 0,
     /** Whole-history volume + PB lookups, keyed by session id — used to render both tiers' rows. */
     val volumes: Map<String, Double> = emptyMap(),
+    /** Training time per session id (Σ logged splits, runs included) — the Pro list's rows. */
+    val durations: Map<String, Int> = emptyMap(),
     val pbSessionIds: Set<String> = emptySet(),
     /** Free tier only: last-30-days sessions (non-paged). */
     val freeRows: List<HistoryRow> = emptyList(),
@@ -64,9 +66,10 @@ class HistoryViewModel(private val repository: SessionRepository, entitlements: 
         combine(
             repository.observeSessions(),
             repository.observeVolumesBySession(),
+            repository.observeDurationsBySession(),
             entitlements.observe(),
             filter,
-        ) { sessions, volumes, entitlement, activeFilter ->
+        ) { sessions, volumes, durations, entitlement, activeFilter ->
             val now = Clock.System.now().toEpochMilliseconds()
             val trainedEpochDays =
                 sessions
@@ -84,11 +87,12 @@ class HistoryViewModel(private val repository: SessionRepository, entitlements: 
                 trainedEpochDays = trainedEpochDays,
                 todayEpochDay = now / DAY_MS,
                 volumes = volumes,
+                durations = durations,
                 pbSessionIds = personalBestSessionIds(sessions, volumes),
                 freeRows =
                 sessions
                     .filter { it.startedAt.toEpochMilliseconds() >= now - THIRTY_DAYS_MS }
-                    .map { HistoryRow(it, volumes[it.id] ?: 0.0) },
+                    .map { HistoryRow(it, volumes[it.id] ?: 0.0, durations[it.id]) },
             )
         }.stateIn(
             scope = viewModelScope,

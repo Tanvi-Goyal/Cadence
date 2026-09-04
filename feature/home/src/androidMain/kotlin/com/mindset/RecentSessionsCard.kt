@@ -1,6 +1,5 @@
 package com.mindset
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -58,14 +57,13 @@ fun RecentSessionsCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(colors.outlineVariant.copy(alpha = 0.2f)),
-                verticalArrangement = Arrangement.spacedBy(1.dp),
+                    .clip(MaterialTheme.shapes.medium),
             ) {
-                widget.sessions.take(4).forEach { session ->
+                widget.sessions.forEach { session ->
                     SessionRow(
                         session = session,
                         volumeKg = widget.volumesById[session.id] ?: 0.0,
+                        durationSec = widget.durationsById[session.id],
                         onClick = { onOpenDetail(session.id) },
                         isPb = false,
                     )

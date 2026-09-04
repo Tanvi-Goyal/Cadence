@@ -159,7 +159,7 @@ private fun ProHistory(state: HistoryUiState, viewModel: HistoryViewModel, onOpe
         items(paged.itemCount, key = paged.itemKey { it.id }) { index ->
             val session = paged[index] ?: return@items
             WorkoutFeedCard(
-                row = HistoryRow(session, state.volumes[session.id] ?: 0.0),
+                row = HistoryRow(session, state.volumes[session.id] ?: 0.0, state.durations[session.id]),
                 isPb = session.id in state.pbSessionIds,
             ) { onOpenDetail(session.id) }
         }
@@ -577,12 +577,10 @@ private fun workoutMetric(row: HistoryRow, unit: com.mindset.domain.WeightUnit):
         val display = Units.toDisplay(row.volumeKg, unit).toInt()
         return "${String.format(Locale.getDefault(), "%,d", display)} ${Units.label(unit)} vol."
     }
-    val finished = row.session.finishedAt
-    return if (finished != null) {
-        formatDuration(finished.toEpochMilliseconds() - row.session.startedAt.toEpochMilliseconds())
-    } else {
-        "—"
-    }
+    // Σ of the logged splits (runs included), not the wall clock between creating the session and
+    // completing it.
+    val durationSec = row.durationSec
+    return if (durationSec != null && durationSec > 0) formatDuration(durationSec * 1000L) else "—"
 }
 
 

@@ -17,7 +17,10 @@ data class SessionDetailUiState(
     val name: String = "",
     val type: String = "",
     val startedAt: Long = 0L,
-    /** Wall-clock duration (finishedAt − startedAt); null when the session was never finished. */
+    /**
+     * Training time: the sum of the logged segment splits (runs **and** stations). Null when nothing
+     * was timed — a strength session shows volume instead, so there is no duration to invent.
+     */
     val totalTimeMs: Long? = null,
     val totalVolumeKg: Double = 0.0,
     val items: List<LoggedItemUi> = emptyList(),
@@ -39,11 +42,17 @@ class SessionDetailViewModel(private val repository: SessionRepository, private 
                     }
                 val session = detail?.session
                 val startedAt = session?.startedAt?.toEpochMilliseconds() ?: 0L
+                // Sum the splits rather than the wall clock. `finishedAt − startedAt` measured the gap
+                // between the FAB creating the row and Complete being tapped — for a session logged
+                // after the fact that is just typing time, and for the live timer it re-counts the
+                // pauses the split accumulator deliberately leaves out. Every timed set counts, so
+                // runs are included by construction.
+                val loggedSec = itemUis.sumOf { item -> item.sets.sumOf { it.timeSec ?: 0 } }
                 SessionDetailUiState(
                     name = session?.name.orEmpty(),
                     type = session?.type?.name.orEmpty(),
                     startedAt = startedAt,
-                    totalTimeMs = session?.finishedAt?.toEpochMilliseconds()?.minus(startedAt),
+                    totalTimeMs = loggedSec.takeIf { it > 0 }?.times(1000L),
                     totalVolumeKg = volume,
                     items = itemUis,
                 )

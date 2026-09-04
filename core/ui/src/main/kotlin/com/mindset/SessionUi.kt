@@ -3,18 +3,24 @@ package com.mindset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.mindset.domain.Units
 import com.mindset.domain.WeightUnit
 import com.mindset.icons.Bolt
@@ -41,13 +47,21 @@ import java.util.Locale
  */
 @OptIn(kotlin.time.ExperimentalTime::class)
 @Composable
-fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit, isPb: Boolean = false) {
+fun SessionRow(
+    session: Session,
+    volumeKg: Double,
+    durationSec: Int?,
+    onClick: () -> Unit,
+    isPb: Boolean = false,
+) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.surfaceContainer)
+            .padding(vertical = MaterialTheme.spacing.xs)
             .clickable(onClick = onClick)
+            .clip(MaterialTheme.shapes.medium)
+            .background(colors.surfaceContainer)
             .padding(MaterialTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -57,7 +71,21 @@ fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit, isPb: Bo
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
         ) {
-            IconMedallion(icon = typeIcon(session.type.name))
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(MaterialTheme.spacing.sm),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    typeIcon(session.type.name),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+
             Column {
                 Text(
                     text = session.name,
@@ -74,7 +102,6 @@ fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit, isPb: Bo
                 )
             }
         }
-        val finishedAt = session.finishedAt
         Column(horizontalAlignment = Alignment.End) {
             if (volumeKg > 0.0) {
                 val unit = LocalWeightUnit.current
@@ -83,20 +110,11 @@ fun SessionRow(session: Session, volumeKg: Double, onClick: () -> Unit, isPb: Bo
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.onSurface,
                 )
-            } else if (finishedAt != null) {
-                // A completed timed workout (e.g. Hyrox) shows its total time instead of strength volume.
+            } else if (durationSec != null && durationSec > 0) {
                 Text(
-                    text = formatDuration(finishedAt.toEpochMilliseconds() - session.startedAt.toEpochMilliseconds()),
+                    text = formatDuration(durationSec * 1000L),
                     style = MaterialTheme.typography.titleSmall,
                     color = colors.onSurface,
-                )
-            }
-            if (isPb) {
-                Text(
-                    text = "PB",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.primary,
                 )
             }
         }
