@@ -15,6 +15,7 @@ data class HyroxStationModel(
     val targetDistanceM: Int? = null,
     val targetReps: Int? = null,
     val targetLoadKg: Double? = null,
+    val loadDisplay: String? = null, // rulebook weight string ("102 kg" / "2×24 kg"); null = unweighted
     val segmentKey: String? = null,
 )
 

@@ -6,6 +6,33 @@ package com.mindset.model
  * epoch-millis; [distanceBucketM] is metres for a `DISTANCE_TIME` PB, the rep target for a
  * `REPS_TIME` PB (e.g. 100 wall balls), null otherwise.
  */
+/**
+ * How many sessions logged an actual time for a station, within one division. Raw projection; the
+ * repository keys it by [HyroxStation].
+ */
+/**
+ * The two history metrics the Station board shows beside a PB, for one division: the most recently
+ * logged time ([recentTimeSec], null until the station has been logged at this race weight) and how
+ * many sessions logged it ([sessionCount]).
+ */
+data class StationAggregate(
+    val recentTimeSec: Int?,
+    /**
+     * The time logged in the session *before* [recentTimeSec], at the same race weight — the baseline
+     * the board's trend chip measures against. Null until the station has two logged sessions.
+     */
+    val previousTimeSec: Int?,
+    val sessionCount: Int,
+)
+
+data class StationSessionCountRow(val hyroxStation: String, val sessionCount: Int)
+
+/**
+ * One logged split for a station, within one division. [sessionId] is what identifies "the previous
+ * time" — grouping by [startedAt] would merge two sessions created in the same millisecond.
+ */
+data class StationRecentRow(val hyroxStation: String, val sessionId: String, val timeSec: Int, val startedAt: Long)
+
 data class HyroxRecordRow(
     val exerciseId: String,
     val exerciseName: String,

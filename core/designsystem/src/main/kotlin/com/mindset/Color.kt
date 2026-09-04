@@ -68,6 +68,7 @@ private val OutlineColor = Color(0xFFAD8883)
 private val OutlineVariant = Color(0xFF5D3F3B)
 val GlassFill = Color.White.copy(alpha = 0.05f)
 val GlassBorder = Color.White.copy(alpha = 0.12f)
+val TrendImprovingColor = Color(0xFF7CD672)
 
 /** The Obsidian Performance (dark) color scheme, selectable in [MindSetTheme]. */
 internal val MindSetColorScheme =

@@ -1,7 +1,9 @@
 package com.mindset
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,8 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
@@ -21,145 +28,259 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.components.BottomNavBar
 import com.mindset.components.MindSetTopBar
-import com.mindset.icons.Barbell
-import com.mindset.icons.Burpee
-import com.mindset.icons.Dumbbell
-import com.mindset.icons.Rowing
-import com.mindset.icons.SkiErg
-import com.mindset.icons.SledPull
-import com.mindset.icons.WallBall
+import com.mindset.helpers.UIHelper
+import com.mindset.icons.TrendDown
+import com.mindset.icons.TrendUp
 import com.mindset.model.BottomNavTab
-import com.mindset.model.HyroxStation
 import com.mindset.presentation.StationCardUi
-import com.mindset.presentation.StationRecordUi
+import com.mindset.presentation.StationTrendUi
+import com.mindset.presentation.StationsUiState
 import com.mindset.presentation.StationsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
-/**
- * The Station board (records list) — every logged Hyrox station's cached PBs, grouped by station and
- * bucketed by weight class. The marquee board (recent/trend/detail) grows from this in Increment 2.
- */
 @Composable
-fun StationsScreen(onTab: (BottomNavTab) -> Unit, viewModel: StationsViewModel = koinViewModel()) {
+fun StationsScreen(
+    onTab: (BottomNavTab) -> Unit,
+    viewModel: StationsViewModel = koinViewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
     MindSetTheme {
         Scaffold(
             contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
             containerColor = MaterialTheme.colorScheme.background,
-            topBar = { MindSetTopBar(onProfileClick = { onTab(BottomNavTab.Profile) }) },
-            bottomBar = { BottomNavBar(current = BottomNavTab.Stations, onTabClick = onTab) },
+            topBar = {
+                MindSetTopBar(
+                    onProfileClick = { onTab(BottomNavTab.Profile) },
+                )
+            },
+            bottomBar = {
+                BottomNavBar(
+                    current = BottomNavTab.Stations,
+                    onTabClick = onTab,
+                )
+            },
         ) { padding ->
-            val spacing = MaterialTheme.spacing
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-                contentPadding = PaddingValues(
-                    start = spacing.md,
-                    end = spacing.md,
-                    top = padding.calculateTopPadding() + spacing.sm,
-                    bottom = padding.calculateBottomPadding() + spacing.md,
-                ),
-                verticalArrangement = Arrangement.spacedBy(spacing.md),
-            ) {
-                item {
-                    Column {
-                        SectionLabel("Competition Protocol")
-                        Spacer(Modifier.height(spacing.xs))
-                        Text(
-                            "Station Board",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            "Your personal bests per station, by weight class.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                if (!state.loading && state.stations.isEmpty()) {
-                    item {
-                        EmptyHint(
-                            "No station PBs yet. Log a Hyrox station to set your baseline.",
-                            modifier = Modifier.fillMaxWidth().padding(top = spacing.xl),
-                        )
-                    }
-                }
-
-                items(state.stations, key = { it.station.name }) { card ->
-                    StationCard(card)
-                }
-            }
+            StationBoard(state = state, contentPadding = padding)
         }
     }
 }
 
 @Composable
-private fun StationCard(card: StationCardUi, modifier: Modifier = Modifier) {
+private fun StationBoard(state: StationsUiState, contentPadding: PaddingValues) {
     val spacing = MaterialTheme.spacing
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(MaterialTheme.shapes.large)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(spacing.md),
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(2),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = spacing.md,
+            end = spacing.md,
+            top = contentPadding.calculateTopPadding() + spacing.sm,
+            bottom = contentPadding.calculateBottomPadding() + spacing.md,
+        ),
+        horizontalArrangement = Arrangement.spacedBy(spacing.smd),
         verticalArrangement = Arrangement.spacedBy(spacing.smd),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.smd)) {
-            IconMedallion(icon = stationIcon(card.station))
-            Text(
-                card.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+        item(
+            key = "header",
+            span = {
+                GridItemSpan(maxLineSpan)
+            },
+        ) {
+            BoardHeader()
         }
-        card.records.forEach { record -> StationRecordRow(record) }
+
+        items(state.stations, key = { it.station.name }) { card ->
+            StationCard(card)
+        }
+
+        if (!state.loading && state.stations.isEmpty()) {
+            item(key = "empty", span = { GridItemSpan(maxLineSpan) }) {
+                EmptyBoardHint()
+            }
+        }
     }
 }
 
 @Composable
-private fun StationRecordRow(record: StationRecordUi, modifier: Modifier = Modifier) {
-    val spacing = MaterialTheme.spacing
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+private fun BoardHeader() {
+    val colors = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = MaterialTheme.spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
     ) {
         Text(
-            record.valueLabel,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
+            text = "Competition protocol".uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = colors.primary,
         )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                record.unitLabel,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            record.bucketLabel?.let {
-                Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
-            }
-        }
-        record.divisionLabel?.let { AccentPill(it) }
+        Text(
+            text = "Station Board",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.onSurface,
+        )
+        Box(
+            Modifier
+                .padding(top = MaterialTheme.spacing.xs)
+                .fillMaxWidth()
+                .height(2.dp)
+                .clip(MaterialTheme.shapes.extraSmall)
+                .background(colors.primary),
+        )
     }
 }
 
-/** Station → icon. The three unillustrated stations (Sled Push, Farmers, Lunges) fall back for now. */
-private fun stationIcon(station: HyroxStation): ImageVector = when (station) {
-    HyroxStation.SKI_ERG -> MindSetIcons.SkiErg
-    HyroxStation.SLED_PUSH -> MindSetIcons.SledPull
-    HyroxStation.SLED_PULL -> MindSetIcons.SledPull
-    HyroxStation.BURPEE_BROAD_JUMP -> MindSetIcons.Burpee
-    HyroxStation.ROWING -> MindSetIcons.Rowing
-    HyroxStation.FARMERS_CARRY -> MindSetIcons.Dumbbell
-    HyroxStation.SANDBAG_LUNGES -> MindSetIcons.Barbell
-    HyroxStation.WALL_BALLS -> MindSetIcons.WallBall
+@Composable
+private fun StationCard(card: StationCardUi) {
+    val colors = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.medium
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(GlassFill)
+            .border(1.dp, GlassBorder, shape)
+            .padding(
+                horizontal = MaterialTheme.spacing.smd,
+                vertical = MaterialTheme.spacing.md,
+            ),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                UIHelper.hyroxStationIcon(card.station),
+                contentDescription = null,
+                tint = colors.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                text = card.targetLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.outline,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End,
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(start = MaterialTheme.spacing.sm),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.md))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = card.station.text,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+
+            if (card.trend != null) TrendChip(card.trend)
+        }
+
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.md))
+
+        MetricRow(
+            label = "Recent",
+            value = card.recentLabel,
+            valueColor = colors.onSurface,
+        )
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.sm))
+        MetricRow(label = "PB", value = card.pbLabel, valueColor = colors.primary)
+
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.md))
+
+        HorizontalDivider(color = GlassBorder)
+        Spacer(modifier = Modifier.height(MaterialTheme.spacing.md))
+
+        MetricRow(label = "Sessions", value = card.sessionsLabel, valueColor = colors.onSurface)
+    }
+}
+
+@Composable
+private fun MetricRow(
+    label: String,
+    value: String,
+    valueColor: Color,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = valueColor,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrendChip(trend: StationTrendUi) {
+    val tint = if (trend.improving) TrendImprovingColor else MaterialTheme.colorScheme.error
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+    ) {
+        Icon(
+            if (trend.improving) MindSetIcons.TrendUp else MindSetIcons.TrendDown,
+            contentDescription = if (trend.improving) "Faster than last session"
+            else "Slower than last session",
+            tint = tint,
+            modifier = Modifier.size(10.dp),
+        )
+        Text(
+            text = trend.label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = tint,
+        )
+    }
+}
+
+@Composable
+private fun EmptyBoardHint() {
+    val colors = MaterialTheme.colorScheme
+    Text(
+        text = "Set your Hyrox division in Profile to see your station board.",
+        style = MaterialTheme.typography.bodySmall,
+        color = colors.onSurfaceVariant,
+        modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.md),
+    )
 }

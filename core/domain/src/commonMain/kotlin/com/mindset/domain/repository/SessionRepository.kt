@@ -4,6 +4,7 @@ import androidx.paging.PagingData
 import com.mindset.model.Exercise
 import com.mindset.model.ExerciseRef
 import com.mindset.model.Gender
+import com.mindset.model.HyroxStation
 import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxVariant
 import com.mindset.model.PlannedSession
@@ -12,6 +13,7 @@ import com.mindset.model.Session
 import com.mindset.model.SessionDetail
 import com.mindset.model.SessionType
 import com.mindset.model.SetEntry
+import com.mindset.model.StationAggregate
 import com.mindset.model.StationRecord
 import com.mindset.model.VolumePoint
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +31,13 @@ interface SessionRepository {
      * the `personal_records` cache (the single source of PB truth); the UI groups them by station.
      */
     fun observeStationRecords(): Flow<List<StationRecord>>
+
+    /**
+     * Per-station RECENT + SESSIONS metrics for [divisionKey], reactive — the Station board's history
+     * columns beside the PB. Scoped to one division so a card never mixes race weights; a station with
+     * nothing logged at that weight is simply absent from the map. Aggregated in SQL.
+     */
+    fun observeStationAggregates(divisionKey: String): Flow<Map<HyroxStation, StationAggregate>>
 
     /**
      * The most recent [limit] live sessions (newest first) — Home's "Recent" widget. Bounded in SQL, so

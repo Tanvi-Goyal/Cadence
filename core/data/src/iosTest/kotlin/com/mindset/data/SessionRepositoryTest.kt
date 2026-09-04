@@ -10,8 +10,10 @@ import com.mindset.data.local.ExerciseEntryEntity
 import com.mindset.data.local.SessionType
 import com.mindset.data.local.SetEntryEntity
 import com.mindset.model.Gender
+import com.mindset.model.HyroxStation
 import com.mindset.model.HyroxVariant
 import com.mindset.model.RaceMode
+import com.mindset.model.PrKind
 import com.mindset.model.SessionSource
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -82,7 +84,7 @@ class SessionRepositoryTest {
             "a session with no entries must not appear in history",
         )
         assertTrue(
-            repo.observeRecentSessions().first().none { it.id == session.id },
+            repo.observeRecentSessions(limit = 4).first().none { it.id == session.id },
             "nor in Home's recent widget",
         )
 
@@ -259,6 +261,155 @@ class SessionRepositoryTest {
         assertNull(
             repo.observeDurationsBySession().first()[session.id],
             "no timed sets → no duration (the row shows volume instead)",
+        )
+    }
+
+    /**
+     * PB bucketing reads `sessions.divisionKey`, which nothing used to write — so every record was
+     * stored division-less and "Sled Push @ Men" could never be a separate record from another
+     * division. Adding Hyrox content now stamps the session, and the PB inherits it.
+     */
+    @Test
+    fun addingHyroxContent_stampsDivisionSoPbsAreBucketed() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val session = repo.createSession(SessionType.HYROX)
+        assertNull(database.sessionDao().getById(session.id)?.divisionKey, "unstamped to begin with")
+
+        val sledPush = repo.hyroxStations("MEN", RaceMode.SINGLES, Gender.MEN)
+            .first { it.segmentKey?.contains("sled-push") == true }
+        repo.addStation(session.id, "MEN", sledPush.segmentKey!!, RaceMode.SINGLES, Gender.MEN)
+
+        assertEquals("MEN", database.sessionDao().getById(session.id)?.divisionKey)
+
+        // Logging an actual time against it produces a PB carrying that division.
+        val entry = database.exerciseEntryDao().getBySession(session.id).first()
+        val set = database.setEntryDao().getForEntry(entry.id).first()
+        repo.updateSet(session.id, set.toDomain().copy(timeSec = 165, distanceM = 50))
+
+        val prs = database.personalRecordDao().getForExercise(entry.exerciseId)
+        val best = prs.first { it.kind == PrKind.BEST_TIME.name }
+        assertEquals("MEN", best.divisionKey, "the PB is bucketed by the session's division")
+        assertEquals(50, best.distanceBucketM, "and by the exact distance")
+        assertEquals(165.0, best.value)
+    }
+
+    /** First write wins: switching division later must not re-bucket a session already being logged. */
+    @Test
+    fun stampDivision_keepsTheFirstDivisionUnlessContentIsReplaced() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val session = repo.createSession(SessionType.HYROX)
+
+        repo.addHyroxVariant(session.id, "MEN", HyroxVariant.FIRST_HALF, RaceMode.SINGLES, Gender.MEN)
+        assertEquals("MEN", database.sessionDao().getById(session.id)?.divisionKey)
+
+        // Appending more content under a different division leaves the original stamp alone.
+        val station = repo.hyroxStations("WOMEN", RaceMode.SINGLES, Gender.WOMEN)
+            .first { it.segmentKey?.contains("sled-push") == true }
+        repo.addStation(session.id, "WOMEN", station.segmentKey!!, RaceMode.SINGLES, Gender.WOMEN)
+        assertEquals(
+            "MEN",
+            database.sessionDao().getById(session.id)?.divisionKey,
+            "appending must not retroactively re-bucket what is already logged",
+        )
+
+        // Replacing the session's contents re-seeds it, so the stamp follows.
+        repo.addHyroxVariant(
+            session.id,
+            "WOMEN",
+            HyroxVariant.FIRST_HALF,
+            RaceMode.SINGLES,
+            Gender.WOMEN,
+            replaceExisting = true,
+        )
+        assertEquals(
+            "WOMEN",
+            database.sessionDao().getById(session.id)?.divisionKey,
+            "a wholesale replace re-stamps — nothing is left to stay consistent with",
+        )
+    }
+
+    /**
+     * The Station board's RECENT + SESSIONS columns. Both are scoped to one division so a card can't
+     * pair a Women's recent with a Men's PB, RECENT is the newest *logged* split, and SESSIONS counts
+     * only sessions that actually logged a time — a station merely added and left blank must not count.
+     */
+    @Test
+    fun observeStationAggregates_scopesToDivisionAndCountsActualLogsOnly() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+
+        suspend fun backdate(sessionId: String, startedAt: Long) {
+            val row = database.sessionDao().getById(sessionId)!!
+            database.sessionDao().upsert(row.copy(startedAt = startedAt))
+        }
+
+        suspend fun logSledPush(divisionKey: String, gender: Gender, seconds: Int?, startedAt: Long): String {
+            val session = repo.createSession(SessionType.HYROX)
+            val segment = repo.hyroxStations(divisionKey, RaceMode.SINGLES, gender)
+                .first { it.segmentKey?.contains("sled-push") == true }
+            repo.addStation(session.id, divisionKey, segment.segmentKey!!, RaceMode.SINGLES, gender)
+            if (seconds != null) {
+                val entry = database.exerciseEntryDao().getBySession(session.id).first()
+                val set = database.setEntryDao().getForEntry(entry.id).first()
+                repo.updateSet(session.id, set.toDomain().copy(timeSec = seconds, distanceM = 50))
+            }
+            backdate(session.id, startedAt) // explicit ordering — creates land in the same millisecond
+            return session.id
+        }
+
+        logSledPush("MEN", Gender.MEN, seconds = 200, startedAt = 1_000)
+        logSledPush("MEN", Gender.MEN, seconds = 180, startedAt = 2_000)
+
+        val men = repo.observeStationAggregates("MEN").first()[HyroxStation.SLED_PUSH]
+        assertEquals(180, men?.recentTimeSec, "RECENT is the newest logged split, not the fastest")
+        assertEquals(200, men?.previousTimeSec, "PREVIOUS is the session before it — the trend baseline")
+        assertEquals(2, men?.sessionCount)
+
+        // A different division must not leak into this card.
+        logSledPush("WOMEN", Gender.WOMEN, seconds = 100, startedAt = 3_000)
+        val menAfterWomen = repo.observeStationAggregates("MEN").first()[HyroxStation.SLED_PUSH]
+        assertEquals(180, menAfterWomen?.recentTimeSec, "a Women's session must not become the Men's recent")
+        assertEquals(2, menAfterWomen?.sessionCount)
+        assertEquals(
+            100,
+            repo.observeStationAggregates("WOMEN").first()[HyroxStation.SLED_PUSH]?.recentTimeSec,
+            "and the Women's board reads its own split",
+        )
+
+        // Added but never logged → not a session for this station.
+        logSledPush("MEN", Gender.MEN, seconds = null, startedAt = 4_000)
+        val menAfterBlank = repo.observeStationAggregates("MEN").first()[HyroxStation.SLED_PUSH]
+        assertEquals(2, menAfterBlank?.sessionCount, "an unlogged station must not inflate the count")
+        assertEquals(180, menAfterBlank?.recentTimeSec)
+    }
+
+    /**
+     * The board shows effort **and** weight, so the reference model has to carry the division's
+     * rulebook load string — "2×24 kg" for Farmers Carry, not a misleading single "24 kg".
+     */
+    @Test
+    fun hyroxStations_exposeTheDivisionsRulebookLoadString() = runTest {
+        val repo = repo(emptyExerciseAssetReader)
+        val stations = repo.hyroxStations("MEN", RaceMode.SINGLES, Gender.MEN)
+
+        val sledPush = stations.first { it.segmentKey?.contains("sled-push") == true }
+        assertEquals(50, sledPush.targetDistanceM)
+        assertTrue(
+            sledPush.loadDisplay?.contains("kg") == true,
+            "a weighted station carries its load string: ${sledPush.loadDisplay}",
+        )
+
+        val farmers = stations.first { it.segmentKey?.contains("farmers") == true }
+        assertTrue(
+            farmers.loadDisplay?.contains("×") == true,
+            "farmers carry keeps the two-implement form: ${farmers.loadDisplay}",
+        )
+
+        // Wall Balls is rep-scored but still has a ball weight, so it gets a load string too.
+        val wallBalls = stations.first { it.segmentKey?.contains("wall-ball") == true }
+        assertEquals(100, wallBalls.targetReps)
+        assertTrue(
+            wallBalls.loadDisplay?.contains("kg") == true,
+            "wall balls expose the ball weight: ${wallBalls.loadDisplay}",
         )
     }
 

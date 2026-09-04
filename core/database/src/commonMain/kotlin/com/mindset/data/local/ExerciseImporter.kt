@@ -1,11 +1,11 @@
 package com.mindset.data.local
 
+import com.mindset.data.local.ExerciseImporter.OVERRIDES
 import com.mindset.model.HyroxStation
 import com.mindset.model.MetricType
 import com.mindset.model.Modality
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 /** Raw shape of one entry in the bundled free-exercise-db `exercises.json`. */

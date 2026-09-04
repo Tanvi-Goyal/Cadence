@@ -5,6 +5,8 @@ import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
 import com.mindset.data.local.SessionDuration
+import com.mindset.model.StationRecentRow
+import com.mindset.model.StationSessionCountRow
 import com.mindset.data.local.SessionVolume
 import com.mindset.data.local.SetEntryEntity
 import kotlinx.coroutines.flow.Flow
@@ -110,4 +112,55 @@ interface SetEntryDao {
         """,
     )
     fun observeSessionDurations(): Flow<List<SessionDuration>>
+
+    /**
+     * Per-station session count for one division — the board's SESSIONS metric. Counts a session only
+     * when it logged an **actual** time for that station, so template/ghost target-only rows never
+     * inflate it (`timeSec IS NOT NULL`), and `COUNT(DISTINCT sessionId)` keeps a session logged twice
+     * in one workout from counting twice. Scoped to [divisionKey] so the whole card reads at one race
+     * weight; sessions predating division stamping carry a null `divisionKey` and are excluded.
+     */
+    @Query(
+        """
+        SELECT e.hyroxStation AS hyroxStation, COUNT(DISTINCT b.sessionId) AS sessionCount
+        FROM set_entries s
+        INNER JOIN exercise_entries ee ON s.exerciseEntryId = ee.id
+        INNER JOIN blocks b ON ee.blockId = b.id
+        INNER JOIN sessions ss ON b.sessionId = ss.id
+        INNER JOIN exercises e ON ee.exerciseId = e.id
+        WHERE e.hyroxStation IS NOT NULL
+          AND s.timeSec IS NOT NULL AND s.timeSec > 0
+          AND s.deletedAt IS NULL AND ee.deletedAt IS NULL AND b.deletedAt IS NULL
+          AND ss.deletedAt IS NULL AND ss.isTemplate = 0
+          AND ss.divisionKey = :divisionKey
+        GROUP BY e.hyroxStation
+        """,
+    )
+    fun observeStationSessionCounts(divisionKey: String): Flow<List<StationSessionCountRow>>
+
+    /**
+     * Every logged station split for one division, newest session first — the board's RECENT metric.
+     * Deliberately NOT a `GROUP BY` with a bare column beside `MAX(startedAt)`: that leans on a
+     * SQLite-specific rule about which row a bare column comes from, so the repository takes the
+     * first row per station instead, which is obviously correct. Bounded by the 8 stations × the
+     * athlete's own history, and ordered in SQL so the repository does no sorting.
+     */
+    @Query(
+        """
+        SELECT e.hyroxStation AS hyroxStation, b.sessionId AS sessionId,
+               s.timeSec AS timeSec, ss.startedAt AS startedAt
+        FROM set_entries s
+        INNER JOIN exercise_entries ee ON s.exerciseEntryId = ee.id
+        INNER JOIN blocks b ON ee.blockId = b.id
+        INNER JOIN sessions ss ON b.sessionId = ss.id
+        INNER JOIN exercises e ON ee.exerciseId = e.id
+        WHERE e.hyroxStation IS NOT NULL
+          AND s.timeSec IS NOT NULL AND s.timeSec > 0
+          AND s.deletedAt IS NULL AND ee.deletedAt IS NULL AND b.deletedAt IS NULL
+          AND ss.deletedAt IS NULL AND ss.isTemplate = 0
+          AND ss.divisionKey = :divisionKey
+        ORDER BY e.hyroxStation, ss.startedAt DESC, s.setNumber DESC
+        """,
+    )
+    fun observeStationRecents(divisionKey: String): Flow<List<StationRecentRow>>
 }

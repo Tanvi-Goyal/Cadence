@@ -42,6 +42,12 @@ fun MindSetNavHost() {
                 onComplete = { nav.navigate(Home) { popUpTo(Onboarding) { inclusive = true } } },
             )
 
+            loginScreen(
+                onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+                onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+                onForgotPassword = {},
+            )
+
             homeScreen(
                 onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
                 onNewSession = { nav.navigate(NewSession) },
@@ -50,12 +56,6 @@ fun MindSetNavHost() {
                 onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
                 onSeeAll = { nav.switchTab(BottomNavTab.History) },
                 onTab = nav::switchTab,
-            )
-
-            loginScreen(
-                onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
-                onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
-                onForgotPassword = {},
             )
 
             historyScreen(
@@ -69,14 +69,6 @@ fun MindSetNavHost() {
             profileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Credits) })
 
             creditsScreen(onBack = { nav.popBackStack() })
-
-//        newSessionScreen(
-//            onBack = { nav.popBackStack() },
-//            onCreated = { id ->
-//                // Replace New Session with Log Workout so Back returns Home, not the picker.
-//                nav.navigate(LogWorkout(id)) { popUpTo<NewSession> { inclusive = true } }
-//            },
-//        )
 
             logWorkoutScreen(
                 onBack = { nav.popBackStack() },

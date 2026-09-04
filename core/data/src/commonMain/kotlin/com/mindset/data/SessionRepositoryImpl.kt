@@ -39,6 +39,7 @@ import com.mindset.model.SegmentKind
 import com.mindset.model.Session
 import com.mindset.model.SessionDetail
 import com.mindset.model.SetEntry
+import com.mindset.model.StationAggregate
 import com.mindset.model.StationRecord
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -147,6 +148,38 @@ class SessionRepositoryImpl(
 
     override fun observeStationRecords(): Flow<List<StationRecord>> =
         personalRecords.observeHyroxRecords().map { rows -> rows.mapNotNull { it.toStationRecord() } }
+
+    /** `exercises.hyroxStation` is stored as the enum name; same idiom [hyroxFormat] uses. */
+    private fun stationOf(name: String): HyroxStation? = HyroxStation.entries.firstOrNull { it.name == name }
+
+    override fun observeStationAggregates(divisionKey: String): Flow<Map<HyroxStation, StationAggregate>> =
+        combine(
+            setEntries.observeStationSessionCounts(divisionKey),
+            setEntries.observeStationRecents(divisionKey),
+        ) { counts, recents ->
+            // `observeStationRecents` is ordered newest-first per station, so the first row of each
+            // group is that station's most recent split — no sorting or MAX-bare-column trickery here.
+            // Collapsing to one row per session first is what makes "previous" mean the previous
+            // *session* rather than the previous set of the same workout.
+            val splitsByStation = recents
+                .groupBy { it.hyroxStation }
+                .mapNotNull { (key, rows) ->
+                    stationOf(key)?.to(rows.distinctBy { it.sessionId }.map { it.timeSec })
+                }
+                .toMap()
+            val countByStation = counts
+                .mapNotNull { row -> stationOf(row.hyroxStation)?.to(row.sessionCount) }
+                .toMap()
+
+            (splitsByStation.keys + countByStation.keys).associateWith { station ->
+                val splits = splitsByStation[station].orEmpty()
+                StationAggregate(
+                    recentTimeSec = splits.firstOrNull(),
+                    previousTimeSec = splits.getOrNull(1),
+                    sessionCount = countByStation[station] ?: 0,
+                )
+            }
+        }
 
     override fun observeRecentSessions(limit: Int): Flow<List<Session>> =
         sessions.observeRecent(limit).map { rows -> rows.map { it.toDomain() } }
@@ -310,6 +343,7 @@ class SessionRepositoryImpl(
                 blocks.insert(implicitBlock(sessionId, now))
                 entries.insert(entry)
                 setEntries.insert(set)
+                stampDivision(sessionId, divisionKey, overwrite = false, now = now)
                 touchSession(sessionId)
             }
         }
@@ -370,6 +404,7 @@ class SessionRepositoryImpl(
                     entries.insert(entry)
                     setEntries.insert(set)
                 }
+                stampDivision(sessionId, divisionKey, overwrite = replaceExisting, now = now)
                 touchSession(sessionId)
             }
         }
@@ -471,6 +506,7 @@ class SessionRepositoryImpl(
             createdAt = now,
             updatedAt = now,
         )
+
         database.useWriterConnection { connection ->
             connection.immediateTransaction {
                 setEntries.insert(set)
@@ -698,6 +734,7 @@ class SessionRepositoryImpl(
                 value = "$reps reps",
                 targetReps = reps,
                 targetLoadKg = standard?.loadKg,
+                loadDisplay = standard?.loadDisplay,
                 segmentKey = seg.id,
             )
         }
@@ -714,6 +751,7 @@ class SessionRepositoryImpl(
                 value = standard.loadDisplay ?: "",
                 targetDistanceM = dist,
                 targetLoadKg = standard.loadKg,
+                loadDisplay = standard.loadDisplay,
                 segmentKey = seg.id,
             )
         } else {
@@ -787,6 +825,27 @@ class SessionRepositoryImpl(
             }
         }
         return true
+    }
+
+    /**
+     * Records the athlete's division on the session that Hyrox content is being added to.
+     *
+     * [detectAndStorePrs] reads `sessions.divisionKey` to bucket a PB, so while this was never
+     * written every record was stored division-less and the division bucketing in [detectPrs] —
+     * "Sled Push @ Men Pro" vs "@ Women Open" — could never take effect.
+     *
+     * First write wins: the division is fixed by the first Hyrox content to land in the session, so
+     * switching division later can't re-bucket PBs for sets already logged under the old one. The
+     * exception is [overwrite], passed when the session's contents are being wholly replaced and
+     * there is therefore nothing left to keep consistent with.
+     */
+    private suspend fun stampDivision(sessionId: String, divisionKey: String, overwrite: Boolean, now: Long) {
+        val current = sessions.getById(sessionId) ?: return
+        if (current.divisionKey == divisionKey) return
+        if (!overwrite && current.divisionKey != null) return
+        sessions.upsert(
+            current.copy(divisionKey = divisionKey, updatedAt = now, syncStatus = SyncStatus.PENDING),
+        )
     }
 
     /** Marks a session dirty (new updatedAt + PENDING) and refreshes its single outbox row. */
