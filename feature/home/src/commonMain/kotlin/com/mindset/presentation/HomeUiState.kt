@@ -2,6 +2,7 @@ package com.mindset.presentation
 
 import androidx.compose.runtime.Immutable
 import com.mindset.model.Session
+import com.mindset.presentation.WidgetOrder.Companion.Default
 
 /**
  * Home as a declarative, ordered list of widgets. The screen renders [widgets] top-to-bottom; adding,
@@ -42,6 +43,7 @@ enum class WidgetType {
     BrowseTemplates,
     RecentSessions,
     LiveWorkout,
+    Simulation,
 }
 
 /**
@@ -56,8 +58,13 @@ data class WidgetOrder(val types: List<WidgetType>) {
                 // A live race outranks everything: it is the only widget the athlete is mid-way
                 // through. Absent one, the VM's mapNotNull drops it and this list is unchanged.
                 WidgetType.LiveWorkout,
+                // RaceGoal and Performance are adjacent because they share one grid row — the two
+                // compact cards. Separating them in this list would break the pair apart.
                 WidgetType.RaceGoal,
                 WidgetType.Performance,
+                // Then the sims: the pair above states the deadline and the week so far, the rail is
+                // the one-tap answer to both.
+                WidgetType.Simulation,
                 WidgetType.BrowseTemplates,
                 WidgetType.RecentSessions,
             ),
@@ -124,14 +131,47 @@ sealed interface Widget {
     data object LiveWorkoutWidget : Widget {
         override val type: WidgetType get() = WidgetType.LiveWorkout
     }
+
+    /**
+     * The race-simulation rail: the full and half HYROX sims, in rail order. A list (not one widget
+     * per sim) because they scroll together as one horizontal unit — adding the doubles/relay sims
+     * later is an entry, not a new widget type.
+     */
+    @Immutable
+    data class SimulationWidget(val sims: List<SimulationEntry>) : Widget {
+        override val type: WidgetType get() = WidgetType.Simulation
+    }
 }
+
+/**
+ * One card in the simulation rail. [id] is the template id the card routes to (the same ids the nav
+ * host maps to `TemplateHyroxDetail`), so tapping a card lands on the very screen that starts the race.
+ */
+@Immutable
+data class SimulationEntry(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val flag: String,
+    val tags: List<String>,
+    val art: SimulationArt,
+)
+
+/**
+ * Which photograph backs a sim card. A semantic enum rather than a drawable id so this stays a
+ * commonMain type with no Compose/Android dependency — the screen maps each value to its resource,
+ * exactly as `TemplateGlyph` is mapped to a vector.
+ */
+enum class SimulationArt { FULL_HYROX, HALF_HYROX }
 
 /** Per-widget state: independent so one widget's failure or loading never blanks the others. */
 @Immutable
 sealed interface WidgetState {
     data object Loading : WidgetState
+
     @Immutable
     data class Content(val widget: Widget) : WidgetState
+
     @Immutable
     data class Error(val message: String) : WidgetState
 }

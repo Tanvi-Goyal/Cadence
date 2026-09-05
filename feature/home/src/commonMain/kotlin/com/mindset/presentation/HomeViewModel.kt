@@ -3,10 +3,9 @@ package com.mindset.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mindset.domain.ActiveWorkoutController
-import com.mindset.model.ActiveWorkout
-import kotlinx.coroutines.flow.distinctUntilChanged
 import com.mindset.domain.repository.RaceGoalRepository
 import com.mindset.domain.repository.SessionRepository
+import com.mindset.model.ActiveWorkout
 import com.mindset.model.RaceGoal
 import com.mindset.model.Session
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -41,10 +41,13 @@ class HomeViewModel(
         recentSessionsSlot(),
         liveWorkoutSlot(),
     ) { race, performance, recent, liveWorkout ->
-        // BrowseTemplates is a static entry point (no data source), so it's added directly, not via a flow.
+        // BrowseTemplates and the sim rail are static entry points (no data source), so they're added
+        // directly, not via a flow.
         val browse = slot(WidgetType.BrowseTemplates, Widget.BrowseTemplatesWidget)
-        val bySlotType =
-            (listOfNotNull(race, performance, recent, liveWorkout) + browse).associateBy { it.type }
+        val simulations = slot(WidgetType.Simulation, Widget.SimulationWidget(SIMULATIONS))
+        val bySlotType = (
+            listOfNotNull(race, performance, recent, liveWorkout) + browse + simulations
+            ).associateBy { it.type }
         HomeUiState(widgets = WidgetOrder.Default.types.mapNotNull { bySlotType[it] })
     }.stateIn(
         scope = viewModelScope,
@@ -154,5 +157,32 @@ class HomeViewModel(
         val wasLast = workout.currentIndex >= workout.totalSteps - 1
         activeWorkoutController.next()
         if (wasLast) activeWorkoutController.expand()
+    }
+
+    private companion object {
+        /**
+         * The two race simulations, in rail order. Static for the same reason the Template Library's
+         * class templates are: the sims are the fixed HYROX format, not user content. The ids are the
+         * ones the nav host maps to `TemplateHyroxDetail`, and the copy matches the Library's cards so
+         * the same workout doesn't read as two different things on two screens.
+         */
+        val SIMULATIONS = listOf(
+            SimulationEntry(
+                id = "full-hyrox-simulation",
+                title = "Full Hyrox Simulation",
+                subtitle = "8x1km Run • All 8 Stations",
+                flag = "Official Sim",
+                tags = listOf("Conditioning", "Run"),
+                art = SimulationArt.FULL_HYROX,
+            ),
+            SimulationEntry(
+                id = "half-hyrox-sim",
+                title = "Half Hyrox Sim",
+                subtitle = "4x1km • 4 Stations • Comp Pace",
+                flag = "Half Sim",
+                tags = listOf("Conditioning", "Pace"),
+                art = SimulationArt.HALF_HYROX,
+            ),
+        )
     }
 }

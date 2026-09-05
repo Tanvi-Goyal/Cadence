@@ -50,7 +50,13 @@ data class LibraryTemplate(
 
 /** The photo-backed hero card at the top of Class Templates (the official full simulation). */
 @Immutable
-data class FeaturedTemplate(val id: String, val title: String, val subtitle: String, val flag: String, val tags: List<String>)
+data class FeaturedTemplate(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val flag: String,
+    val tags: List<String>,
+)
 
 /** The photo-backed "most recent" card in Self-Programmed. */
 @Immutable
@@ -73,12 +79,15 @@ data class TemplateLibraryUiState(
 ) {
     /** Whether a section is visible under the current chip filter. `ALL` shows everything; a specific
      *  chip narrows to that one bucket. Self-Programmed is only shown under `ALL`. */
-    val showClass: Boolean get() = selectedCategory == TemplateCategory.ALL ||
-        selectedCategory == TemplateCategory.CLASS
-    val showStrength: Boolean get() = selectedCategory == TemplateCategory.ALL ||
-        selectedCategory == TemplateCategory.STRENGTH
-    val showEndurance: Boolean get() = selectedCategory == TemplateCategory.ALL ||
-        selectedCategory == TemplateCategory.ENDURANCE
+    val showClass: Boolean
+        get() = selectedCategory == TemplateCategory.ALL ||
+            selectedCategory == TemplateCategory.CLASS
+    val showStrength: Boolean
+        get() = selectedCategory == TemplateCategory.ALL ||
+            selectedCategory == TemplateCategory.STRENGTH
+    val showEndurance: Boolean
+        get() = selectedCategory == TemplateCategory.ALL ||
+            selectedCategory == TemplateCategory.ENDURANCE
     val showSelfProgrammed: Boolean get() = selectedCategory == TemplateCategory.ALL
 }
 

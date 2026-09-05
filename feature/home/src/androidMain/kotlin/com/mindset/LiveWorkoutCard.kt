@@ -1,16 +1,12 @@
 package com.mindset
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,11 +16,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.components.PrimaryButton
+import com.mindset.components.SecondaryButton
 import com.mindset.icons.ChevronRight
 import com.mindset.model.ActiveWorkout
 import kotlinx.coroutines.flow.StateFlow
@@ -33,12 +29,12 @@ import kotlinx.coroutines.flow.map
 
 /**
  * Home's live-race card: a minimized race stays visible and controllable without reopening the full
- * timer sheet. Tapping the card re-expands the sheet; the inline pills drive the same app-scoped
+ * timer sheet. Tapping the card re-expands the sheet; the inline controls drive the same app-scoped
  * controller the sheet does, so the two surfaces can never disagree.
  *
  * **Recomposition.** The race clock ticks ~5×/sec, so this is split in two on purpose:
  *  - this composable reads only [LiveWorkoutData] — the fields that change per *step*, not per tick — via a
- *    derived, de-duplicated flow, so the title, step label, chevron and all three pills are untouched
+ *    derived, de-duplicated flow, so the title, step label, chevron and all three buttons are untouched
  *    between ticks;
  *  - [LiveClock] collects the raw flow itself, so it is the only thing that recomposes at 5 Hz.
  *
@@ -64,21 +60,14 @@ fun LiveWorkoutSlot(
     )
     val card = chrome ?: return
 
-    val shape = MaterialTheme.shapes.medium
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
     ) {
-        Text(
-            text = "In progress".uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = colors.primary,
-        )
+        HomeSectionHeader("In progress", Modifier.fillMaxWidth())
         Column(
             modifier = Modifier.fillMaxWidth()
-                .clip(shape)
-                .background(GlassFill)
-                .border(1.dp, colors.primary.copy(alpha = 0.5f), shape)
+                .homeGlass(border = liveBorder())
                 .clickable(onClick = onExpand)
                 .padding(MaterialTheme.spacing.md),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
@@ -94,14 +83,15 @@ fun LiveWorkoutSlot(
                     Text(
                         text = card.title,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
                         color = colors.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    // labelMedium, not labelSmall: this is the same "STEP n OF m" string the expanded
+                    // sheet's header shows, and the two surfaces describe one race.
                     Text(
                         text = card.stepLabel.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelMedium,
                         color = colors.onSurfaceVariant,
                     )
                 }
@@ -111,37 +101,41 @@ fun LiveWorkoutSlot(
                     MindSetIcons.ChevronRight,
                     contentDescription = "Open workout",
                     tint = colors.primary,
-                    modifier = Modifier,
+                    modifier = Modifier.size(ChevronSize),
                 )
             }
 
+            // The same three shared buttons, in the same 1 / 1 / 1.4 proportion, as the expanded
+            // sheet's `Controls`. They drive the same controller, so a hand-rolled variant here could
+            // only ever drift away from the surface it mirrors — and the previous local pill had
+            // already drifted: pill-shaped instead of the shape token, a step down the type scale, and
+            // `.clickable` applied AFTER `.padding`, which shrank each tap target to the text bounds.
             if (!card.finished) {
                 Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
-                    WorkoutActionPill(
-                        "Reset",
-                        primary = false,
-                        weight = 1f,
+                    SecondaryButton(
+                        text = "Reset",
                         onClick = onReset,
+                        modifier = Modifier.weight(1f),
                     )
-
-                    WorkoutActionPill(
+                    SecondaryButton(
                         text = if (card.paused) "Resume" else "Pause",
-                        primary = false,
-                        weight = 1f,
                         onClick = onTogglePause,
+                        modifier = Modifier.weight(1f),
                     )
-
-                    WorkoutActionPill(
+                    PrimaryButton(
                         text = if (card.isLast) "Finish" else "Next",
-                        primary = true,
-                        weight = 1.4f,
+                        enabled = true,
                         onClick = onNext,
+                        modifier = Modifier.weight(1.4f),
                     )
                 }
             }
         }
     }
 }
+
+/** Matches the trailing chevron on Home's other tappable row (`BrowseTemplatesCard`). */
+private val ChevronSize = 20.dp
 
 @Immutable
 private data class LiveWorkoutData(
@@ -172,11 +166,17 @@ private fun LiveClock(activeWorkout: StateFlow<ActiveWorkout?>) {
     val live = workout ?: return
     val dimmed = live.paused && !live.finished
 
+    // Monospaced digits: proportional Inter re-measures the clock on every tick, so the readout (and
+    // everything laid out beside it) shifts horizontally 5×/sec as digits change width. MonoFontFamily
+    // is the design system's metric-readout face and gives every digit one advance. `remember`ed
+    // because this composable is the 5 Hz one — an inline `.copy()` would allocate a TextStyle per tick.
+    val base = MaterialTheme.typography.headlineSmall
+    val clockStyle = remember(base) { base.copy(fontFamily = MonoFontFamily) }
+
     Column(horizontalAlignment = Alignment.End) {
         Text(
             text = formatClock(live.totalElapsedMs),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
+            style = clockStyle,
             color = if (dimmed) colors.onSurfaceVariant else colors.onSurface,
         )
         Text(
@@ -186,41 +186,7 @@ private fun LiveClock(activeWorkout: StateFlow<ActiveWorkout?>) {
                 else -> "LIVE"
             },
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
             color = if (dimmed) colors.error else colors.primary,
-        )
-    }
-}
-
-@Composable
-private fun RowScope.WorkoutActionPill(
-    text: String,
-    primary: Boolean,
-    weight: Float,
-    onClick: () -> Unit,
-) {
-    val colors = MaterialTheme.colorScheme
-    val base = Modifier.weight(weight)
-        .clip(CircleShape)
-    val styled = if (primary) {
-        base.background(colors.primary)
-    } else {
-        base.background(GlassFill).border(1.dp, GlassBorder, CircleShape)
-    }
-    Box(
-        styled
-            .padding(
-                horizontal = MaterialTheme.spacing.xs,
-                vertical = MaterialTheme.spacing.sm,
-            )
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (primary) FontWeight.Bold else FontWeight.Normal,
-            color = if (primary) colors.onPrimary else colors.onSurface,
         )
     }
 }

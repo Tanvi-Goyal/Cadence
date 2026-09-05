@@ -1,416 +1,81 @@
 package com.mindset
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.components.BottomNavBar
 import com.mindset.components.MindSetTopBar
-import com.mindset.components.QuickStartFab
-import com.mindset.domain.ThemeMode
-import com.mindset.domain.WeightUnit
-import com.mindset.icons.ChevronRight
-import com.mindset.icons.DarkMode
-import com.mindset.icons.Database
-import com.mindset.icons.Delete
-import com.mindset.icons.Download
-import com.mindset.icons.Edit
-import com.mindset.icons.Menu
-import com.mindset.icons.NavAccount
-import com.mindset.icons.Ruler
-import com.mindset.icons.Shield
-import com.mindset.icons.Sync
-import com.mindset.icons.Watch
 import com.mindset.model.BottomNavTab
-import com.mindset.presentation.PreferencesViewModel
+import com.mindset.presentation.ProfileUiState
+import com.mindset.presentation.ProfileViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 /*
- * Profile / Settings (Figma "Profile"). A profile header (avatar + name + tier), a 3-stat row, and
- * three grouped setting sections (Preferences / Integrations / Account & Security) over a version
- * footer, on the Obsidian Performance dark theme.
+ * Profile. The athlete's identity and training shape: who they are, their headline numbers, how
+ * often they have trained recently, and which integrations are coming.
  *
- * Two settings are real (wired to [PreferencesViewModel]): the Dark Mode toggle → themeMode and the
- * Units row → weightUnit. Everything else (avatar/name/tier, stats, integrations, account actions) is
- * design-static placeholder content, to be wired to real session stats / integrations in a later pass.
+ * Everything rendered here is real, observed data — there is no placeholder copy standing in for a
+ * value the app could know. The one deliberate exception is the integrations list, which is a
+ * roadmap rather than a data source and says so on every row.
+ *
+ * Hyrox station PBs are absent on purpose: the Stations tab owns them, and duplicating them here
+ * would mean two places to keep correct.
  */
 
-private val Gutter = 20.dp
-
 @Composable
-fun ProfileScreen(onTab: (BottomNavTab) -> Unit, onOpenCredits: () -> Unit, viewModel: PreferencesViewModel = koinViewModel()) {
-    val prefs by viewModel.preferences.collectAsStateWithLifecycle()
-    MindSetTheme {
-        val colors = MaterialTheme.colorScheme
-        // Health Connect has no backend yet — a local, visual-only toggle.
-        var healthConnected by remember { mutableStateOf(true) }
+fun ProfileScreen(onTab: (BottomNavTab) -> Unit, viewModel: ProfileViewModel = koinViewModel()) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
+    MindSetTheme {
         Scaffold(
             contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
             containerColor = MaterialTheme.colorScheme.background,
-            topBar = {
-                MindSetTopBar(
-                    onProfileClick = { onTab(BottomNavTab.Profile) },
-                )
-            },
-            bottomBar = {
-                BottomNavBar(current = BottomNavTab.Profile, onTabClick = onTab)
-            },
+            topBar = { MindSetTopBar(onProfileClick = { onTab(BottomNavTab.Profile) }) },
+            bottomBar = { BottomNavBar(current = BottomNavTab.Profile, onTabClick = onTab) },
         ) { inner ->
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = inner.calculateTopPadding(),
-                    bottom = inner.calculateBottomPadding() + 24.dp,
-                ),
-            ) {
-                item {
-                    Column {
-                        TopBar()
-                        Spacer(Modifier.height(8.dp))
-                        HeaderCard(name = "Alex Thorne", tier = "Elite Hybrid • Level 42")
-                        Spacer(Modifier.height(16.dp))
-                        StatsRow()
-                        Spacer(Modifier.height(28.dp))
-
-                        SettingsSection("Preferences") {
-                            ToggleRow(
-                                icon = MindSetIcons.DarkMode,
-                                title = "Dark Mode",
-                                subtitle = "Optimized for high-intensity focus",
-                                checked = prefs.themeMode != ThemeMode.LIGHT,
-                                onCheckedChange = { on ->
-                                    // Persisted, though the app renders dark-only until a light scheme lands.
-                                    viewModel.onThemeModeChange(if (on) ThemeMode.DARK else ThemeMode.LIGHT)
-                                },
-                            )
-                            RowDivider()
-                            NavRow(
-                                icon = MindSetIcons.Ruler,
-                                title = "Units",
-                                subtitle = if (prefs.weightUnit == WeightUnit.KG) "Metric (kg)" else "Imperial (lb)",
-                                onClick = {
-                                    viewModel.onWeightUnitChange(
-                                        if (prefs.weightUnit == WeightUnit.KG) WeightUnit.LB else WeightUnit.KG,
-                                    )
-                                },
-                            )
-                        }
-                        Spacer(Modifier.height(24.dp))
-
-                        SettingsSection("Integrations") {
-                            ToggleRow(
-                                icon = MindSetIcons.Shield,
-                                iconTint = colors.primary,
-                                title = "Health Connect",
-                                subtitle = "Sync calories and heart rate",
-                                checked = healthConnected,
-                                onCheckedChange = { healthConnected = it },
-                            )
-                            RowDivider()
-                            NavRow(
-                                icon = MindSetIcons.Watch,
-                                title = "Wearable Devices",
-                                subtitle = "2 Connected devices",
-                                onClick = {},
-                            )
-                        }
-                        Spacer(Modifier.height(24.dp))
-
-                        SettingsSection("Account & Security") {
-                            NavRow(
-                                icon = MindSetIcons.Sync,
-                                title = "Cloud Sync",
-                                subtitle = "Last synced: 2 minutes ago",
-                                onClick = {},
-                            )
-                            RowDivider()
-                            SettingRow(
-                                icon = MindSetIcons.Database,
-                                title = "Data Export",
-                                subtitle = "JSON, CSV, and FIT formats",
-                                onClick = {},
-                                trailing = {
-                                    Icon(
-                                        MindSetIcons.Download,
-                                        contentDescription = null,
-                                        tint = colors.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                },
-                            )
-                            RowDivider()
-                            SettingRow(
-                                icon = MindSetIcons.Delete,
-                                iconTint = colors.error,
-                                title = "Delete Account",
-                                titleColor = colors.error,
-                                subtitle = "Permanently remove all data",
-                                onClick = {},
-                                trailing = { ChevronTrailing() },
-                            )
-                        }
-                        Spacer(Modifier.height(32.dp))
-                        Footer(onOpenCredits = onOpenCredits)
-                    }
-                }
-            }
-        }
-    }
-}
-
-// ── Top bar ──────────────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun TopBar() {
-    val colors = MaterialTheme.colorScheme
-    Box(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 12.dp)) {
-        IconButton48(MindSetIcons.Menu, size = 20.dp, modifier = Modifier.align(Alignment.CenterStart)) {}
-        Text(
-            "Profile",
-            style = MaterialTheme.typography.titleLarge,
-            color = colors.onSurface,
-            modifier = Modifier.align(Alignment.Center),
-        )
-        IconButton48(MindSetIcons.Edit, size = 18.dp, modifier = Modifier.align(Alignment.CenterEnd)) {}
-    }
-}
-
-@Composable
-private fun IconButton48(icon: ImageVector, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = null, tint = colors.onSurface, modifier = Modifier.size(size))
-    }
-}
-
-// ── Header + stats ──────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun HeaderCard(name: String, tier: String) {
-    val colors = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Gutter).clip(MaterialTheme.shapes.large).background(colors.surfaceContainer)
-            .padding(vertical = 24.dp, horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // Avatar placeholder (green ring + person glyph) until a real profile photo is provided.
-        Box(
-            modifier = Modifier.size(96.dp).clip(CircleShape).border(2.dp, colors.primary, CircleShape).padding(4.dp).clip(CircleShape)
-                .background(colors.surfaceContainerHigh),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(NavAccount, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(40.dp))
-        }
-        Spacer(Modifier.height(16.dp))
-        Text(name, style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            tier.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            letterSpacing = 1.2.sp,
-            color = colors.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun StatsRow() {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Gutter),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        StatTile("284", "Sessions", Modifier.weight(1f))
-        StatTile("12", "PRs", Modifier.weight(1f))
-        StatTile("52", "Weeks", Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    Column(
-        modifier = modifier.clip(MaterialTheme.shapes.medium).background(colors.surfaceContainerLow)
-            .border(1.dp, colors.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.medium).padding(vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            value,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = colors.primary,
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            label.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 0.5.sp,
-            color = colors.onSurfaceVariant,
-        )
-    }
-}
-
-// ── Settings sections ───────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun SettingsSection(title: String, content: @Composable () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Column(Modifier.padding(horizontal = Gutter)) {
-        Text(
-            title.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.0.sp,
-            color = colors.primary,
-        )
-        Spacer(Modifier.height(12.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium).background(colors.surfaceContainer)
-                .border(1.dp, colors.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.medium),
-        ) {
-            content()
+            ProfileContent(state = state, contentPadding = inner)
         }
     }
 }
 
 @Composable
-private fun RowDivider() {
-    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
-}
+private fun ProfileContent(state: ProfileUiState, contentPadding: PaddingValues) {
+    val spacing = MaterialTheme.spacing
 
-@Composable
-private fun SettingRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: (() -> Unit)? = null,
-    iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    titleColor: Color = MaterialTheme.colorScheme.onSurface,
-    trailing: @Composable () -> Unit = {},
-) {
-    val base = Modifier.fillMaxWidth()
-    val clickable = if (onClick != null) base.clickable(onClick = onClick) else base
-    Row(
-        modifier = clickable.padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(
+            start = spacing.md,
+            end = spacing.md,
+            top = contentPadding.calculateTopPadding() + spacing.sm,
+            bottom = contentPadding.calculateBottomPadding() + spacing.md,
+        ),
+        verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
-        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        // Held back until the first DB emission so the header never flashes "Athlete" and a 0 streak.
+        if (state.isLoading) return@LazyColumn
+
+        item(key = "header") {
+            ProfileHeaderCard(name = state.athleteName, tierLabel = state.tierLabel)
         }
-        trailing()
-    }
-}
 
-@Composable
-private fun ToggleRow(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-) {
-    val colors = MaterialTheme.colorScheme
-    SettingRow(icon = icon, title = title, subtitle = subtitle, iconTint = iconTint) {
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = colors.onPrimary,
-                checkedTrackColor = colors.primary,
-                uncheckedThumbColor = colors.outline,
-                uncheckedTrackColor = colors.surfaceContainerHighest,
-                uncheckedBorderColor = colors.outlineVariant,
-            ),
-        )
-    }
-}
+        item(key = "stats") {
+            ProfileStatsRow(streakDays = state.streakDays, totalSessions = state.totalSessions)
+        }
 
-@Composable
-private fun NavRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
-    SettingRow(icon = icon, title = title, subtitle = subtitle, onClick = onClick) { ChevronTrailing() }
-}
+        if (state.frequency.isNotEmpty()) {
+            item(key = "frequency") { TrainingFrequencyCard(weeks = state.frequency) }
+        }
 
-@Composable
-private fun ChevronTrailing() {
-    Icon(
-        MindSetIcons.ChevronRight,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(7.4.dp, 12.dp),
-    )
-}
-
-// ── Footer ──────────────────────────────────────────────────────────────────────────────────────
-
-@Composable
-private fun Footer(onOpenCredits: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Gutter),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            "Obsidian Performance v4.8.2".uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            letterSpacing = 1.5.sp,
-            color = colors.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.clip(MaterialTheme.shapes.small).clickable(onClick = onOpenCredits).padding(4.dp),
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            "Pro Athlete Tier Active".uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            letterSpacing = 0.5.sp,
-            color = colors.onSurfaceVariant.copy(alpha = 0.6f),
-            textAlign = TextAlign.Center,
-        )
+        item(key = "integrations") { IntegrationsCard() }
     }
 }

@@ -9,23 +9,19 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import com.mindset.presentation.Widget
 
 @Composable
@@ -47,14 +43,13 @@ fun RaceGoalCard(widget: Widget.RaceGoalWidget, modifier: Modifier = Modifier) {
         label = "race-goal-glow-alpha",
     )
 
-    Card(
+    // The hairline glass surface, not an M3 `Card`: on the obsidian background a Card's shadow is all
+    // but invisible, so the elevation only cost a shadow layer per frame. Depth here comes from the
+    // translucent fill + 1dp stroke, matching every other Home card.
+    Column(
         modifier = modifier
-            .fillMaxWidth(),
-        shape = CardDefaults.shape,
-        colors = CardDefaults.cardColors(
-            containerColor = colors.surfaceContainer,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
+            .fillMaxWidth()
+            .homeGlass(),
     ) {
         Column(
             modifier = Modifier
@@ -68,53 +63,52 @@ fun RaceGoalCard(widget: Widget.RaceGoalWidget, modifier: Modifier = Modifier) {
                         ),
                     )
                 }
-                .padding(spacing.md),
-            verticalArrangement = Arrangement.spacedBy(spacing.sm),
+                .homeCardPadding(),
+            verticalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
+            // Stacked, Stations-card style: eyebrow names the metric, then title, then the division
+            // line under it, then the number. Title and subtitle used to share one SpaceBetween row,
+            // which pushed the division to the far edge and left the two reading as unrelated fields.
+            HomeEyebrow("Race day")
             Text(
-                text = widget.title.uppercase(),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.7.sp,
-                color = MaterialTheme.colorScheme.onSurface,
+                text = widget.title,
+                // titleSmall, not titleMedium: this card is one column of a two-column grid, so a
+                // 20sp title ellipsised "HYROX · Mumbai" down to almost nothing.
+                style = MaterialTheme.typography.titleSmall,
+                color = colors.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
-
             Text(
                 text = widget.subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
 
             if (widget.daysUntil != null) {
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-                ) {
+                Spacer(Modifier.height(spacing.sm))
+                // Baseline-aligned rather than bottom-aligned with a hand-tuned padding: the unit sits
+                // on the numeral's own baseline at any type scale, so it can't drift when the display
+                // font or the user's font-size setting changes.
+                Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
+                    // displaySmall + labelMedium rather than displayLarge + titleMedium: a 3-digit
+                    // countdown at 48sp overruns a half-width card. This still reads as the card's
+                    // hero number against the 12sp unit beside it.
                     Text(
                         text = widget.daysUntil.toString(),
-                        style = MaterialTheme.typography.displayLarge,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.displaySmall,
                         color = colors.onSurface,
+                        modifier = Modifier.alignByBaseline(),
                     )
                     Text(
                         text = if (widget.daysUntil == 1) "DAY" else "DAYS",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.labelMedium,
                         color = colors.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 6.dp),
+                        modifier = Modifier.alignByBaseline(),
                     )
                 }
-
-                Text(
-                    text = "Until race day",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.outline,
-                )
-            } else {
-                Text(
-                    text = "Until race day",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.outline,
-                )
             }
         }
     }

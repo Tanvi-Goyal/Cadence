@@ -18,6 +18,16 @@ interface ActiveWorkoutController {
 
     fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String)
 
+    /**
+     * Rehydrates a race that outlived the process, from device-local storage.
+     *
+     * Idempotent and fire-and-forget — the first call per process wins. A restored race is published
+     * **paused** at its last observed elapsed: wall time that passed while nothing was watching the
+     * clock is deliberately NOT counted, so a restored total can never silently exceed the race that
+     * was actually run. No-ops when a race is already live, so it can never clobber one.
+     */
+    fun restore()
+
     fun pause()
     fun resume()
 

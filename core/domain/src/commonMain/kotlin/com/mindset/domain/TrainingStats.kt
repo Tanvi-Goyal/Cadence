@@ -65,3 +65,40 @@ fun personalBestSessionIds(sessions: List<Session>, volumes: Map<String, Double>
     }
     return pbs
 }
+
+/**
+ * One ISO-week bucket of [weeklySessionCounts]: the Monday that opens the week (UTC epoch-day), how
+ * many sessions fell inside it, and whether it is the in-progress week.
+ */
+data class WeekBucket(val mondayEpochDay: Long, val sessionCount: Int, val isCurrent: Boolean)
+
+/** The Monday that opens [epochDay]'s week. Epoch-day 0 (1970-01-01) is a Thursday → Monday index 3. */
+private fun mondayOf(epochDay: Long): Long = epochDay - (((epochDay % 7) + 3) % 7)
+
+/**
+ * Sessions per ISO week over the last [weeks] weeks, oldest first — the Profile training-frequency
+ * chart. Counts *sessions*, not distinct trained days (two workouts in a day are two sessions);
+ * that is the deliberate difference from Home's "This week" grid, which counts days.
+ *
+ * Pure over [nowMillis] rather than reading a clock, so the caller owns the window and the bucketing
+ * is unit-testable. UTC-bucketed, matching [trainingStreakDays] and the History calendar. Sessions
+ * outside the window are ignored, so the caller may pass an unbounded history.
+ */
+fun weeklySessionCounts(sessionStartMillis: List<Long>, nowMillis: Long, weeks: Int = 8): List<WeekBucket> {
+    require(weeks > 0) { "weeks must be positive" }
+    val currentMonday = mondayOf(nowMillis / DAY_MS)
+    val oldestMonday = currentMonday - (weeks - 1) * 7L
+    val counts = IntArray(weeks)
+    for (millis in sessionStartMillis) {
+        val monday = mondayOf(millis / DAY_MS)
+        if (monday < oldestMonday || monday > currentMonday) continue
+        counts[((monday - oldestMonday) / 7L).toInt()]++
+    }
+    return List(weeks) { index ->
+        WeekBucket(
+            mondayEpochDay = oldestMonday + index * 7L,
+            sessionCount = counts[index],
+            isCurrent = index == weeks - 1,
+        )
+    }
+}

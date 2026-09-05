@@ -10,13 +10,17 @@ import com.mindset.model.BottomNavTab
  */
 
 /** The Profile tab (string-routed, like the other bottom-nav tabs). */
-fun NavGraphBuilder.profileScreen(onTab: (BottomNavTab) -> Unit, onOpenCredits: () -> Unit) {
+fun NavGraphBuilder.profileScreen(onTab: (BottomNavTab) -> Unit) {
     composable<Profile> {
-        ProfileScreen(onTab = onTab, onOpenCredits = onOpenCredits)
+        ProfileScreen(onTab = onTab)
     }
 }
 
-/** The Credits push (typed route). */
+/**
+ * The Credits push (typed route). Currently registered but unreachable: the Profile footer that
+ * linked here was removed with the screen's placeholder content, and nothing else navigates to it.
+ * Left in place rather than deleted — giving Credits a home again is its own decision.
+ */
 fun NavGraphBuilder.creditsScreen(onBack: () -> Unit) {
     composable<Credits> {
         CreditsScreen(onBack = onBack)

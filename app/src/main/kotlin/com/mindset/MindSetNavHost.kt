@@ -66,7 +66,7 @@ fun MindSetNavHost() {
 
             stationsScreen(onTab = nav::switchTab)
 
-            profileScreen(onTab = nav::switchTab, onOpenCredits = { nav.navigate(Credits) })
+            profileScreen(onTab = nav::switchTab)
 
             creditsScreen(onBack = { nav.popBackStack() })
 

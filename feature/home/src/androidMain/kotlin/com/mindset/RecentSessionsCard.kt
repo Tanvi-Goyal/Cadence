@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.mindset.presentation.Widget
+
+/** The "See all" tap target sits tighter than [Spacing.xs]; 2dp is deliberate and has no token. */
+private val SeeAllVerticalPadding = 2.dp
 
 /**
  * The "Recent" widget: a grouped card of the latest sessions. Reuses the shared [SessionRow], now fed
@@ -33,12 +35,7 @@ fun RecentSessionsCard(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            SectionLabel("Recent")
+        HomeSectionHeader("Recent", Modifier.fillMaxWidth()) {
             Text(
                 text = "See all",
                 style = MaterialTheme.typography.labelLarge,
@@ -46,11 +43,11 @@ fun RecentSessionsCard(
                 modifier = Modifier
                     .clip(MaterialTheme.shapes.small)
                     .clickable(onClick = onSeeAll)
-                    .padding(horizontal = MaterialTheme.spacing.xs, vertical = 2.dp),
+                    .padding(horizontal = MaterialTheme.spacing.xs, vertical = SeeAllVerticalPadding),
             )
         }
         if (widget.sessions.isEmpty()) {
-            EmptyHint("No sessions yet. Start your first one.", Modifier.fillMaxWidth())
+            HomeEmptyHint("No sessions yet. Start your first one.", Modifier.fillMaxWidth())
         } else {
             // Grouped card: rows sit on the container surface, separated by 1dp gaps that reveal the
             // fainter backing color (matches the Figma "Overlay" grouping).

@@ -13,6 +13,8 @@ import com.mindset.domain.MuscleImageProvider
 import com.mindset.domain.repository.AthleteProfileRepository
 import com.mindset.domain.repository.EntitlementRepository
 import com.mindset.domain.repository.PersonalRecordRepository
+import com.mindset.data.ActiveRaceStoreImpl
+import com.mindset.domain.repository.ActiveRaceStore
 import com.mindset.domain.repository.PreferencesRepository
 import com.mindset.domain.repository.RaceGoalRepository
 import com.mindset.domain.repository.SessionRepository
@@ -28,8 +30,9 @@ val dataModule =
     module {
         single { SessionRepositoryImpl(get(), get(), get(), get()) } bind SessionRepository::class
         // App-scoped live-workout timer: a single instance shared by every surface (owns its own scope).
-        single { ActiveWorkoutControllerImpl(get(), get(), get()) } bind ActiveWorkoutController::class
+        single { ActiveWorkoutControllerImpl(get(), get(), get(), get()) } bind ActiveWorkoutController::class
         single { PreferencesRepositoryImpl(get()) } bind PreferencesRepository::class
+        single { ActiveRaceStoreImpl(get()) } bind ActiveRaceStore::class
         single { AthleteProfileRepositoryImpl(get()) } bind AthleteProfileRepository::class
         single { RaceGoalRepositoryImpl(get(), get(), get()) } bind RaceGoalRepository::class
         single { EntitlementRepositoryImpl(get()) } bind EntitlementRepository::class

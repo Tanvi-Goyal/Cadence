@@ -281,9 +281,17 @@ private fun FeaturedCard(featured: FeaturedTemplate, onClick: () -> Unit) {
     ) {
         FlagBadge(featured.flag)
         Spacer(Modifier.height(MaterialTheme.spacing.sm))
-        Text(featured.title, style = MaterialTheme.typography.headlineSmall, color = colors.onSurface)
+        Text(
+            featured.title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = colors.onSurface,
+        )
         Spacer(Modifier.height(MaterialTheme.spacing.xs))
-        Text(featured.subtitle, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        Text(
+            featured.subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.onSurfaceVariant,
+        )
         Spacer(Modifier.height(MaterialTheme.spacing.sm))
         Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
             featured.tags.forEach { FloatingTag(it) }
