@@ -9,9 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,8 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.mindset.domain.ActiveWorkout
 import com.mindset.icons.ChevronRight
+import com.mindset.model.ActiveWorkout
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -39,7 +37,7 @@ import kotlinx.coroutines.flow.map
  * controller the sheet does, so the two surfaces can never disagree.
  *
  * **Recomposition.** The race clock ticks ~5×/sec, so this is split in two on purpose:
- *  - this composable reads only [CardChrome] — the fields that change per *step*, not per tick — via a
+ *  - this composable reads only [LiveWorkoutData] — the fields that change per *step*, not per tick — via a
  *    derived, de-duplicated flow, so the title, step label, chevron and all three pills are untouched
  *    between ticks;
  *  - [LiveClock] collects the raw flow itself, so it is the only thing that recomposes at 5 Hz.
@@ -77,12 +75,9 @@ fun LiveWorkoutSlot(
             color = colors.primary,
         )
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth()
                 .clip(shape)
                 .background(GlassFill)
-                // Primary-tinted border, not the usual hairline: a running race is the one thing on
-                // Home that is mid-flight.
                 .border(1.dp, colors.primary.copy(alpha = 0.5f), shape)
                 .clickable(onClick = onExpand)
                 .padding(MaterialTheme.spacing.md),
@@ -110,26 +105,32 @@ fun LiveWorkoutSlot(
                         color = colors.onSurfaceVariant,
                     )
                 }
+
                 LiveClock(activeWorkout)
                 Icon(
                     MindSetIcons.ChevronRight,
                     contentDescription = "Open workout",
                     tint = colors.primary,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier,
                 )
             }
 
-            // Controls disappear once the race is done, so Reset can never corrupt a finished race
-            // (the timer sheet hides its controls the same way).
             if (!card.finished) {
                 Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)) {
-                    WorkoutActionPill("Reset", primary = false, weight = 1f, onClick = onReset)
+                    WorkoutActionPill(
+                        "Reset",
+                        primary = false,
+                        weight = 1f,
+                        onClick = onReset,
+                    )
+
                     WorkoutActionPill(
                         text = if (card.paused) "Resume" else "Pause",
                         primary = false,
                         weight = 1f,
                         onClick = onTogglePause,
                     )
+
                     WorkoutActionPill(
                         text = if (card.isLast) "Finish" else "Next",
                         primary = true,
@@ -142,12 +143,8 @@ fun LiveWorkoutSlot(
     }
 }
 
-/**
- * The per-step fields of a live race — everything the card draws *except* the clock. Deliberately all
- * primitives/String so the card value-skips between ticks.
- */
 @Immutable
-private data class CardChrome(
+private data class LiveWorkoutData(
     val title: String,
     val stepLabel: String,
     val paused: Boolean,
@@ -155,7 +152,7 @@ private data class CardChrome(
     val isLast: Boolean,
 )
 
-private fun ActiveWorkout.toChrome() = CardChrome(
+private fun ActiveWorkout.toChrome() = LiveWorkoutData(
     title = current?.title ?: "Workout",
     stepLabel = "Step ${currentIndex + 1} of $totalSteps",
     paused = paused,
@@ -195,23 +192,33 @@ private fun LiveClock(activeWorkout: StateFlow<ActiveWorkout?>) {
     }
 }
 
-/** Compact pill for the card's inline controls — mirrors the timer sheet's own control row. */
 @Composable
-private fun RowScope.WorkoutActionPill(text: String, primary: Boolean, weight: Float, onClick: () -> Unit) {
+private fun RowScope.WorkoutActionPill(
+    text: String,
+    primary: Boolean,
+    weight: Float,
+    onClick: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
-    val base = Modifier
-        .weight(weight)
-        .height(44.dp)
+    val base = Modifier.weight(weight)
         .clip(CircleShape)
     val styled = if (primary) {
         base.background(colors.primary)
     } else {
         base.background(GlassFill).border(1.dp, GlassBorder, CircleShape)
     }
-    Box(styled.clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+    Box(
+        styled
+            .padding(
+                horizontal = MaterialTheme.spacing.xs,
+                vertical = MaterialTheme.spacing.sm,
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = if (primary) FontWeight.Bold else FontWeight.Normal,
             color = if (primary) colors.onPrimary else colors.onSurface,
         )

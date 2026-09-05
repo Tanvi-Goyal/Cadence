@@ -16,8 +16,10 @@ import com.mindset.data.local.ExerciseAssetReader
 import com.mindset.data.local.ExerciseEntryEntity
 import com.mindset.data.local.ExerciseImporter
 import com.mindset.data.local.OutboxEntry
+import com.mindset.data.local.SessionEntity
 import com.mindset.data.local.SessionSource
 import com.mindset.data.local.SessionType
+import com.mindset.data.local.SetEntryEntity
 import com.mindset.data.local.SyncMeta
 import com.mindset.data.local.SyncMetaKeys
 import com.mindset.data.local.SyncStatus
@@ -27,7 +29,6 @@ import com.mindset.domain.repository.SessionRepository
 import com.mindset.model.EventFormat
 import com.mindset.model.Exercise
 import com.mindset.model.Gender
-import com.mindset.model.HyroxDivisionInfo
 import com.mindset.model.HyroxStation
 import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxStationType
@@ -47,8 +48,6 @@ import kotlinx.coroutines.flow.map
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import com.mindset.data.local.PersonalRecord as PersonalRecordEntity
-import com.mindset.data.local.SessionEntity as SessionEntity
-import com.mindset.data.local.SetEntryEntity as SetEntryEntity
 import com.mindset.model.SessionType as DomainSessionType
 
 @OptIn(ExperimentalTime::class)
@@ -137,7 +136,7 @@ class SessionRepositoryImpl(
     private fun implicitBlock(sessionId: String, now: Long): BlockEntity = BlockEntity(
         id = implicitBlockId(sessionId),
         sessionId = sessionId,
-        type = "STRAIGHT", // com.mindset.model.BlockType.STRAIGHT
+        type = "STRAIGHT",
         orderIndex = 0,
         rounds = 1,
         createdAt = now,

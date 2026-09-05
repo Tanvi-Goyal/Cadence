@@ -23,23 +23,16 @@ import org.koin.core.context.GlobalContext
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
 
-        // Benchmark-only: the scroll Macrobenchmark launches with `--ei mindset_seed N` to bulk-seed
-        // a long History list before first frame. Never fires in normal use (no extra present).
         val seed = intent.getIntExtra("mindset_seed", 0)
         if (seed > 0) {
             runBlocking { GlobalContext.get().get<SessionRepository>().seedBenchmarkSessions(seed) }
         }
 
         setContent {
-            // testTagsAsResourceId maps every Compose testTag to a UI Automator resource-id.
-            // Set once at the root; it propagates down the semantics tree to all descendants.
-            // Zero cost in production traffic — it only changes what the accessibility tree exposes.
-            // Read preferences once at the root and publish theme + unit down the tree, so the whole
-            // app re-themes / re-labels from a single source when the Profile screen changes them.
             val prefs by koinViewModel<PreferencesViewModel>()
                 .preferences
                 .collectAsStateWithLifecycle()

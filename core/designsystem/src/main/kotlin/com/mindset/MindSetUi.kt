@@ -1,13 +1,7 @@
 package com.mindset
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -23,12 +17,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/*
- * Obsidian Performance design-system primitives — the small, reusable pieces every screen composes
- * from. They read only from MaterialTheme (colorScheme / typography / spacing), so they inherit the
- * theme automatically. See docs/design.md for the token rationale.
- */
-
 /** Uppercase, tracked, muted section heading (design.md "Functional Labels"). e.g. "UP NEXT". */
 // todo:: to  be deleted
 @Composable
@@ -41,65 +29,6 @@ fun SectionLabel(text: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.outline,
         modifier = modifier,
     )
-}
-
-/** Small pill on the primary color for a status/type tag, e.g. the "STRENGTH" chip. */
-@Composable
-fun AccentPill(text: String, modifier: Modifier = Modifier, icon: ImageVector? = null) {
-    Row(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primary)
-            .padding(horizontal = MaterialTheme.spacing.md, vertical = MaterialTheme.spacing.xs),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
-    ) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(12.dp),
-            )
-        }
-        Text(
-            text = text.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimary,
-        )
-    }
-}
-
-/** Outlined pill button used for horizontally-scrolling quick actions (template chips). */
-@Composable
-fun MindSetChip(label: String, icon: ImageVector, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .border(
-                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
-                CircleShape,
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 17.dp, vertical = MaterialTheme.spacing.sm + 2.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-    }
 }
 
 /** A circular icon medallion (leading element on list rows). */

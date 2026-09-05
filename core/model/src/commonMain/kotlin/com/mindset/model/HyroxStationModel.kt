@@ -19,5 +19,3 @@ data class HyroxStationModel(
     val stationNumber: Int? = null, // 1..8 race position (null for runs)
     val segmentKey: String? = null,
 )
-
-data class HyroxDivisionInfo(val key: String, val label: String)

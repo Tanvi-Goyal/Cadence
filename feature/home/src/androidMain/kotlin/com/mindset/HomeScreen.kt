@@ -1,16 +1,12 @@
 package com.mindset
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -23,10 +19,8 @@ import com.mindset.components.BottomNavBar
 import com.mindset.components.LocalQuickStart
 import com.mindset.components.MindSetTopBar
 import com.mindset.components.QuickStartFab
-import com.mindset.icons.Grid
-import com.mindset.domain.ActiveWorkout
+import com.mindset.model.ActiveWorkout
 import com.mindset.model.BottomNavTab
-import com.mindset.model.Session
 import com.mindset.presentation.HomeUiState
 import com.mindset.presentation.HomeViewModel
 import com.mindset.presentation.Widget
@@ -152,8 +146,7 @@ private fun WidgetSlotContent(
 
             is Widget.RecentSessionsWidget ->
                 RecentSessionsCard(widget, onOpenDetail, onSeeAll, modifier)
-            // Self-sourcing: the card collects the ticking flow itself, so the ~200 ms tick
-            // invalidates only its clock — never this LazyColumn or the sibling widgets.
+
             Widget.LiveWorkoutWidget ->
                 LiveWorkoutSlot(
                     activeWorkout = activeWorkout,
@@ -163,36 +156,6 @@ private fun WidgetSlotContent(
                     onNext = onAdvanceWorkout,
                     modifier = modifier,
                 )
-        }
-    }
-}
-
-@Composable
-private fun TemplatesSection(
-    templates: List<Session>,
-    onOpenTemplate: (String) -> Unit,
-    onOpenTemplates: () -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {
-        SectionLabel("Templates")
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
-        ) {
-            // Leading chip is always visible (no horizontal scroll needed) so the Templates library
-            // stays reachable — it's Home's only route into it.
-            MindSetChip(
-                label = "Browse templates",
-                icon = MindSetIcons.Grid,
-                onClick = onOpenTemplates,
-            )
-            templates.take(6).forEach { template ->
-                MindSetChip(
-                    label = template.name,
-                    icon = typeIcon(template.type.name),
-                    onClick = { onOpenTemplate(template.id) },
-                )
-            }
         }
     }
 }

@@ -2,10 +2,10 @@
 
 package com.mindset.data
 
-import com.mindset.domain.ActiveWorkout
 import com.mindset.domain.ActiveWorkoutController
 import com.mindset.domain.repository.PreferencesRepository
 import com.mindset.domain.repository.SessionRepository
+import com.mindset.model.ActiveWorkout
 import com.mindset.model.Gender
 import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxVariant
@@ -89,8 +89,6 @@ class ActiveWorkoutControllerImpl(
 
             val id = repository.startHyroxSession(divisionKey, variant, raceMode, gender, templateId)
 
-            // Re-initialise EVERY anchor: dismiss() clears only `steps`/`_state`, so a second race
-            // would otherwise inherit the first one's elapsed time and step index.
             sessionId = id
             this@ActiveWorkoutControllerImpl.divisionKey = divisionKey
             this@ActiveWorkoutControllerImpl.variant = variant
@@ -168,8 +166,6 @@ class ActiveWorkoutControllerImpl(
         _state.value = null
     }
 
-    // ── internals ───────────────────────────────────────────────────────────────────────────────
-
     private fun onScope(block: suspend () -> Unit) {
         scope.launch { block() }
     }
@@ -185,7 +181,6 @@ class ActiveWorkoutControllerImpl(
             }
     }
 
-    /** Live milliseconds since the last resume/advance (0 while paused). */
     private fun liveMs(): Long = if (paused) 0L else (clock.now() - runStartMark).inWholeMilliseconds
 
     private fun emit() {

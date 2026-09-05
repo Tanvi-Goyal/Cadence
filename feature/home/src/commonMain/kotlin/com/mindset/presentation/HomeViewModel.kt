@@ -2,8 +2,8 @@ package com.mindset.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mindset.domain.ActiveWorkout
 import com.mindset.domain.ActiveWorkoutController
+import com.mindset.model.ActiveWorkout
 import kotlinx.coroutines.flow.distinctUntilChanged
 import com.mindset.domain.repository.RaceGoalRepository
 import com.mindset.domain.repository.SessionRepository
