@@ -23,7 +23,8 @@ import com.mindset.data.local.SetEntryEntity
 import com.mindset.data.local.SyncMeta
 import com.mindset.data.local.SyncMetaKeys
 import com.mindset.data.local.SyncStatus
-import com.mindset.data.local.TemplateSeed
+// TODO(phase2): restore with the template seed block in ensureSeeded().
+// import com.mindset.data.local.TemplateSeed
 import com.mindset.domain.detectPrs
 import com.mindset.domain.repository.SessionRepository
 import com.mindset.model.EventFormat
@@ -62,7 +63,9 @@ class SessionRepositoryImpl(
 
     private companion object {
         const val CATALOG_SEED_VERSION = 6
-        const val TEMPLATE_SEED_VERSION = 2
+
+        // TODO(phase2): restore with the template seed block in ensureSeeded().
+//        const val TEMPLATE_SEED_VERSION = 2
     }
 
     private val sessions get() = database.sessionDao()
@@ -973,32 +976,43 @@ class SessionRepositoryImpl(
             syncMeta.set(SyncMeta(SyncMetaKeys.SEED_VERSION, CATALOG_SEED_VERSION.toString()))
         }
 
+        // TODO(phase2): re-enable, cut from v1 scope — the 15 seeded strength program days
+        // (Weeks 4-6 x Mon-Fri). v1 ships the Hyrox race simulation only, and the two surfaces that
+        // read these rows — TemplateLibraryScreen and TemplatesScreen, via observeTemplates() — have
+        // their routes commented out of MindSetNavHost, so nothing reachable can show them. Nothing
+        // else depends on them: `sessions.templateId` is a plain column with no foreign key (the
+        // Hyrox sim ids are hardcoded in HomeViewModel and were never rows here), and every other
+        // query filters `isTemplate = 0`. Skipping this also drops the largest write on first launch.
+        //
+        // Re-enabling needs no migration: with this block commented, TEMPLATE_SEED_VERSION is never
+        // written, so it stays 0 and the seed runs on the next call once uncommented.
+        //
         // Program templates (multi-block day trees, target-only sets). Seeded local reference data —
         // like the catalog, they carry no outbox row. Fixed ids → an idempotent clear-then-insert.
-        val templateSeeded = syncMeta.get(SyncMetaKeys.TEMPLATE_SEED_VERSION)?.toIntOrNull() ?: 0
-        if (templateSeeded < TEMPLATE_SEED_VERSION) {
-            val templates = TemplateSeed.all(now())
-            database.useWriterConnection { connection ->
-                connection.immediateTransaction {
-                    templates.forEach { t ->
-                        val entryIds = entries.getBySession(t.sessionEntity.id).map { it.id }
-                        if (entryIds.isNotEmpty()) setEntries.deleteForEntries(entryIds)
-                        entries.deleteBySession(t.sessionEntity.id) // before blocks (its subquery joins blocks)
-                        blocks.deleteBySession(t.sessionEntity.id)
-                        sessions.upsert(t.sessionEntity)
-                        t.blockEntities.forEach { blocks.insert(it) }
-                        t.entries.forEach { entries.insert(it) }
-                        t.sets.forEach { setEntries.insert(it) }
-                    }
-                }
-            }
-            syncMeta.set(
-                SyncMeta(
-                    SyncMetaKeys.TEMPLATE_SEED_VERSION,
-                    TEMPLATE_SEED_VERSION.toString(),
-                ),
-            )
-        }
+//        val templateSeeded = syncMeta.get(SyncMetaKeys.TEMPLATE_SEED_VERSION)?.toIntOrNull() ?: 0
+//        if (templateSeeded < TEMPLATE_SEED_VERSION) {
+//            val templates = TemplateSeed.all(now())
+//            database.useWriterConnection { connection ->
+//                connection.immediateTransaction {
+//                    templates.forEach { t ->
+//                        val entryIds = entries.getBySession(t.sessionEntity.id).map { it.id }
+//                        if (entryIds.isNotEmpty()) setEntries.deleteForEntries(entryIds)
+//                        entries.deleteBySession(t.sessionEntity.id) // before blocks (its subquery joins blocks)
+//                        blocks.deleteBySession(t.sessionEntity.id)
+//                        sessions.upsert(t.sessionEntity)
+//                        t.blockEntities.forEach { blocks.insert(it) }
+//                        t.entries.forEach { entries.insert(it) }
+//                        t.sets.forEach { setEntries.insert(it) }
+//                    }
+//                }
+//            }
+//            syncMeta.set(
+//                SyncMeta(
+//                    SyncMetaKeys.TEMPLATE_SEED_VERSION,
+//                    TEMPLATE_SEED_VERSION.toString(),
+//                ),
+//            )
+//        }
 
         // Event-format reference tables (formats / segments / divisions / per-division standards).
         // Reference data, like the catalog — no outbox. Fixed slug ids → idempotent upsert. Adding a
