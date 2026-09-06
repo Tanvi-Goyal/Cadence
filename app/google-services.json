@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "430540100861",
+    "project_id": "mindset-app-f0aff",
+    "storage_bucket": "mindset-app-f0aff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:430540100861:android:e51a0f6e9404ba77e01a94",
+        "android_client_info": {
+          "package_name": "com.mindset"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARGbHv7F-t1uufUMRAhcIfw_bHyAnASsM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

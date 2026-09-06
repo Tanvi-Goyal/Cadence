@@ -25,5 +25,4 @@ trace_processor
 keystore.properties
 
 # Service/SDK config carrying live keys.
-google-services.json
 kotzilla.json
