@@ -54,7 +54,10 @@ import java.util.Date
 import java.util.Locale
 
 @Composable
-fun OnboardingScreen(onComplete: () -> Unit, viewModel: OnboardingViewModel = koinViewModel()) {
+fun OnboardingScreen(
+    onComplete: () -> Unit,
+    viewModel: OnboardingViewModel = koinViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(state.done) { if (state.done) onComplete() }
 
@@ -252,10 +255,12 @@ private fun RaceConfigStep(state: OnboardingUiState, vm: OnboardingViewModel) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    vm.onRaceDate(pickerState.selectedDateMillis)
-                    showDatePicker = false
-                }) { Text("OK") }
+                TextButton(
+                    onClick = {
+                        vm.onRaceDate(pickerState.selectedDateMillis)
+                        showDatePicker = false
+                    },
+                ) { Text("OK") }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
@@ -338,4 +343,5 @@ private fun SegmentedSelector(options: List<String>, selectedIndex: Int, onSelec
     }
 }
 
-private fun formatDate(millis: Long): String = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(millis))
+private fun formatDate(millis: Long): String =
+    SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(millis))

@@ -289,18 +289,18 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
                 "FROM `athlete_profile` WHERE id = 0 AND raceDate IS NOT NULL",
         )
 
-        // 7. athlete_profile → recreate slim (rename defaultDivision→defaultDivisionKey, + defaultMode,
-        //    drop the race columns). Column removal needs a table-recreate (no DROP COLUMN pre-3.35).
+        // 7. athlete_profile → recreate slim: identity + baseline only. Race intent already moved to
+        //    `race_goal` in step 6, so the division/mode/race columns have no second home here, and
+        //    `onboardingComplete` is a device-local flag that belongs in the Preferences DataStore.
+        //    Column removal needs a table-recreate (no DROP COLUMN pre-3.35). This CREATE must match
+        //    schemas/…/12.json column-for-column or runMigrationsAndValidate(version = 12) fails.
         connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `athlete_profile_new` (`id` INTEGER NOT NULL, `fullName` TEXT NOT NULL, " +
-                "`bodyweightKg` REAL, `heightCm` REAL, `defaultDivisionKey` TEXT NOT NULL, `defaultMode` TEXT, " +
-                "`onboardingComplete` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+                "`bodyweightKg` REAL, `heightCm` REAL, PRIMARY KEY(`id`))",
         )
         connection.execSQL(
-            "INSERT INTO `athlete_profile_new` (id, fullName, bodyweightKg, heightCm, defaultDivisionKey, " +
-                "defaultMode, onboardingComplete) " +
-                "SELECT id, fullName, bodyweightKg, heightCm, defaultDivision, NULL, onboardingComplete " +
-                "FROM `athlete_profile`",
+            "INSERT INTO `athlete_profile_new` (id, fullName, bodyweightKg, heightCm) " +
+                "SELECT id, fullName, bodyweightKg, heightCm FROM `athlete_profile`",
         )
         connection.execSQL("DROP TABLE `athlete_profile`")
         connection.execSQL("ALTER TABLE `athlete_profile_new` RENAME TO `athlete_profile`")
@@ -310,27 +310,29 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
 /**
  * v12 → v13. Device-local settings move out of Room into a Preferences DataStore: the singleton
  * `preferences` table (themeMode/weightUnit) and the `onboardingComplete` flag are no longer
- * persisted by Room. This drops the `preferences` table and recreates `athlete_profile` without
- * `onboardingComplete` (column removal needs a table-recreate; see [MIGRATION_7_8]).
+ * persisted by Room. This drops the `preferences` table and recreates `athlete_profile` with only
+ * the four columns [AthleteProfileEntity] declares (column removal needs a table-recreate; see
+ * [MIGRATION_7_8]).
  *
- * NOTE: `defaultDivisionKey`/`defaultMode` are intentionally KEPT here — reconciling those against
- * the slimmed [AthleteProfileEntity] is a separate change; this migration only removes what the
- * DataStore move retires.
+ * `onboardingComplete` moved to the DataStore. `defaultDivisionKey`/`defaultMode` were already
+ * dropped from the entity — race identity lives in the Preferences DataStore now (`setRaceInfo`)
+ * and as a first-class `race_goal` row, so the profile no longer carries a duplicate.
  */
 val MIGRATION_12_13 = object : Migration(12, 13) {
     override suspend fun migrate(connection: SQLiteConnection) {
         // 1. preferences table is gone — themeMode/weightUnit now live in the Preferences DataStore.
         connection.execSQL("DROP TABLE IF EXISTS `preferences`")
 
-        // 2. athlete_profile → recreate without onboardingComplete (moved to the DataStore).
+        // 2. athlete_profile → recreate with exactly the columns AthleteProfileEntity declares.
+        //    Room validates the post-migration schema column-for-column, so this CREATE must match
+        //    schemas/…/13.json verbatim or the DB fails to open.
         connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `athlete_profile_new` (`id` INTEGER NOT NULL, `fullName` TEXT NOT NULL, " +
-                "`bodyweightKg` REAL, `heightCm` REAL, `defaultDivisionKey` TEXT NOT NULL, `defaultMode` TEXT, " +
-                "PRIMARY KEY(`id`))",
+                "`bodyweightKg` REAL, `heightCm` REAL, PRIMARY KEY(`id`))",
         )
         connection.execSQL(
-            "INSERT INTO `athlete_profile_new` (id, fullName, bodyweightKg, heightCm, defaultDivisionKey, defaultMode) " +
-                "SELECT id, fullName, bodyweightKg, heightCm, defaultDivisionKey, defaultMode FROM `athlete_profile`",
+            "INSERT INTO `athlete_profile_new` (id, fullName, bodyweightKg, heightCm) " +
+                "SELECT id, fullName, bodyweightKg, heightCm FROM `athlete_profile`",
         )
         connection.execSQL("DROP TABLE `athlete_profile`")
         connection.execSQL("ALTER TABLE `athlete_profile_new` RENAME TO `athlete_profile`")

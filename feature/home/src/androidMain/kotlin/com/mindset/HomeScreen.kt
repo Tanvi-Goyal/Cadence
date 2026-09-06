@@ -9,20 +9,15 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.components.BottomNavBar
-import com.mindset.components.LocalQuickStart
 import com.mindset.components.MindSetTopBar
-import com.mindset.components.QuickStartFab
 import com.mindset.model.ActiveWorkout
 import com.mindset.model.BottomNavTab
 import com.mindset.presentation.HomeUiState
@@ -39,7 +34,6 @@ private val CompactWidgets = setOf(WidgetType.RaceGoal, WidgetType.Performance)
 
 @Composable
 fun HomeScreen(
-    onOpenTemplates: () -> Unit,
     onOpenTemplate: (String) -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
@@ -47,7 +41,6 @@ fun HomeScreen(
     viewModel: HomeViewModel = koinViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val quickStart = LocalQuickStart.current
 
     MindSetTheme {
         Scaffold(
@@ -61,10 +54,6 @@ fun HomeScreen(
             bottomBar = {
                 BottomNavBar(current = BottomNavTab.Home, onTabClick = onTab)
             },
-            floatingActionButton = {
-                QuickStartFab(onClick = quickStart)
-            },
-            floatingActionButtonPosition = FabPosition.Center,
         ) { padding ->
             HomeContent(
                 state = state,
@@ -163,9 +152,6 @@ private fun WidgetSlotContent(
 
             is Widget.SimulationWidget ->
                 SimulationCard(widget, onOpenTemplate, modifier)
-
-            is Widget.BrowseTemplatesWidget -> Unit
-//                BrowseTemplatesCard(onOpenTemplates, modifier)
 
             is Widget.RecentSessionsWidget ->
                 RecentSessionsCard(widget, onOpenDetail, onSeeAll, modifier)

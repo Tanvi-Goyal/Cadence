@@ -19,25 +19,17 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.ExperimentalTime
 
 private const val DAY_MS = 86_400_000L
 
-/** Two months of bars — enough to read a trend without the marks going thin on a phone. */
 private const val FREQUENCY_WEEKS = 8
 
-/**
- * Backs the Profile screen.
- *
- * Deliberately separate from [PreferencesViewModel], which is the *app-wide* preferences holder:
- * `MainActivity` resolves it for the theme/unit CompositionLocals and iOS's `PreferencesStore`
- * bridges it with a conditional `as? UserPreferences` cast. Renaming or reshaping that class would
- * break the Swift side silently — Xcode compiles outside Gradle, so no Kotlin build would fail.
- */
 class ProfileViewModel(
     private val sessionRepository: SessionRepository,
-    private val athleteProfileRepository: AthleteProfileRepository,
-    private val preferencesRepository: PreferencesRepository,
+    athleteProfileRepository: AthleteProfileRepository,
+    preferencesRepository: PreferencesRepository,
 ) : ViewModel() {
 
     val uiState: StateFlow<ProfileUiState> = combine(
@@ -100,16 +92,14 @@ class ProfileViewModel(
         while (true) {
             val nowMillis = Clock.System.now().toEpochMilliseconds()
             emit(nowMillis / DAY_MS)
-            delay(DAY_MS - (nowMillis % DAY_MS) + 1_000L)
+            delay((DAY_MS - (nowMillis % DAY_MS) + 1_000L).milliseconds)
         }
     }.distinctUntilChanged()
 
-    /** e.g. "MEN PRO · SINGLES" — blank until onboarding has set a division. */
     private fun tierLabel(prefs: UserPreferences): String =
         listOfNotNull(prefs.hyroxDivisionKey?.replace('_', ' '), prefs.raceMode?.name)
             .joinToString(" · ") { it.uppercase() }
 
-    /** The session-table derivations, grouped so they share one read and one equality check. */
     private data class SessionDerived(
         val streakDays: Int,
         val totalSessions: Int,

@@ -6,7 +6,6 @@ import com.mindset.model.BottomNavTab
 
 /** The Home tab (string-routed). All navigation targets are supplied by the app as lambdas. */
 fun NavGraphBuilder.homeScreen(
-    onOpenTemplates: () -> Unit,
     onOpenTemplate: (String) -> Unit,
     onOpenDetail: (String) -> Unit,
     onSeeAll: () -> Unit,
@@ -14,7 +13,6 @@ fun NavGraphBuilder.homeScreen(
 ) {
     composable<Home> {
         HomeScreen(
-            onOpenTemplates = onOpenTemplates,
             onOpenTemplate = onOpenTemplate,
             onOpenDetail = onOpenDetail,
             onSeeAll = onSeeAll,

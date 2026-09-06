@@ -2,8 +2,6 @@ package com.mindset
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,11 +18,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,27 +33,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.components.FieldLabel
+import com.mindset.components.HeaderIconButton
+import com.mindset.components.PrimaryButton
 import com.mindset.icons.ArrowBack
-import com.mindset.icons.Barbell
 import com.mindset.icons.Burpee
 import com.mindset.icons.Dumbbell
-import com.mindset.icons.Edit
-import com.mindset.icons.EngineRun
+// TODO(phase2): restore with the hero's edit pencil below.
+// import com.mindset.icons.Edit
 import com.mindset.icons.Flag
 import com.mindset.icons.LowerBody
 import com.mindset.icons.Play
 import com.mindset.icons.Rowing
+import com.mindset.icons.Run
 import com.mindset.icons.SkiErg
 import com.mindset.icons.SledPull
 import com.mindset.icons.Timer
@@ -64,26 +63,13 @@ import com.mindset.presentation.HyroxDivision
 import com.mindset.presentation.HyroxGlyph
 import com.mindset.presentation.HyroxRow
 import com.mindset.presentation.HyroxRowKind
+import com.mindset.presentation.HyroxStandards
 import com.mindset.presentation.HyroxVariant
 import com.mindset.presentation.TemplateHyroxDetailUiState
 import com.mindset.presentation.TemplateHyroxDetailViewModel
 import com.mindset.ui.R
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-
-/*
- * Template Detail — HYROX sim (Figma 33:1727), shared by the Full and Half sims. A desaturated hero
- * (HYROX badge + duration + description), a division selector (+ a 1st/2nd/halved variant selector on
- * the half sim), a station/run block list (each block a functional station row over an interleaved run
- * row with a lime left-accent), a finish-line indicator, a SOLID translucent top app bar (back + title
- * + edit), and the sticky Start Workout CTA.
- *
- * Content is derived by [TemplateHyroxDetailViewModel] from the selected division + variant; layout is
- * stateless ([TemplateHyroxDetailContent]) so it previews and tests without Koin.
- */
-
-private val Gutter = 20.dp
-private val BarHeight = 64.dp
 
 @Composable
 fun TemplateHyroxDetailScreen(
@@ -115,29 +101,34 @@ private fun TemplateHyroxDetailContent(
     onDivisionSelected: (HyroxDivision) -> Unit,
     onVariantSelected: (HyroxVariant) -> Unit,
 ) {
-    val colors = MaterialTheme.colorScheme
-    Scaffold(containerColor = colors.background) { inner ->
+    val spacing = MaterialTheme.spacing
+    Scaffold(
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { inner ->
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    top = inner.calculateTopPadding() + BarHeight,
-                    bottom = inner.calculateBottomPadding() + 132.dp,
+                    top = inner.calculateTopPadding(),
+                    // The CTA floats over the list, so the last row has to clear it.
+                    bottom = inner.calculateBottomPadding() + CtaReservedHeight,
                 ),
+                verticalArrangement = Arrangement.spacedBy(spacing.lg),
             ) {
-                item(key = "hero", contentType = "hero") { HeroSection(state) }
-                item(key = "config", contentType = "config") {
+                item(key = "hero") { Hero(state) }
+                item(key = "config") {
                     ConfigSection(
                         state = state,
                         onVariantSelected = onVariantSelected,
                         onDivisionSelected = onDivisionSelected,
-                        modifier = Modifier.padding(top = 24.dp, start = Gutter, end = Gutter),
+                        modifier = Modifier.padding(horizontal = spacing.md),
                     )
                 }
-                item(key = "list", contentType = "list") {
+                item(key = "blocks") {
                     Column(
-                        modifier = Modifier.padding(top = 24.dp, start = Gutter, end = Gutter),
-                        verticalArrangement = Arrangement.spacedBy(32.dp),
+                        modifier = Modifier.padding(horizontal = spacing.md),
+                        verticalArrangement = Arrangement.spacedBy(spacing.xl),
                     ) {
                         state.blocks.forEach { BlockSection(it) }
                         FinishIndicator(state.finishLabel)
@@ -145,13 +136,31 @@ private fun TemplateHyroxDetailContent(
                 }
             }
 
-            TopBar(
-                title = state.title,
-                onBack = onBack,
-                onEdit = onEdit,
-                statusBarInset = inner.calculateTopPadding(),
-                modifier = Modifier.align(Alignment.TopStart),
+            // Back floats over the hero rather than scrolling away inside it: the screen carries no
+            // toolbar, so once the list has scrolled past the photograph this is the only affordance
+            // left besides the system gesture.
+            HeaderIconButton(
+                icon = MindSetIcons.ArrowBack,
+                contentDescription = "Back",
+                onClick = onBack,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = inner.calculateTopPadding())
+                    .padding(spacing.md),
+                container = translucentOverPhoto(),
             )
+            // TODO(phase2): re-enable, cut from v1 scope — editing needs TemplateBuilder, whose route
+            // is not registered in v1, so the pencil would navigate nowhere.
+//            HeaderIconButton(
+//                icon = MindSetIcons.Edit,
+//                contentDescription = "Edit template",
+//                onClick = onEdit,
+//                modifier = Modifier
+//                    .align(Alignment.TopEnd)
+//                    .padding(top = inner.calculateTopPadding())
+//                    .padding(spacing.md),
+//                container = translucentOverPhoto(),
+//            )
 
             StartCta(
                 onStart = onStart,
@@ -165,78 +174,114 @@ private fun TemplateHyroxDetailContent(
 
 // ── Hero ──────────────────────────────────────────────────────────────────────────────────────
 
+private val HeroHeight = 280.dp
+
+/**
+ * The photographic header, styled to match the Home rail card this screen opens from: same
+ * photograph, same bottom-anchored scrim, same badge shapes.
+ */
 @Composable
-private fun HeroSection(state: TemplateHyroxDetailUiState) {
+private fun Hero(state: TemplateHyroxDetailUiState) {
     val colors = MaterialTheme.colorScheme
-    Box(Modifier.fillMaxWidth().height(280.dp)) {
+    val spacing = MaterialTheme.spacing
+    Box(Modifier.fillMaxWidth().height(HeroHeight)) {
         Image(
             painter = painterResource(R.drawable.template_hyrox_sim),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            alpha = 0.5f,
-            colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
             modifier = Modifier.fillMaxSize(),
         )
+        // Ends in the page background (not the rail card's deeper surface) so the photograph
+        // dissolves into the list rather than banding against it.
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     0.0f to Color.Transparent,
-                    0.5f to colors.background.copy(alpha = 0.4f),
+                    0.5f to colors.background.copy(alpha = ScrimMidAlpha),
                     1.0f to colors.background,
                 ),
             ),
         )
         Column(
-            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(Gutter),
-            verticalArrangement = Arrangement.spacedBy(11.dp),
+            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(spacing.md),
+            verticalArrangement = Arrangement.spacedBy(spacing.sm),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.small)
-                        .background(colors.primaryContainer)
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                ) {
-                    Text(
-                        state.badge.uppercase(),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.6.sp,
-                        color = colors.onPrimaryContainer,
-                    )
-                }
-                Row(
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.small)
-                        .background(colors.surfaceContainerHigh.copy(alpha = 0.8f))
-                        .border(1.dp, colors.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.small)
-                        .padding(horizontal = 13.dp, vertical = 5.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        MindSetIcons.Timer,
-                        contentDescription = null,
-                        tint = colors.onSurface,
-                        modifier = Modifier.size(13.dp),
-                    )
-                    Text(
-                        state.duration,
-                        style = MaterialTheme.typography.labelMedium,
-                        letterSpacing = 0.5.sp,
-                        color = colors.onSurface,
-                    )
-                }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FormatBadge(state.badge)
+                DurationTag(state.duration)
             }
+            Text(
+                state.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = colors.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
             Text(
                 state.description,
                 style = MaterialTheme.typography.bodyMedium,
-                lineHeight = 22.sp,
                 color = colors.onSurfaceVariant,
             )
         }
     }
 }
+
+/** Names the format ("HYROX") — the rail card's flag badge at detail scale. */
+@Composable
+private fun FormatBadge(text: String) {
+    val colors = MaterialTheme.colorScheme
+    Box(
+        modifier = Modifier
+            .clip(MaterialTheme.shapes.extraSmall)
+            .background(colors.primaryContainer)
+            .padding(horizontal = MaterialTheme.spacing.sm, vertical = MaterialTheme.spacing.xs),
+    ) {
+        Text(
+            text.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.onPrimaryContainer,
+        )
+    }
+}
+
+/** Estimated duration, on the rail card's translucent tag. */
+@Composable
+private fun DurationTag(text: String) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(translucentOverPhoto())
+            .padding(horizontal = MaterialTheme.spacing.sm, vertical = MaterialTheme.spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            MindSetIcons.Timer,
+            contentDescription = null,
+            tint = colors.onSurface,
+            modifier = Modifier.size(TagIconSize),
+        )
+        Text(text, style = MaterialTheme.typography.labelSmall, color = colors.onSurface)
+    }
+}
+
+/**
+ * Fill for chrome sitting on the photograph. No live backdrop-blur — that is a per-frame GPU cost, and
+ * at this size the flat translucent surface reads the same. Same trade the Home rail card makes.
+ */
+@Composable
+private fun translucentOverPhoto(): Color =
+    MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = TranslucentAlpha)
+
+private const val TranslucentAlpha = 0.8f
+private const val ScrimMidAlpha = 0.4f
+private val TagIconSize = 12.dp
 
 // ── Config selectors ────────────────────────────────────────────────────────────────────────
 
@@ -247,7 +292,7 @@ private fun ConfigSection(
     onDivisionSelected: (HyroxDivision) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {
         if (state.showVariantSelector) {
             SelectorGroup(
                 label = "Simulation",
@@ -272,19 +317,18 @@ private val HYROX_VARIANTS = listOf(HyroxVariant.FIRST_HALF, HyroxVariant.SECOND
 private val HYROX_DIVISIONS = HyroxDivision.entries.toList()
 
 @Composable
-private fun <T> SelectorGroup(label: String, options: List<T>, selected: T, labelOf: (T) -> String, onSelect: (T) -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            label.uppercase(),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 1.2.sp,
-            color = colors.onSurfaceVariant,
-        )
+private fun <T> SelectorGroup(
+    label: String,
+    options: List<T>,
+    selected: T,
+    labelOf: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    Column {
+        FieldLabel(label)
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
         ) {
             options.forEach { option ->
                 SelectorChip(
@@ -297,24 +341,26 @@ private fun <T> SelectorGroup(label: String, options: List<T>, selected: T, labe
     }
 }
 
+/** Single-choice pill: the brand fill when picked, otherwise the app's glass surface. */
 @Composable
 private fun SelectorChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
-    val base = Modifier.clip(CircleShape)
-    val styled = if (selected) {
-        base.background(colors.primaryContainer)
+    val fill = if (selected) {
+        Modifier.clip(CircleShape).background(colors.primary)
     } else {
-        base.background(colors.surfaceContainer).border(1.dp, colors.outlineVariant, CircleShape)
+        Modifier.glassSurface(CircleShape)
     }
     Box(
-        modifier = styled.clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier = fill
+            .selectable(selected = selected, onClick = onClick)
+            .padding(horizontal = MaterialTheme.spacing.md, vertical = MaterialTheme.spacing.sm),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Medium,
-            color = if (selected) colors.onPrimaryContainer else colors.onSurface,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = if (selected) colors.onPrimary else colors.onSurface,
         )
     }
 }
@@ -323,179 +369,158 @@ private fun SelectorChip(label: String, selected: Boolean, onClick: () -> Unit) 
 
 @Composable
 private fun BlockSection(block: HyroxBlock) {
-    val colors = MaterialTheme.colorScheme
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            block.label.uppercase(),
-            style = MaterialTheme.typography.bodyLarge,
-            letterSpacing = 1.6.sp,
-            color = colors.primary,
-            modifier = Modifier.padding(start = 4.dp),
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd)) {
+        MindSetSectionHeader(block.label, Modifier.fillMaxWidth())
         block.rows.forEach { row ->
             if (row.kind == HyroxRowKind.STATION) StationRow(row) else RunRow(row)
         }
     }
 }
 
+/** A functional station: the app's glass card, with the station glyph on a filled medallion. */
 @Composable
 private fun StationRow(row: HyroxRow) {
-    val colors = MaterialTheme.colorScheme
-    Row(
+    RowBody(
+        row = row,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.surfaceContainerLow)
-            .border(1.dp, colors.outlineVariant.copy(alpha = 0.3f), MaterialTheme.shapes.medium)
-            .padding(17.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            val style = hyroxGlyphStyle(row.glyph)
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(MaterialTheme.shapes.small)
-                    .background(colors.primaryContainer.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    style.icon,
-                    contentDescription = null,
-                    tint = style.tint,
-                    modifier = Modifier.size(style.width, style.height),
-                )
-            }
-            RowText(row.title, row.detail)
-        }
-        Text(row.value, style = MaterialTheme.typography.titleSmall, color = colors.primary)
-    }
+            .glassSurface()
+            .padding(MaterialTheme.spacing.md),
+    )
 }
 
+/**
+ * The 1km run INTO the next station. Deliberately lighter than a station — a filled, borderless card
+ * rather than glass — and carries the brand accent down its leading edge, so the race's run/station
+ * alternation is legible while scrolling. Same weighting as the History timeline.
+ */
 @Composable
 private fun RunRow(row: HyroxRow) {
     val colors = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.medium
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.surfaceContainer),
+            .clip(shape)
+            .background(colors.surfaceContainerLow),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Lime left accent (rounded by the parent clip).
-        Box(Modifier.width(4.dp).fillMaxHeight().background(colors.primary))
-        Row(
-            modifier = Modifier.weight(1f).padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                val style = hyroxGlyphStyle(row.glyph)
-                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    Icon(
-                        style.icon,
-                        contentDescription = null,
-                        tint = style.tint,
-                        modifier = Modifier.size(style.width, style.height),
-                    )
-                }
-                RowText(row.title, row.detail)
-            }
-            Text(row.value, style = MaterialTheme.typography.titleSmall, color = colors.primary)
-        }
+        // Rounded by the parent clip.
+        Box(Modifier.width(RunAccentWidth).fillMaxHeight().background(colors.primary))
+        RowBody(
+            row = row,
+            modifier = Modifier.weight(1f).padding(MaterialTheme.spacing.md),
+        )
     }
 }
 
+private val RunAccentWidth = 4.dp
+
+/** Shared row content — glyph, title/detail, target value — so the two row weights can't drift apart. */
 @Composable
-private fun RowText(title: String, detail: String) {
+private fun RowBody(row: HyroxRow, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
-    Column {
-        Text(title, style = MaterialTheme.typography.titleSmall, color = colors.onSurface)
-        Text(detail, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GlyphMedallion(row.glyph, row.kind)
+        Column(Modifier.weight(1f)) {
+            Text(
+                row.title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                row.detail,
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.onSurfaceVariant,
+            )
+        }
+        Text(
+            row.value,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.primary,
+        )
     }
 }
 
-/** Closes the flow after the final station: a flag medallion + "FINISH LINE" on the lime accent. */
+/**
+ * Leading glyph. A station gets the filled medallion (the sheet-row treatment from Log Session); a run
+ * keeps the same footprint unfilled, so titles stay on one vertical line down the whole block.
+ */
+@Composable
+private fun GlyphMedallion(glyph: HyroxGlyph, kind: HyroxRowKind) {
+    val colors = MaterialTheme.colorScheme
+    val isStation = kind == HyroxRowKind.STATION
+    Box(
+        modifier = Modifier
+            .size(MedallionSize)
+            .clip(CircleShape)
+            .then(if (isStation) Modifier.background(colors.surfaceContainerHigh) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            glyph.icon(),
+            contentDescription = null,
+            tint = if (isStation) colors.primary else colors.onSurfaceVariant,
+            modifier = Modifier.size(GlyphSize),
+        )
+    }
+}
+
+private val MedallionSize = 36.dp
+private val GlyphSize = 16.dp
+
+/** Closes the flow after the final station: a flag medallion + "FINISH LINE" on the brand accent. */
 @Composable
 private fun FinishIndicator(label: String) {
     val colors = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth()) {
-        HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant.copy(alpha = 0.2f))
+        HorizontalDivider(color = GlassBorder)
         Column(
-            modifier = Modifier.fillMaxWidth().padding(top = 33.dp, bottom = 32.dp),
+            modifier = Modifier.fillMaxWidth().padding(vertical = MaterialTheme.spacing.xl),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(FinishMedallionSize)
                     .clip(CircleShape)
-                    .background(colors.primaryContainer.copy(alpha = 0.1f)),
+                    .background(colors.primary.copy(alpha = FinishMedallionAlpha)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     MindSetIcons.Flag,
                     contentDescription = null,
                     tint = colors.primary,
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(FinishIconSize),
                 )
             }
             Text(
                 label.uppercase(),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 1.2.sp,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
                 color = colors.primary,
             )
         }
     }
 }
 
-// ── Top app bar (solid, translucent) ────────────────────────────────────────────────────────
-
-@Composable
-private fun TopBar(title: String, onBack: () -> Unit, onEdit: () -> Unit, statusBarInset: Dp, modifier: Modifier = Modifier) {
-    val colors = MaterialTheme.colorScheme
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(colors.background.copy(alpha = 0.8f)),
-    ) {
-        Spacer(Modifier.height(statusBarInset))
-        Row(
-            modifier = Modifier.fillMaxWidth().height(BarHeight).padding(horizontal = Gutter),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                BarButton(MindSetIcons.ArrowBack, size = 16.dp, onClick = onBack)
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.onSurface,
-                )
-            }
-            BarButton(MindSetIcons.Edit, size = 18.dp, onClick = onEdit)
-        }
-        HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant.copy(alpha = 0.2f))
-    }
-}
-
-@Composable
-private fun BarButton(icon: ImageVector, size: Dp, onClick: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    Box(
-        modifier = Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = null, tint = colors.onSurface, modifier = Modifier.size(size))
-    }
-}
+private val FinishMedallionSize = 48.dp
+private val FinishIconSize = 20.dp
+private const val FinishMedallionAlpha = 0.12f
 
 // ── Bottom CTA ─────────────────────────────────────────────────────────────────────────────────
+
+/** Space the floating CTA takes out of the list: the scrim's top fade + the button + its bottom inset. */
+private val CtaReservedHeight = 120.dp
 
 @Composable
 private fun StartCta(onStart: () -> Unit, modifier: Modifier = Modifier) {
@@ -503,6 +528,7 @@ private fun StartCta(onStart: () -> Unit, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
+            // Fades the list out under the button rather than cutting it off with a hard edge.
             .background(
                 Brush.verticalGradient(
                     0.0f to Color.Transparent,
@@ -510,55 +536,40 @@ private fun StartCta(onStart: () -> Unit, modifier: Modifier = Modifier) {
                     1.0f to colors.background,
                 ),
             )
-            .padding(top = 24.dp, bottom = 40.dp, start = Gutter, end = Gutter),
+            .padding(
+                start = MaterialTheme.spacing.md,
+                end = MaterialTheme.spacing.md,
+                top = MaterialTheme.spacing.xl,
+                bottom = MaterialTheme.spacing.md,
+            ),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .clip(CircleShape)
-                .background(colors.primary)
-                .clickable(onClick = onStart),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                MindSetIcons.Play,
-                contentDescription = null,
-                tint = colors.onPrimary,
-                modifier = Modifier.size(11.dp, 14.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "Start Workout",
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.15.sp,
-                color = colors.onPrimary,
-            )
-        }
+        PrimaryButton(
+            text = "Start Workout",
+            enabled = true,
+            onClick = onStart,
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = MindSetIcons.Play,
+        )
     }
 }
 
 // ── Glyph mapping ───────────────────────────────────────────────────────────────────────────
 
-private data class HyroxGlyphStyle(val icon: ImageVector, val tint: Color, val width: Dp, val height: Dp)
-
-/** Station glyphs use the muted surfaceTint; the interleaved run figure uses the bright primary. */
-@Composable
-private fun hyroxGlyphStyle(glyph: HyroxGlyph): HyroxGlyphStyle {
-    val c = MaterialTheme.colorScheme
-    return when (glyph) {
-        HyroxGlyph.SKI_ERG -> HyroxGlyphStyle(MindSetIcons.SkiErg, c.surfaceTint, 17.dp, 23.dp)
-        HyroxGlyph.SLED_PUSH -> HyroxGlyphStyle(MindSetIcons.Dumbbell, c.surfaceTint, 20.dp, 20.dp)
-        HyroxGlyph.SLED_PULL -> HyroxGlyphStyle(MindSetIcons.SledPull, c.surfaceTint, 16.dp, 18.dp)
-        HyroxGlyph.BURPEE -> HyroxGlyphStyle(MindSetIcons.Burpee, c.surfaceTint, 22.dp, 22.dp)
-        HyroxGlyph.ROWING -> HyroxGlyphStyle(MindSetIcons.Rowing, c.surfaceTint, 22.dp, 22.dp)
-        HyroxGlyph.FARMERS_CARRY -> HyroxGlyphStyle(MindSetIcons.Barbell, c.surfaceTint, 20.dp, 20.dp)
-        HyroxGlyph.SANDBAG_LUNGES -> HyroxGlyphStyle(MindSetIcons.LowerBody, c.surfaceTint, 16.dp, 22.dp)
-        HyroxGlyph.WALL_BALLS -> HyroxGlyphStyle(MindSetIcons.WallBall, c.surfaceTint, 22.dp, 22.dp)
-        HyroxGlyph.RUN -> HyroxGlyphStyle(MindSetIcons.EngineRun, c.primary, 18.dp, 22.dp)
-    }
+/**
+ * Station glyph → icon. Mirrors [com.mindset.helpers.UIHelper]'s mapping, which keys off the domain
+ * station/segment instead; this screen's rows carry the presentation-side [HyroxGlyph], so the lookup
+ * lives here rather than pulling a feature enum into `:core:ui`.
+ */
+private fun HyroxGlyph.icon(): ImageVector = when (this) {
+    HyroxGlyph.SKI_ERG -> MindSetIcons.SkiErg
+    HyroxGlyph.SLED_PUSH -> MindSetIcons.SledPull
+    HyroxGlyph.SLED_PULL -> MindSetIcons.SledPull
+    HyroxGlyph.BURPEE -> MindSetIcons.Burpee
+    HyroxGlyph.ROWING -> MindSetIcons.Rowing
+    HyroxGlyph.FARMERS_CARRY -> MindSetIcons.Dumbbell
+    HyroxGlyph.SANDBAG_LUNGES -> MindSetIcons.LowerBody
+    HyroxGlyph.WALL_BALLS -> MindSetIcons.WallBall
+    HyroxGlyph.RUN -> MindSetIcons.Run
 }
 
 // ── Preview ──────────────────────────────────────────────────────────────────────────────────
@@ -568,7 +579,7 @@ private fun hyroxGlyphStyle(glyph: HyroxGlyph): HyroxGlyphStyle {
 private fun TemplateHyroxDetailPreview() {
     MindSetTheme {
         TemplateHyroxDetailContent(
-            state = com.mindset.presentation.TemplateHyroxDetailUiState(
+            state = TemplateHyroxDetailUiState(
                 title = "Half Hyrox Sim",
                 badge = "Hyrox",
                 duration = "35-45 min",
@@ -576,10 +587,7 @@ private fun TemplateHyroxDetailPreview() {
                 division = HyroxDivision.MEN,
                 variant = HyroxVariant.FIRST_HALF,
                 showVariantSelector = true,
-                blocks = com.mindset.presentation.HyroxStandards.buildBlocks(
-                    HyroxDivision.MEN,
-                    HyroxVariant.FIRST_HALF,
-                ),
+                blocks = HyroxStandards.buildBlocks(HyroxDivision.MEN, HyroxVariant.FIRST_HALF),
                 finishLabel = "Finish Line",
             ),
             onBack = {},

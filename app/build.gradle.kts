@@ -1,10 +1,20 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.baselineprofile)
+    alias(libs.plugins.googleServices) apply false
+    alias(libs.plugins.firebaseCrashlytics) apply false
+}
+
+val hasFirebaseConfig: Boolean = project.file("google-services.json").exists()
+
+if (hasFirebaseConfig) {
+    apply(plugin = libs.plugins.googleServices.get().pluginId)
+    apply(plugin = libs.plugins.firebaseCrashlytics.get().pluginId)
 }
 
 kotlin {
@@ -14,12 +24,8 @@ kotlin {
 }
 
 composeCompiler {
-    // Treat immutable :shared model types as stable (that module has no Compose compiler to infer
-    // it). See composeApp/compose_stability.conf for the rationale and scope.
     stabilityConfigurationFiles.add(layout.projectDirectory.file("compose_stability.conf"))
 
-    // Compose compiler stability/skippability reports, opt-in via `-PcomposeReports=true` so normal
-    // builds aren't slowed. Output lands in composeApp/build/compose_compiler/*.txt.
     if (project.findProperty("composeReports") == "true") {
         val dir = layout.buildDirectory.dir("compose_compiler")
         reportsDestination = dir
@@ -64,15 +70,17 @@ dependencies {
     // Installs the baseline profile packaged in the APK at first run (Phase 3).
     implementation(libs.androidx.profileinstaller)
 
+    if (hasFirebaseConfig) {
+        implementation(platform(libs.firebase.bom))
+        implementation(libs.firebase.crashlytics)
+    }
+
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 
     // The :benchmark module produces the baseline profile this app consumes.
     baselineProfile(projects.benchmark)
 
-    // Compose UI (instrumented) tests — the capture-flow test. Wired now; executed on a device / in
-    // CI (LLD §9 "wired now, gated in CI from Phase 3"), not in the host/sim gate loop. Running on a
-    // device additionally needs `androidx.compose.ui:ui-test-manifest` (JB doesn't publish one).
     androidTestImplementation(libs.androidx.testExt.junit)
     androidTestImplementation(libs.compose.uiTestJunit4)
 }
@@ -97,15 +105,43 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Off everywhere by default; only the `benchmark` variant turns it on. MainActivity is
+        // exported, so the bulk-seed intent extra it gates must never be honored in a shipped build.
+        buildConfigField("boolean", "SEED_HOOK_ENABLED", "false")
+    }
+    buildFeatures {
+        buildConfig = true
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    // Upload-key config, read from a gitignored keystore.properties at the repo root. Absent on CI
+    // and on a fresh clone, so this must degrade to "no release signing" rather than failing
+    // configuration — an unsigned assembleRelease is a clearer failure than a broken build script.
+    val keystoreProperties = Properties().apply {
+        val file = rootProject.file("keystore.properties")
+        if (file.exists()) file.inputStream().use(::load)
+    }
+    val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            if (hasReleaseKeystore) signingConfig = signingConfigs.getByName("release")
         }
         // Non-debuggable, profileable variant Macrobenchmark runs against (it refuses debuggable
         // builds). Signed with the debug key so the release-like APK still installs locally.
@@ -114,6 +150,10 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             matchingFallbacks += listOf("release")
+
+            // Macrobenchmark needs a long History list to scroll; this is the only variant allowed
+            // to honor :benchmark's EXTRA_SEED intent extra.
+            buildConfigField("boolean", "SEED_HOOK_ENABLED", "true")
         }
     }
     compileOptions {

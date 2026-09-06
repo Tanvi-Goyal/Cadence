@@ -38,12 +38,11 @@ data class WidgetSlot(
 
 /** The identity of a widget kind — the unit the user adds/removes/reorders, and the stable list key. */
 enum class WidgetType {
+    LiveWorkout,
     RaceGoal,
     Performance,
-    BrowseTemplates,
-    RecentSessions,
-    LiveWorkout,
     Simulation,
+    RecentSessions,
 }
 
 /**
@@ -55,33 +54,25 @@ data class WidgetOrder(val types: List<WidgetType>) {
     companion object {
         val Default = WidgetOrder(
             listOf(
-                // A live race outranks everything: it is the only widget the athlete is mid-way
-                // through. Absent one, the VM's mapNotNull drops it and this list is unchanged.
                 WidgetType.LiveWorkout,
-                // RaceGoal and Performance are adjacent because they share one grid row — the two
-                // compact cards. Separating them in this list would break the pair apart.
                 WidgetType.RaceGoal,
                 WidgetType.Performance,
-                // Then the sims: the pair above states the deadline and the week so far, the rail is
-                // the one-tap answer to both.
                 WidgetType.Simulation,
-                WidgetType.BrowseTemplates,
                 WidgetType.RecentSessions,
             ),
         )
     }
 }
 
-/**
- * A render-ready widget — its data already derived from domain in the ViewModel (primitives + read-only
- * collections only), so composables never touch unstable domain types. [type] links each variant back
- * to its slot so ordering/keys can be derived uniformly.
- */
 @Immutable
 sealed interface Widget {
     val type: WidgetType
 
-    /** Countdown card: [daysUntil] to [title]'s race (null = no fixed race day). */
+    @Immutable
+    data object LiveWorkoutWidget : Widget {
+        override val type: WidgetType get() = WidgetType.LiveWorkout
+    }
+
     @Immutable
     data class RaceGoalWidget(
         val title: String,
@@ -91,7 +82,6 @@ sealed interface Widget {
         override val type: WidgetType get() = WidgetType.RaceGoal
     }
 
-    /** "This Week": [sessionCount] this week + the Mon–Sun grid derived from [trainedEpochDays]. */
     @Immutable
     data class PerformanceWidget(
         val sessionCount: Int,
@@ -101,16 +91,11 @@ sealed interface Widget {
         override val type: WidgetType get() = WidgetType.Performance
     }
 
-    /** Static entry point into the Templates library — carries no data, just routes on tap. */
     @Immutable
-    data object BrowseTemplatesWidget : Widget {
-        override val type: WidgetType get() = WidgetType.BrowseTemplates
+    data class SimulationWidget(val sims: List<SimulationEntry>) : Widget {
+        override val type: WidgetType get() = WidgetType.Simulation
     }
 
-    /**
-     * Recent sessions preview. Carries the domain [Session]s (immutable data holders, rebuilt per
-     * emission) plus their strength volume keyed by id — the row renderer reads both.
-     */
     @Immutable
     data class RecentSessionsWidget(
         val sessions: List<Session>,
@@ -120,33 +105,8 @@ sealed interface Widget {
     ) : Widget {
         override val type: WidgetType get() = WidgetType.RecentSessions
     }
-
-    /**
-     * Self-sourcing marker — carries no data. Its Composable collects the live workout StateFlow itself
-     * so the ~200 ms tick recomposes only that card and never rebuilds this widget list. The slot that
-     * emits it reduces the controller flow to a presence Boolean first, so this widget appears and
-     * disappears exactly twice per race rather than five times a second.
-     */
-    @Immutable
-    data object LiveWorkoutWidget : Widget {
-        override val type: WidgetType get() = WidgetType.LiveWorkout
-    }
-
-    /**
-     * The race-simulation rail: the full and half HYROX sims, in rail order. A list (not one widget
-     * per sim) because they scroll together as one horizontal unit — adding the doubles/relay sims
-     * later is an entry, not a new widget type.
-     */
-    @Immutable
-    data class SimulationWidget(val sims: List<SimulationEntry>) : Widget {
-        override val type: WidgetType get() = WidgetType.Simulation
-    }
 }
 
-/**
- * One card in the simulation rail. [id] is the template id the card routes to (the same ids the nav
- * host maps to `TemplateHyroxDetail`), so tapping a card lands on the very screen that starts the race.
- */
 @Immutable
 data class SimulationEntry(
     val id: String,
@@ -154,7 +114,7 @@ data class SimulationEntry(
     val subtitle: String,
     val flag: String,
     val tags: List<String>,
-    val art: SimulationArt,
+    val type: SimulationType,
 )
 
 /**
@@ -162,7 +122,7 @@ data class SimulationEntry(
  * commonMain type with no Compose/Android dependency — the screen maps each value to its resource,
  * exactly as `TemplateGlyph` is mapped to a vector.
  */
-enum class SimulationArt { FULL_HYROX, HALF_HYROX }
+enum class SimulationType { FULL_HYROX, HALF_HYROX }
 
 /** Per-widget state: independent so one widget's failure or loading never blanks the others. */
 @Immutable

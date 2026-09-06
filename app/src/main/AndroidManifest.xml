@@ -21,10 +21,9 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:theme="@style/Theme.MindSet">
-
-        <profileable android:shell="true" />
 
         <!--
           singleTop so a notification tap is delivered to the running instance via onNewIntent instead

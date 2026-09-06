@@ -22,13 +22,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mindset.icons.NavAccount
 
-/**
- * The athlete identity block: avatar, name, and the division/mode line. Every value is real —
- * [name] comes from the athlete profile and [tierLabel] from the onboarding division preference —
- * so nothing here invents a tier or a level.
- */
 @Composable
-fun ProfileHeaderCard(name: String, tierLabel: String, modifier: Modifier = Modifier) {
+fun ProfileHeaderCard(
+    name: String,
+    tierLabel: String,
+    modifier: Modifier = Modifier,
+) {
     val colors = MaterialTheme.colorScheme
     val spacing = MaterialTheme.spacing
     val shape = MaterialTheme.shapes.medium
@@ -43,7 +42,6 @@ fun ProfileHeaderCard(name: String, tierLabel: String, modifier: Modifier = Modi
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(spacing.smd),
     ) {
-        // Avatar placeholder until a real profile photo is captured.
         Box(
             modifier = Modifier
                 .size(96.dp)
@@ -79,12 +77,12 @@ fun ProfileHeaderCard(name: String, tierLabel: String, modifier: Modifier = Modi
     }
 }
 
-/**
- * The two headline training numbers. Both derive from the same session history the History tab
- * reads, so they can never disagree with it.
- */
 @Composable
-fun ProfileStatsRow(streakDays: Int, totalSessions: Int, modifier: Modifier = Modifier) {
+fun ProfileStatsRow(
+    streakDays: Int,
+    totalSessions: Int,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
@@ -95,7 +93,11 @@ fun ProfileStatsRow(streakDays: Int, totalSessions: Int, modifier: Modifier = Mo
 }
 
 @Composable
-private fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
+private fun StatTile(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
     val colors = MaterialTheme.colorScheme
     val spacing = MaterialTheme.spacing
     val shape = MaterialTheme.shapes.medium

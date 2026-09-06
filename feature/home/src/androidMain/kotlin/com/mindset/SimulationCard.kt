@@ -32,8 +32,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.mindset.presentation.SimulationArt
 import com.mindset.presentation.SimulationEntry
+import com.mindset.presentation.SimulationType
 import com.mindset.presentation.Widget
 import com.mindset.ui.R
 
@@ -76,7 +76,7 @@ private fun SimulationTile(sim: SimulationEntry, onClick: () -> Unit) {
             .clickable(onClick = onClick),
     ) {
         Image(
-            painter = painterResource(sim.art.drawableRes()),
+            painter = painterResource(sim.type.drawableRes()),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
@@ -114,9 +114,9 @@ private fun SimulationTile(sim: SimulationEntry, onClick: () -> Unit) {
 }
 
 /** Semantic art → the packaged photograph. Kept here so [SimulationEntry] stays free of Android types. */
-private fun SimulationArt.drawableRes(): Int = when (this) {
-    SimulationArt.FULL_HYROX -> R.drawable.template_full_hyrox
-    SimulationArt.HALF_HYROX -> R.drawable.template_hyrox_sim
+private fun SimulationType.drawableRes(): Int = when (this) {
+    SimulationType.FULL_HYROX -> R.drawable.template_full_hyrox
+    SimulationType.HALF_HYROX -> R.drawable.template_hyrox_sim
 }
 
 /** Bottom-anchored image scrim: transparent at the top → deepest surface at the bottom, so the

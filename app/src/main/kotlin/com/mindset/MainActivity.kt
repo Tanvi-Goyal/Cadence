@@ -56,9 +56,15 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
 
-        val seed = intent.getIntExtra("mindset_seed", 0)
-        if (seed > 0) {
-            runBlocking { GlobalContext.get().get<SessionRepository>().seedBenchmarkSessions(seed) }
+        // Macro benchmark-only bulk seed (:benchmark BenchmarkHelpers.EXTRA_SEED), gated to the
+        // `benchmark` variant. This Activity is exported, so an ungated hook lets any app on the
+        // device inject unbounded rows into a real athlete's history — and the runBlocking below
+        // would ANR onCreate doing it.
+        if (BuildConfig.SEED_HOOK_ENABLED) {
+            val seed = intent.getIntExtra("mindset_seed", 0)
+            if (seed > 0) {
+                runBlocking { GlobalContext.get().get<SessionRepository>().seedBenchmarkSessions(seed) }
+            }
         }
 
         handleRaceIntent(intent)

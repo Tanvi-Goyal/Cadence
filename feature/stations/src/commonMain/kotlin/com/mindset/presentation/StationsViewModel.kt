@@ -120,8 +120,8 @@ private fun trendOf(aggregate: StationAggregate?): StationTrendUi? {
     return StationTrendUi(label = "$sign${abs(deltaSec)}s", improving = deltaSec < 0)
 }
 
-/** Reference titles are race-ordered ("1. SkiErg"); the board groups by station, so drop the number. */
 private fun displayName(title: String): String = title.substringAfter(". ", missingDelimiterValue = title)
 
 /** Whole seconds → `MM:SS` (135 → "02:15"), matching the board's fixed-width metric columns. */
-private fun formatTime(totalSec: Int): String = "${(totalSec / 60).toString().padStart(2, '0')}:${(totalSec % 60).toString().padStart(2, '0')}"
+private fun formatTime(totalSec: Int): String =
+    "${(totalSec / 60).toString().padStart(2, '0')}:${(totalSec % 60).toString().padStart(2, '0')}"

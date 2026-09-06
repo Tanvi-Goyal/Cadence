@@ -18,3 +18,12 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 trace_processor
+
+# Signing — the upload keystore and its credentials never enter the repo.
+*.jks
+*.keystore
+keystore.properties
+
+# Service/SDK config carrying live keys.
+google-services.json
+kotzilla.json

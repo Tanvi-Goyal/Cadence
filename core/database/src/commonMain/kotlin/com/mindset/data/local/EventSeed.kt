@@ -2,37 +2,14 @@ package com.mindset.data.local
 
 import com.mindset.model.EventFormat
 import com.mindset.model.Gender
-import com.mindset.model.MetricType
 import com.mindset.model.RaceMode
 import com.mindset.model.SegmentKind
 import com.mindset.model.Tier
 
-/**
- * Seed rows for the event-format reference tables (iteration 3). Hyrox is expressed as generic
- * `event_*` data — the same figures that previously lived in `HyroxSeed`/`HyroxStandards`, now
- * format-agnostic so DEKA / CrossFit arrive later as additional seed rows with no schema change.
- *
- * Values verified against hyrox.com → "Weights, Distances & Repetitions". Distances and reps are
- * CONSTANT across divisions; only weights change. Bump [VERSION] when these change (gated in
- * `SessionRepositoryImpl.ensureSeeded` via `SyncMetaKeys.EVENT_SEED_VERSION`).
- *
- * Segment order: a 1 km RUN precedes each of the 8 stations → 16 ordered segments.
- */
 object EventSeed {
     /** Bump to re-seed the event reference tables on existing installs. */
     const val VERSION = 1
-
-    private object Load {
-        const val SLED_PUSH = "SLED_PUSH"
-        const val SLED_PULL = "SLED_PULL"
-        const val FARMERS = "FARMERS"
-        const val SANDBAG = "SANDBAG"
-        const val WALL_BALL = "WALL_BALL"
-    }
-
-    private val DT = MetricType.DISTANCE_TIME.name
-    private val REPS = MetricType.REPS_ONLY.name
-    private const val RUN_EXERCISE = "hyrox-run"
+    val hyroxStationHelper = HyroxStationHelper()
 
     val formats: List<EventFormatEntity> =
         listOf(
@@ -43,110 +20,6 @@ object EventSeed {
             ),
         )
 
-    /** The 8 stations in race order; runs are interleaved before each when segments are built. */
-    private data class StationSpec(
-        val slug: String,
-        val exerciseId: String,
-        val name: String,
-        val label: String,
-        val metric: String,
-        val distanceM: Int?,
-        val reps: Int?,
-        val descriptor: String,
-        val loadType: String?,
-    )
-
-    private val stations =
-        listOf(
-            StationSpec(
-                "ski-erg",
-                "hyrox-ski-erg",
-                "SkiErg",
-                "Block 1: Start",
-                DT,
-                1000,
-                null,
-                "Distance",
-                null,
-            ),
-            StationSpec(
-                "sled-push",
-                "hyrox-sled-push",
-                "Sled Push",
-                "Block 2: Strength",
-                DT,
-                50,
-                null,
-                "Heavy Push",
-                Load.SLED_PUSH,
-            ),
-            StationSpec(
-                "sled-pull",
-                "hyrox-sled-pull",
-                "Sled Pull",
-                "Block 2: Strength",
-                DT,
-                50,
-                null,
-                "Resistance",
-                Load.SLED_PULL,
-            ),
-            StationSpec(
-                "burpee-broad-jump",
-                "hyrox-burpee-broad-jump",
-                "Burpee Broad Jumps",
-                "Block 3: Agility",
-                DT,
-                80,
-                null,
-                "Ground Coverage",
-                null,
-            ),
-            StationSpec(
-                "rowing",
-                "hyrox-rowing",
-                "Rowing",
-                "Block 4: Engine",
-                DT,
-                1000,
-                null,
-                "Distance",
-                null,
-            ),
-            StationSpec(
-                "farmers-carry",
-                "hyrox-farmers-carry",
-                "Farmers Carry",
-                "Block 5: Grip & Core",
-                DT,
-                200,
-                null,
-                "Kettlebell Carry",
-                Load.FARMERS,
-            ),
-            StationSpec(
-                "sandbag-lunges",
-                "hyrox-sandbag-lunges",
-                "Sandbag Lunges",
-                "Block 5: Grip & Core",
-                DT,
-                100,
-                null,
-                "Walking Lunges",
-                Load.SANDBAG,
-            ),
-            StationSpec(
-                "wall-balls",
-                "hyrox-wall-balls",
-                "Wall Balls",
-                "Block 6: The Finish",
-                REPS,
-                null,
-                100,
-                "Wall Balls",
-                Load.WALL_BALL,
-            ),
-        )
 
     private fun order2(n: Int): String = n.toString().padStart(2, '0')
 
@@ -155,7 +28,7 @@ object EventSeed {
 
     val segments: List<EventSegmentEntity> =
         buildList {
-            stations.forEachIndexed { i, s ->
+            hyroxStationHelper.stations.forEachIndexed { i, s ->
                 val runOrder = 2 * i + 1
                 val stationOrder = 2 * i + 2
                 add(
@@ -164,10 +37,10 @@ object EventSeed {
                         formatKey = EventFormat.HYROX,
                         orderIndex = runOrder,
                         kind = SegmentKind.RUN.name,
-                        exerciseId = RUN_EXERCISE,
+                        exerciseId = hyroxStationHelper.RUN_EXERCISE,
                         name = "Run ${i + 1}",
                         label = "Run ${i + 1}",
-                        metric = DT,
+                        metric = hyroxStationHelper.DT,
                         distanceM = 1000,
                         descriptor = "1 km run",
                     ),
@@ -302,6 +175,7 @@ object EventSeed {
                         ),
                     )
                 }
+                
                 std(I_SLED_PUSH, "sled-push", d.push.first, d.push.second)
                 std(I_SLED_PULL, "sled-pull", d.pull.first, d.pull.second)
                 std(I_FARMERS, "farmers-carry", d.farmers.first, d.farmers.second)

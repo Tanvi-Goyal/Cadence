@@ -37,15 +37,15 @@ class HomeViewModel(
         recentSessionsSlot(),
         liveWorkoutSlot(),
     ) { race, performance, recent, liveWorkout ->
-//        val browse = slot(WidgetType.BrowseTemplates, Widget.BrowseTemplatesWidget)
         val simulations = slot(
             WidgetType.Simulation,
             Widget.SimulationWidget(SIMULATIONS),
         )
         val bySlotType = (
-            listOfNotNull(race, performance, recent, liveWorkout) + simulations
-            ).associateBy { it.type }
-        HomeUiState(widgets = WidgetOrder.Default.types.mapNotNull { bySlotType[it] })
+            listOfNotNull(race, performance, recent, liveWorkout) + simulations).associateBy { it.type }
+        HomeUiState(
+            widgets = WidgetOrder.Default.types.mapNotNull { bySlotType[it] },
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -60,14 +60,10 @@ class HomeViewModel(
             .onStart { emit(loading(WidgetType.RaceGoal)) }
             .catch { emit(error(WidgetType.RaceGoal, "Couldn't load race goal")) }
 
-    // Both "This Week" variants (the current design + the TEMP A/B tick variant) derive from the same
-    // bounded weekly read — [build] just picks which Widget the week data becomes.
     private fun performanceSlot() = performanceLikeSlot(WidgetType.Performance) { count, trained, today ->
         Widget.PerformanceWidget(count, trained, today)
     }
 
-    // Bounded to the current Mon–Sun window so it reads only this week's rows. The window start is fixed
-    // when the flow is built; day states are derived from UTC epoch-days, matching History.
     private fun performanceLikeSlot(
         type: WidgetType,
         build: (sessionCount: Int, trainedEpochDays: Set<Long>, todayEpochDay: Long) -> Widget,
@@ -164,7 +160,7 @@ class HomeViewModel(
                 subtitle = "8x1km Run • All 8 Stations",
                 flag = "Official Sim",
                 tags = listOf("Conditioning", "Run"),
-                art = SimulationArt.FULL_HYROX,
+                type = SimulationType.FULL_HYROX,
             ),
             SimulationEntry(
                 id = "half-hyrox-sim",
@@ -172,7 +168,7 @@ class HomeViewModel(
                 subtitle = "4x1km • 4 Stations • Comp Pace",
                 flag = "Half Sim",
                 tags = listOf("Conditioning", "Pace"),
-                art = SimulationArt.HALF_HYROX,
+                type = SimulationType.HALF_HYROX,
             ),
         )
     }

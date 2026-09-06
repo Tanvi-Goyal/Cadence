@@ -41,125 +41,148 @@ fun MindSetNavHost() {
             )
 
             onboardingScreen(
-                onComplete = { nav.navigate(Home) { popUpTo(Onboarding) { inclusive = true } } },
-            )
-
-            loginScreen(
-                onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
-                onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
-                onForgotPassword = {},
+                onComplete = {
+                    nav.navigate(Home) {
+                        popUpTo(Onboarding) { inclusive = true }
+                    }
+                },
             )
 
             homeScreen(
-                onOpenTemplates = { nav.navigate(Templates) },
+                // TODO(phase2): restore `{ nav.navigate(Templates) }` with the template library.
                 onOpenTemplate = { id -> nav.openTemplateDetail(id) },
                 onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
                 onSeeAll = { nav.navigate(History) },
                 onTab = nav::switchTab,
             )
 
-            // History is no longer a tab — it is a push from Home's "See all", so it carries a back
-            // arrow and no bottom bar.
-            historyScreen(
-                onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
-                onBack = { nav.popBackStack() },
-                onOpenProfile = { nav.switchTab(BottomNavTab.Profile) },
+            logTabScreen(
+                // TODO(phase2): restore `{ nav.navigate(ExercisePicker(PickerTarget.LOG_TAB)) }`.
+                onTab = nav::switchTab,
+                onCompleted = { nav.switchTab(BottomNavTab.Home) },
             )
 
             stationsScreen(onTab = nav::switchTab)
 
             profileScreen(onTab = nav::switchTab)
 
-            creditsScreen(onBack = { nav.popBackStack() })
-
-            logTabScreen(
-                onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG_TAB)) },
-                onTab = nav::switchTab,
-                // Completing from the tab lands on Home, where the session now shows under Recent.
-                onCompleted = { nav.switchTab(BottomNavTab.Home) },
-            )
-
-            logWorkoutScreen(
+            templateHyroxDetailScreen(
                 onBack = { nav.popBackStack() },
-                onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG)) },
-                onFinish = { nav.popBackStack(Home, inclusive = false) },
-            )
-
-            exercisePickerScreen(
-                onOpenDetail = { exerciseId, target ->
-                    nav.navigate(
-                        ExerciseDetail(
-                            exerciseId,
-                            target,
-                        ),
-                    )
-                },
-                onBack = { nav.popBackStack() },
-            )
-
-            exerciseDetailScreen(
-                onAdd = { exerciseId, target ->
-                    val origin = when (target) {
-                        PickerTarget.LOG -> nav.getBackStackEntry<LogWorkout>()
-                        PickerTarget.LOG_TAB -> nav.getBackStackEntry<Log>()
-                        PickerTarget.BUILDER -> nav.getBackStackEntry<TemplateBuilder>()
-                    }
-                    origin.savedStateHandle[PICKED_EXERCISE] = exerciseId
-                    when (target) {
-                        PickerTarget.LOG -> nav.popBackStack<LogWorkout>(inclusive = false)
-                        PickerTarget.LOG_TAB -> nav.popBackStack<Log>(inclusive = false)
-                        PickerTarget.BUILDER -> nav.popBackStack<TemplateBuilder>(inclusive = false)
-                    }
-                },
-                onBack = { nav.popBackStack() },
+                // TODO(phase2): restore `{ id -> nav.navigate(TemplateBuilder(id)) }` with the builder.
+                onEdit = {},
             )
 
             sessionDetailScreen(onBack = { nav.popBackStack() })
 
-            templatesScreen(
+            historyScreen(
+                onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
                 onBack = { nav.popBackStack() },
-                onNewTemplate = { nav.navigate(NewTemplate) },
-                onEditTemplate = { id -> nav.openTemplateDetail(id) },
-                onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
+                onOpenProfile = { nav.switchTab(BottomNavTab.Profile) },
             )
 
-            templateDetailScreen(
-                onBack = { nav.popBackStack() },
-                onStart = { nav.navigate(NewSession) },
-                onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
-            )
-            templateHyroxDetailScreen(
-                onBack = { nav.popBackStack() },
-                onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
-            )
-            templateStrengthDetailScreen(
-                onBack = { nav.popBackStack() },
-                // Start deep-copies the template into a live session; open it in Log Workout.
-                onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
-                onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
-            )
-            newTemplateScreen(
-                onBack = { nav.popBackStack() },
-                onCreated = { id ->
-                    // Replace New Template with the builder so Back returns to the Templates list.
-                    nav.navigate(TemplateBuilder(id)) { popUpTo<NewTemplate> { inclusive = true } }
-                },
-            )
-            templateBuilderScreen(
-                onBack = { nav.popBackStack() },
-                onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.BUILDER)) },
-                onDone = { nav.popBackStack() },
-            )
+//            creditsScreen(onBack = { nav.popBackStack() })
+//
+//            loginScreen(
+//                onSignedIn = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+//                onCreateAccount = { nav.navigate(Home) { popUpTo(Login) { inclusive = true } } },
+//                onForgotPassword = {},
+//            )
+//
+//            logWorkoutScreen(
+//                onBack = { nav.popBackStack() },
+//                // TODO(phase2): restore `{ nav.navigate(ExercisePicker(PickerTarget.LOG)) }`.
+//                onAddExercise = {},
+//                onFinish = { nav.popBackStack(Home, inclusive = false) },
+//            )
+
+            // TODO(phase2): re-enable, cut from v1 scope — the exercise catalog browser. v1 logs
+            // Hyrox stations only (AddToSessionSheet). The catalog itself stays seeded: session
+            // detail, the Log screen and the Stations PB board all resolve exercise names from it.
+            // Restoring these also needs LoggingNavGraph's PICKED_EXERCISE savedStateHandle read
+            // re-enabled, and LogWorkoutScreen rendering items whose segmentKey is null.
+//            exercisePickerScreen(
+//                onOpenDetail = { exerciseId, target ->
+//                    nav.navigate(
+//                        ExerciseDetail(
+//                            exerciseId,
+//                            target,
+//                        ),
+//                    )
+//                },
+//                onBack = { nav.popBackStack() },
+//            )
+//
+//            exerciseDetailScreen(
+//                onAdd = { exerciseId, target ->
+//                    val origin = when (target) {
+//                        PickerTarget.LOG -> nav.getBackStackEntry<LogWorkout>()
+//                        PickerTarget.LOG_TAB -> nav.getBackStackEntry<Log>()
+//                        PickerTarget.BUILDER -> nav.getBackStackEntry<TemplateBuilder>()
+//                    }
+//                    origin.savedStateHandle[PICKED_EXERCISE] = exerciseId
+//                    when (target) {
+//                        PickerTarget.LOG -> nav.popBackStack<LogWorkout>(inclusive = false)
+//                        PickerTarget.LOG_TAB -> nav.popBackStack<Log>(inclusive = false)
+//                        PickerTarget.BUILDER -> nav.popBackStack<TemplateBuilder>(inclusive = false)
+//                    }
+//                },
+//                onBack = { nav.popBackStack() },
+//            )
+
+
+            // TODO(phase2): re-enable, cut from v1 scope — the template library and its editor.
+            // v1 ships the Hyrox race simulation only, which enters via templateHyroxDetailScreen
+            // below. Restoring these also needs a `composable<NewSession>` registration, which
+            // templateDetailScreen's onStart navigates to and which never existed.
+//            templatesScreen(
+//                onBack = { nav.popBackStack() },
+//                onNewTemplate = { nav.navigate(NewTemplate) },
+//                onEditTemplate = { id -> nav.openTemplateDetail(id) },
+//                onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
+//            )
+//
+//            templateDetailScreen(
+//                onBack = { nav.popBackStack() },
+//                onStart = { nav.navigate(NewSession) },
+//                onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
+//            )
+
+            // TODO(phase2): re-enable, cut from v1 scope.
+//            templateStrengthDetailScreen(
+//                onBack = { nav.popBackStack() },
+//                // Start deep-copies the template into a live session; open it in Log Workout.
+//                onStarted = { sessionId -> nav.navigate(LogWorkout(sessionId)) },
+//                onEdit = { id -> nav.navigate(TemplateBuilder(id)) },
+//            )
+//            newTemplateScreen(
+//                onBack = { nav.popBackStack() },
+//                onCreated = { id ->
+//                    // Replace New Template with the builder so Back returns to the Templates list.
+//                    nav.navigate(TemplateBuilder(id)) { popUpTo<NewTemplate> { inclusive = true } }
+//                },
+//            )
+//            templateBuilderScreen(
+//                onBack = { nav.popBackStack() },
+//                onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.BUILDER)) },
+//                onDone = { nav.popBackStack() },
+//            )
         }
     }
 }
 
+/**
+ * v1 has exactly one template destination: the Hyrox simulation detail. Home's Simulations rail is
+ * the only caller and only ever emits the two hyrox ids, so the other branches are unreachable —
+ * and their routes are no longer registered, which would make them a crash rather than a no-op.
+ */
 private fun NavController.openTemplateDetail(id: String) {
-    when {
-        id == "full-hyrox-simulation" || id == "half-hyrox-sim" -> navigate(TemplateHyroxDetail(id))
-        id.startsWith("hyfit-") -> navigate(TemplateStrengthDetail(id))
-        else -> navigate(TemplateDetail(id))
-    }
+    navigate(TemplateHyroxDetail(id))
+    // TODO(phase2): restore the full dispatch when the template library returns.
+//    when {
+//        id == "full-hyrox-simulation" || id == "half-hyrox-sim" -> navigate(TemplateHyroxDetail(id))
+//        id.startsWith("hyfit-") -> navigate(TemplateStrengthDetail(id))
+//        else -> navigate(TemplateDetail(id))
+//    }
 }
 
 /**
@@ -175,8 +198,6 @@ private fun NavController.switchTab(tab: BottomNavTab) {
         BottomNavTab.Profile -> Profile
     }
     navigate(route) {
-        // Anchor each tab's back stack on Home (the tab root), not the graph start — the graph now
-        // starts at Login, which is popped once the user enters the app.
         popUpTo(Home) { saveState = true }
         launchSingleTop = true
         restoreState = true

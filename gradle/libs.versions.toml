@@ -1,7 +1,7 @@
 [versions]
 agp = "9.0.1"
 android-compileSdk = "36"
-android-minSdk = "24"
+android-minSdk = "26"    # Context.startForegroundService (RaceTimerService) is API 26+
 android-targetSdk = "36"
 androidx-activity = "1.13.0"
 androidx-appcompat = "1.7.1"
@@ -32,8 +32,14 @@ coil = "3.1.0"                 # Coil 3 (Compose Multiplatform) for lazy exercis
 
 kotzilla = "2.3.1"
 spotless = "8.9.0"
+# Firebase — Crashlytics only. google-services 4.4.1+ is the floor for the Crashlytics v3 plugin.
+googleServices = "4.4.3"
+firebaseCrashlyticsPlugin = "3.0.8"
+firebaseBom = "34.9.0"
 
 [libraries]
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -112,3 +118,5 @@ androidTest = { id = "com.android.test", version.ref = "agp" }
 baselineprofile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
 kotzilla = { id = "io.kotzilla.kotzilla-plugin", version.ref = "kotzilla" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+googleServices = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebaseCrashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }

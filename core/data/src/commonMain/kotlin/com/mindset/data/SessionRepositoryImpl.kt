@@ -422,15 +422,16 @@ class SessionRepositoryImpl(
     override suspend fun stationStandardLabels(divisionKey: String, mode: RaceMode, gender: Gender): Map<String, String> {
         ensureSeeded()
         val format = EventFormat.HYROX
-        suspend fun standards(div: String): Map<String, EventSegmentStandardEntity> = eventSegmentStandardDao.standardsFor(format, div, mode.name)
-            .ifEmpty {
-                eventSegmentStandardDao.standardsFor(
-                    format,
-                    div,
-                    RaceMode.SINGLES.name,
-                )
-            }
-            .associateBy { it.segmentId }
+        suspend fun standards(div: String): Map<String, EventSegmentStandardEntity> =
+            eventSegmentStandardDao.standardsFor(format, div, mode.name)
+                .ifEmpty {
+                    eventSegmentStandardDao.standardsFor(
+                        format,
+                        div,
+                        RaceMode.SINGLES.name,
+                    )
+                }
+                .associateBy { it.segmentId }
 
         val open = standards("${gender.name}_OPEN")
         val pro = standards("${gender.name}_PRO")
@@ -440,7 +441,6 @@ class SessionRepositoryImpl(
         }.toMap()
     }
 
-    /** "78kg (Pro) / 53kg (Open)" for loaded stations; "100 reps · …" for wall balls; distance otherwise. */
     private fun standardLabel(pro: EventSegmentStandardEntity?, open: EventSegmentStandardEntity?): String? {
         val reps = open?.targetReps ?: pro?.targetReps
         if (reps != null) {
@@ -677,13 +677,9 @@ class SessionRepositoryImpl(
             mode = raceMode.name,
         ).associateBy { it.segmentId }
 
-        // Resolve each station's HyroxStation enum from its catalog exercise (data-driven, not hardcoded).
         val stationEnumByExercise = exercises.getByIds(segments.map { it.exerciseId }.distinct())
             .associate { it.id to it.hyroxStation?.let { name -> HyroxStation.entries.firstOrNull { e -> e.name == name } } }
 
-        // A Hyrox format resolves to 16 ordered segments (run, station, …). Variants slice by order:
-        // first half = segments 1..8 (stations 1–4 + runs), second half = 9..16; HALVED keeps every
-        // segment but halves each distance/rep.
         val selected = when (variant) {
             HyroxVariant.FIRST_HALF -> segments.filter { it.orderIndex in 1..8 }
             HyroxVariant.SECOND_HALF -> segments.filter { it.orderIndex in 9..16 }
@@ -692,8 +688,6 @@ class SessionRepositoryImpl(
 
         val halve = variant == HyroxVariant.HALVED
 
-        // Re-index 0.n over the SELECTED segments so a variant's first step is index 0 (the timer
-        // advances by index, and recordHyroxSplit finds the entry by orderIndex == index).
         return selected.mapIndexed { i, seg ->
             segmentStation(i, seg, stationEnumByExercise[seg.exerciseId], standards[seg.id], halve)
         }
@@ -906,57 +900,6 @@ class SessionRepositoryImpl(
         )
     }
 
-    override suspend fun ensureSeeded() {
-        // Versioned re-seed: fresh installations import; existing installs whose catalog predates the
-        // current seed (e.g. before modality/Hyrox landed) upsert to refresh + add the new rows.
-        val seeded = syncMeta.get(SyncMetaKeys.SEED_VERSION)?.toIntOrNull() ?: 0
-        if (seeded < CATALOG_SEED_VERSION) {
-            val catalog = ExerciseImporter.parse(exerciseAssetReader.readExercisesJson()) +
-                ExerciseImporter.supplementalSeed()
-            exercises.upsertAll(catalog)
-            syncMeta.set(SyncMeta(SyncMetaKeys.SEED_VERSION, CATALOG_SEED_VERSION.toString()))
-        }
-
-        // Program templates (multi-block day trees, target-only sets). Seeded local reference data —
-        // like the catalog, they carry no outbox row. Fixed ids → an idempotent clear-then-insert.
-        val templateSeeded = syncMeta.get(SyncMetaKeys.TEMPLATE_SEED_VERSION)?.toIntOrNull() ?: 0
-        if (templateSeeded < TEMPLATE_SEED_VERSION) {
-            val templates = TemplateSeed.all(now())
-            database.useWriterConnection { connection ->
-                connection.immediateTransaction {
-                    templates.forEach { t ->
-                        val entryIds = entries.getBySession(t.sessionEntity.id).map { it.id }
-                        if (entryIds.isNotEmpty()) setEntries.deleteForEntries(entryIds)
-                        entries.deleteBySession(t.sessionEntity.id) // before blocks (its subquery joins blocks)
-                        blocks.deleteBySession(t.sessionEntity.id)
-                        sessions.upsert(t.sessionEntity)
-                        t.blockEntities.forEach { blocks.insert(it) }
-                        t.entries.forEach { entries.insert(it) }
-                        t.sets.forEach { setEntries.insert(it) }
-                    }
-                }
-            }
-            syncMeta.set(
-                SyncMeta(
-                    SyncMetaKeys.TEMPLATE_SEED_VERSION,
-                    TEMPLATE_SEED_VERSION.toString(),
-                ),
-            )
-        }
-
-        // Event-format reference tables (formats / segments / divisions / per-division standards).
-        // Reference data, like the catalog — no outbox. Fixed slug ids → idempotent upsert. Adding a
-        // new event (DEKA/CrossFit) is a seed change here + a VERSION bump, never a migration.
-        val eventSeeded = syncMeta.get(SyncMetaKeys.EVENT_SEED_VERSION)?.toIntOrNull() ?: 0
-        if (eventSeeded < EventSeed.VERSION) {
-            eventFormatDao.upsertFormats(EventSeed.formats)
-            eventSegmentDao.upsertSegments(EventSeed.segments)
-            eventDivisionDao.upsertDivisions(EventSeed.divisions)
-            eventSegmentStandardDao.upsertStandards(EventSeed.standards)
-            syncMeta.set(SyncMeta(SyncMetaKeys.EVENT_SEED_VERSION, EventSeed.VERSION.toString()))
-        }
-    }
-
     private fun displayName(type: String): String = when (type) {
         SessionType.CONDITIONING -> "Conditioning"
         SessionType.HYROX -> "Hyrox"
@@ -1016,6 +959,57 @@ class SessionRepositoryImpl(
                     }
                 }
             }
+        }
+    }
+
+    override suspend fun ensureSeeded() {
+        // Versioned re-seed: fresh installations import; existing installs whose catalog predates the
+        // current seed (e.g. before modality/Hyrox landed) upsert to refresh + add the new rows.
+        val seeded = syncMeta.get(SyncMetaKeys.SEED_VERSION)?.toIntOrNull() ?: 0
+        if (seeded < CATALOG_SEED_VERSION) {
+            val catalog = ExerciseImporter.parse(exerciseAssetReader.readExercisesJson()) +
+                ExerciseImporter.supplementalSeed()
+            exercises.upsertAll(catalog)
+            syncMeta.set(SyncMeta(SyncMetaKeys.SEED_VERSION, CATALOG_SEED_VERSION.toString()))
+        }
+
+        // Program templates (multi-block day trees, target-only sets). Seeded local reference data —
+        // like the catalog, they carry no outbox row. Fixed ids → an idempotent clear-then-insert.
+        val templateSeeded = syncMeta.get(SyncMetaKeys.TEMPLATE_SEED_VERSION)?.toIntOrNull() ?: 0
+        if (templateSeeded < TEMPLATE_SEED_VERSION) {
+            val templates = TemplateSeed.all(now())
+            database.useWriterConnection { connection ->
+                connection.immediateTransaction {
+                    templates.forEach { t ->
+                        val entryIds = entries.getBySession(t.sessionEntity.id).map { it.id }
+                        if (entryIds.isNotEmpty()) setEntries.deleteForEntries(entryIds)
+                        entries.deleteBySession(t.sessionEntity.id) // before blocks (its subquery joins blocks)
+                        blocks.deleteBySession(t.sessionEntity.id)
+                        sessions.upsert(t.sessionEntity)
+                        t.blockEntities.forEach { blocks.insert(it) }
+                        t.entries.forEach { entries.insert(it) }
+                        t.sets.forEach { setEntries.insert(it) }
+                    }
+                }
+            }
+            syncMeta.set(
+                SyncMeta(
+                    SyncMetaKeys.TEMPLATE_SEED_VERSION,
+                    TEMPLATE_SEED_VERSION.toString(),
+                ),
+            )
+        }
+
+        // Event-format reference tables (formats / segments / divisions / per-division standards).
+        // Reference data, like the catalog — no outbox. Fixed slug ids → idempotent upsert. Adding a
+        // new event (DEKA/CrossFit) is a seed change here + a VERSION bump, never a migration.
+        val eventSeeded = syncMeta.get(SyncMetaKeys.EVENT_SEED_VERSION)?.toIntOrNull() ?: 0
+        if (eventSeeded < EventSeed.VERSION) {
+            eventFormatDao.upsertFormats(EventSeed.formats)
+            eventSegmentDao.upsertSegments(EventSeed.segments)
+            eventDivisionDao.upsertDivisions(EventSeed.divisions)
+            eventSegmentStandardDao.upsertStandards(EventSeed.standards)
+            syncMeta.set(SyncMeta(SyncMetaKeys.EVENT_SEED_VERSION, EventSeed.VERSION.toString()))
         }
     }
 }

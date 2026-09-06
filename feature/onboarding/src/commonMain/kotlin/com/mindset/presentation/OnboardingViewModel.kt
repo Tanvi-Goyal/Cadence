@@ -81,14 +81,14 @@ class OnboardingViewModel(
                 city = s.raceCity.trim().ifBlank { null },
             )
 
-            // Device-local onboarding gate (Splash reads this to route to Home vs Onboarding).
-            preferences.setOnboardingComplete(true)
             preferences.setRaceInfo(
                 formatKey = EventFormat.HYROX,
                 gender = s.gender!!,
                 divisionKey = division,
                 raceMode = s.raceMode,
             )
+
+            preferences.setOnboardingComplete(true)
             _state.update { it.copy(saving = false, done = true) }
         }
     }

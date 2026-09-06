@@ -288,9 +288,17 @@ class MigrationTest {
         assertEquals("UPCOMING", db.text("SELECT status FROM race_goal"))
         assertEquals("PENDING", db.text("SELECT syncStatus FROM race_goal"))
 
-        // Profile slimmed: race columns gone, division renamed, defaultMode added (null).
-        assertEquals("MEN", db.text("SELECT defaultDivisionKey FROM athlete_profile WHERE id = 0"))
-        assertTrue(db.long("SELECT defaultMode IS NULL FROM athlete_profile WHERE id = 0") == 1L)
+        // Profile slimmed to identity + baseline: race intent now lives only in `race_goal` (asserted
+        // above), and onboardingComplete moved to the Preferences DataStore. Identity survives.
+        assertEquals("Alex", db.text("SELECT fullName FROM athlete_profile WHERE id = 0"))
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM pragma_table_info('athlete_profile') WHERE name = 'heightCm'"))
+        assertEquals(
+            0L,
+            db.long(
+                "SELECT COUNT(*) FROM pragma_table_info('athlete_profile') " +
+                    "WHERE name IN ('defaultDivision', 'defaultDivisionKey', 'raceDate', 'raceCity', 'onboardingComplete')",
+            ),
+        )
 
         // Reference plane generalized: hyrox_* dropped, event_* created and empty (runtime seeds them).
         assertEquals(0L, db.long("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='hyrox_stations'"))
@@ -307,6 +315,48 @@ class MigrationTest {
         )
         assertEquals(1L, db.long("SELECT COUNT(*) FROM personal_records WHERE id = 'pr1'"))
         assertTrue(db.long("SELECT divisionKey IS NULL FROM personal_records WHERE id = 'pr1'") == 1L)
+
+        db.close()
+    }
+
+    /**
+     * v12 → v13. Device-local settings leave Room for the Preferences DataStore: the singleton
+     * `preferences` table is dropped and `athlete_profile` is recreated to match the slimmed
+     * [AthleteProfileEntity]. Room validates the post-migration schema column-for-column, so this is
+     * the case that catches a `CREATE TABLE` in [MIGRATION_12_13] drifting from `13.json` — the exact
+     * failure mode that would brick every upgrading device on first launch.
+     */
+    @Test
+    fun v13_drops_preferences_and_slims_profile() = runTest {
+        val helper = MigrationTestHelper(
+            schemaDirectoryPath = schemaDir,
+            fileName = NSTemporaryDirectory() + "mindset-migration-test-v13.db",
+            driver = BundledSQLiteDriver(),
+            databaseClass = AppDatabase::class,
+        )
+        helper.createDatabase(version = 12).apply {
+            execSQL("INSERT INTO athlete_profile (id, fullName, bodyweightKg, heightCm) VALUES (0, 'Alex', 80.0, 180.0)")
+            execSQL("INSERT INTO preferences (id, weightUnit, themeMode) VALUES (0, 'KG', 'DARK')")
+            // A logged session must be untouched by a settings-only migration.
+            execSQL(
+                "INSERT INTO sessions (id, startedAt, name, type, isTemplate, source, updatedAt, " +
+                    "syncStatus, createdAt) VALUES " +
+                    "('s1', 1000, 'Hyrox', 'HYROX', 0, 'MANUAL', 2000, 'SYNCED', 1000)",
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(version = 13, migrations = listOf(MIGRATION_12_13))
+
+        // preferences is gone — weightUnit/themeMode now live in the DataStore.
+        assertEquals(0L, db.long("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='preferences'"))
+
+        // Profile survives the recreate with identity + baseline intact, and nothing else.
+        assertEquals("Alex", db.text("SELECT fullName FROM athlete_profile WHERE id = 0"))
+        assertEquals(4L, db.long("SELECT COUNT(*) FROM pragma_table_info('athlete_profile')"))
+
+        // Session data is untouched.
+        assertEquals(1L, db.long("SELECT COUNT(*) FROM sessions WHERE id = 's1'"))
 
         db.close()
     }

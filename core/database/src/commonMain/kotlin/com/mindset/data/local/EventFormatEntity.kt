@@ -17,4 +17,8 @@ import androidx.room3.PrimaryKey
  * `com.mindset.model` domain types (EventFormat / EventSegment / EventDivision / SegmentStandard).
  */
 @Entity(tableName = "event_format")
-data class EventFormatEntity(@PrimaryKey val formatKey: String, val name: String, val description: String = "")
+data class EventFormatEntity(
+    @PrimaryKey val formatKey: String,
+    val name: String,
+    val description: String = "",
+)

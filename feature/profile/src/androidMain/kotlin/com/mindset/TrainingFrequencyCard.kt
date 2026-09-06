@@ -110,6 +110,7 @@ private fun FrequencyBar(week: WeekFrequencyUi, maxCount: Int, modifier: Modifie
                     .background(if (week.isCurrent) ObsidianCoral else colors.primary.copy(alpha = 0.30f)),
             )
         }
+
         Text(
             text = week.label,
             style = MaterialTheme.typography.labelSmall,

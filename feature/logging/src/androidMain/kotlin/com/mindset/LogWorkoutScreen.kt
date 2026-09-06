@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,7 +64,8 @@ import com.mindset.icons.Add
 import com.mindset.icons.Check
 import com.mindset.icons.Close
 import com.mindset.icons.Delete
-import com.mindset.icons.Dumbbell
+// TODO(phase2): restore with the "Browse exercises" sheet row below.
+// import com.mindset.icons.Dumbbell
 import com.mindset.icons.Info
 import com.mindset.model.BottomNavTab
 import com.mindset.model.HyroxVariant
@@ -105,11 +107,6 @@ fun LogWorkoutScreen(
     var showAddSheet by remember { mutableStateOf(false) }
     var pendingVariant by remember { mutableStateOf<HyroxVariant?>(null) }
 
-    // Leaving without completing has to clean up after itself — the quick-start FAB persisted the
-    // session row before this screen opened. Both exits (the X and system back) share one path.
-    //
-    // As a tab there is no such exit: the draft is meant to survive, and system back belongs to the
-    // NavHost (it leaves the tab), so neither the ✕ nor the discard-on-exit applies.
     val isTab = onTab != null
     val onClose = { viewModel.close(onBack) }
     if (!isTab) BackHandler(onBack = onClose)
@@ -133,7 +130,6 @@ fun LogWorkoutScreen(
             },
             bottomBar = {
                 Column {
-//                    CompleteCta(onClick = { viewModel.finish(onFinish) })
                     if (onTab != null) BottomNavBar(current = BottomNavTab.Log, onTabClick = onTab)
                 }
             },
@@ -156,6 +152,7 @@ fun LogWorkoutScreen(
                         sessionId = sessionId,
                         onBack = if (isTab) null else onClose,
                         onNotesChange = viewModel::onNotesChange,
+                        onCompleted = { viewModel.finish(onFinish) },
                     )
                 }
 
@@ -163,8 +160,6 @@ fun LogWorkoutScreen(
 
                 if (stations.isNotEmpty()) {
                     item(key = "quickAdd") {
-                        // Quick-add seeds a whole race, so it replaces rather than appends — confirm
-                        // first whenever that would discard something already logged.
                         RaceQuickAdd(
                             onPick = { variant ->
                                 if (state.sections.any { it.items.isNotEmpty() }) {
@@ -237,9 +232,13 @@ fun LogWorkoutScreen(
     }
 }
 
-/** Confirms that a Quick-add pick may clear what the session already holds. */
 @Composable
-private fun ReplaceRaceDialog(variant: HyroxVariant, loggedCount: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+private fun ReplaceRaceDialog(
+    variant: HyroxVariant,
+    loggedCount: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -255,8 +254,6 @@ private fun ReplaceRaceDialog(variant: HyroxVariant, loggedCount: Int, onConfirm
     )
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun Header(
     sessionType: SessionType,
@@ -265,6 +262,7 @@ private fun Header(
     sessionId: String,
     onBack: (() -> Unit)?,
     onNotesChange: (String) -> Unit,
+    onCompleted: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
     var noteText by rememberSaveable(sessionId) {
@@ -308,39 +306,15 @@ private fun Header(
                     }
                 }
 
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
-                ) {
-//                    Box(
-//                        Modifier.size(40.dp)
-//                            .clip(CircleShape)
-//                            .background(colors.surfaceContainerHigh),
-//                        contentAlignment = Alignment.Center,
-//                    ) {
-//                        IconButton(
-//                            onClick = { /*TODO*/ },
-//                        ) {
-//                            Icon(
-//                                MindSetIcons.Check,
-//                                contentDescription = null,
-//                                tint = colors.primary,
-//                            )
-//                        }
-//                    }
-
-                    CompleteCta(onClick = { })
-
-//                    Text(
-//                        text = "Complete \nSession",
-//                        style = MaterialTheme.typography.labelMedium,
-//                        color = colors.primary,
-//                    )
-                }
+                CompleteCta(onClick = { onCompleted() })
             }
 
             if (onBack != null) {
                 Box(
-                    Modifier.size(40.dp).clip(CircleShape).background(colors.surfaceContainerHigh).clickable(onClick = onBack),
+                    Modifier.size(40.dp)
+                        .clip(CircleShape)
+                        .background(colors.surfaceContainerHigh)
+                        .clickable(onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -372,87 +346,6 @@ private fun Header(
     }
 }
 
-// // ── Entry card (strength / conditioning) ────────────────────────────────────────────────────────
-//
-// @Composable
-// private fun EntryCard(
-//    item: LoggedItemUi,
-//    onUpdate: (SetEntry) -> Unit,
-//    onAddSet: () -> Unit,
-//    onRemove: () -> Unit,
-// ) {
-//    val colors = MaterialTheme.colorScheme
-//    val unit = LocalWeightUnit.current
-//    val capture = remember(item.metric) { CaptureFields.of(MetricType.valueOf(item.metric)) }
-//    val isStrength = capture is CaptureFields.WeightReps || capture is CaptureFields.RepsOnly
-//    val shape = MaterialTheme.shapes.medium
-//
-//    Column(
-//        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill)
-//            .border(1.dp, GlassBorder, shape)
-//            .padding(MaterialTheme.spacing.md),
-//        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
-//    ) {
-//        // Header: medallion + name (+ES) + note; trailing muted tag.
-//        Row(
-//            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
-//            verticalAlignment = Alignment.CenterVertically
-//        ) {
-//            Box(
-//                Modifier.size(40.dp).clip(shape).background(colors.surfaceContainerHigh),
-//                contentAlignment = Alignment.Center,
-//            ) {
-//                Icon(
-//                    imageVector = if (isStrength) MindSetIcons.Dumbbell else MindSetIcons.Bolt,
-//                    contentDescription = null,
-//                    tint = colors.primary,
-//                    modifier = Modifier.size(18.dp),
-//                )
-//            }
-//            Column(
-//                Modifier.weight(1f),
-//                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs)
-//            ) {
-//                Row(
-//                    verticalAlignment = Alignment.CenterVertically,
-//                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm)
-//                ) {
-//                    Text(
-//                        item.exerciseName,
-//                        style = MaterialTheme.typography.titleMedium,
-//                        fontWeight = FontWeight.Bold,
-//                        color = colors.onSurface
-//                    )
-//                    if (item.eachSide) EsBadge()
-//                }
-//                if (!item.note.isNullOrBlank()) {
-//                    Text(
-//                        item.note!!,
-//                        style = MaterialTheme.typography.bodySmall,
-//                        color = colors.onSurfaceVariant
-//                    )
-//                }
-//            }
-//            Text(
-//                text = if (isStrength) "STRENGTH" else "CONDITIONING",
-//                style = MaterialTheme.typography.labelSmall,
-//                color = colors.outline,
-//            )
-//            DeleteButton(onRemove)
-//        }
-//
-//        item.sets.forEach { set ->
-//            SetRow(capture, set, showSetLabel = isStrength, unit = unit, onUpdate = onUpdate)
-//        }
-//
-//        if (capture !is CaptureFields.Calories) {
-//            AddSetButton(onAddSet)
-//        }
-//    }
-// }
-
-// ── Station card (Hyrox) ────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun StationCard(
     item: LoggedItemUi,
@@ -480,7 +373,12 @@ private fun StationCard(
     val logged = set?.timeSec != null
 
     Column(
-        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape).padding(MaterialTheme.spacing.md),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(GlassFill)
+            .border(1.dp, GlassBorder, shape)
+            .padding(MaterialTheme.spacing.md),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
     ) {
         Row(
@@ -567,7 +465,11 @@ private enum class SecondField { REPS, LOAD, NONE }
 private fun ConfirmChip(logged: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Box(
-        Modifier.size(24.dp).clip(CircleShape).background(if (logged) colors.primary else colors.surfaceContainerHigh).clickable(onClick = onClick),
+        Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(if (logged) colors.primary else colors.surfaceContainerHigh)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -579,12 +481,14 @@ private fun ConfirmChip(logged: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Remove this exercise/station from the session. */
 @Composable
 private fun DeleteButton(onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Box(
-        Modifier.size(24.dp).clip(CircleShape).clickable(onClick = onClick),
+        Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -596,7 +500,6 @@ private fun DeleteButton(onClick: () -> Unit) {
     }
 }
 
-/** The reference "standard" as its own bordered, primary-tinted view with an info glyph. */
 @Composable
 private fun StandardView(standard: String) {
     val colors = MaterialTheme.colorScheme
@@ -684,10 +587,12 @@ private val ClockVisualTransformation = VisualTransformation { text ->
     )
 }
 
-// ── Add-to-session sheet (Exercises + Stations) ─────────────────────────────────────────────────
-
 @Composable
-private fun AddToSessionSheet(stations: List<StationOption>, onBrowseExercises: () -> Unit, onPickStation: (String) -> Unit) {
+private fun AddToSessionSheet(
+    stations: List<StationOption>,
+    onBrowseExercises: () -> Unit,
+    onPickStation: (String) -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     Column(
         Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.md).padding(bottom = MaterialTheme.spacing.xl),
@@ -699,12 +604,15 @@ private fun AddToSessionSheet(stations: List<StationOption>, onBrowseExercises: 
             color = colors.onSurfaceVariant,
         )
 
-        SheetRow(
-            title = "Browse exercises",
-            subtitle = "Search the full library",
-            leading = MindSetIcons.Dumbbell,
-            onClick = onBrowseExercises,
-        )
+        // TODO(phase2): re-enable, cut from v1 scope — the exercise catalog browser. v1 logs Hyrox
+        // stations only. Restoring this also needs the ExercisePicker/ExerciseDetail routes in
+        // MindSetNavHost and the PICKED_EXERCISE handback in LoggingNavGraph.
+//        SheetRow(
+//            title = "Browse exercises",
+//            subtitle = "Search the full library",
+//            leading = MindSetIcons.Dumbbell,
+//            onClick = onBrowseExercises,
+//        )
 
         if (stations.isNotEmpty()) {
             Spacer(Modifier.height(MaterialTheme.spacing.xs))
@@ -726,11 +634,21 @@ private fun AddToSessionSheet(stations: List<StationOption>, onBrowseExercises: 
 }
 
 @Composable
-private fun SheetRow(title: String, subtitle: String, leading: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+private fun SheetRow(
+    title: String,
+    subtitle: String,
+    leading: ImageVector,
+    onClick: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
     Row(
-        Modifier.fillMaxWidth().clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape).clickable(onClick = onClick)
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(GlassFill)
+            .border(1.dp, GlassBorder, shape)
+            .clickable(onClick = onClick)
             .padding(MaterialTheme.spacing.smd),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
@@ -764,8 +682,6 @@ private fun SheetRow(title: String, subtitle: String, leading: androidx.compose.
     }
 }
 
-// ── Add / Complete CTAs ─────────────────────────────────────────────────────────────────────────
-
 @Composable
 private fun AddCta(onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -784,14 +700,13 @@ private fun AddCta(onClick: () -> Unit) {
         )
         Spacer(Modifier.width(MaterialTheme.spacing.sm))
         Text(
-            "Add Exercise or Station".uppercase(),
+            "Add Station".uppercase(),
             style = MaterialTheme.typography.labelMedium,
             color = colors.primary,
         )
     }
 }
 
-/** One-tap seeding of a whole Hyrox race format (runs + stations) so the athlete only edits actuals. */
 @Composable
 private fun RaceQuickAdd(onPick: (HyroxVariant) -> Unit) {
     val colors = MaterialTheme.colorScheme
@@ -826,7 +741,11 @@ private fun VariantChip(label: String, modifier: Modifier = Modifier, onClick: (
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
     Box(
-        modifier = modifier.clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape).clickable(onClick = onClick)
+        modifier = modifier
+            .clip(shape)
+            .background(GlassFill)
+            .border(1.dp, GlassBorder, shape)
+            .clickable(onClick = onClick)
             .padding(vertical = MaterialTheme.spacing.smd),
         contentAlignment = Alignment.Center,
     ) {

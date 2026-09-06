@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup rules for API 30 and below (android:fullBackupContent).
+
+  Allow-list, not a deny-list: only what is named here leaves the device. That is deliberate —
+  training history is the thing worth restoring, and anything not listed (caches, the exercise
+  catalog, which re-seeds from a bundled asset) is cheaper to rebuild than to ship to Drive.
+
+  `mindset.db-wal` / `-shm` are intentionally NOT included. Room runs in WAL mode, and restoring a
+  stale sidecar alongside a checkpointed database is a corruption risk; the cost of omitting them is
+  losing transactions that had not been checkpointed at backup time.
+-->
+<full-backup-content>
+    <include domain="database" path="mindset.db" />
+    <include domain="file" path="datastore/mindset.preferences_pb" />
+</full-backup-content>

@@ -11,8 +11,10 @@ import com.mindset.domain.repository.PreferencesRepository
 import com.mindset.domain.repository.SessionRepository
 import com.mindset.domain.secondsToDigits
 import com.mindset.domain.toLogSections
+import com.mindset.model.Gender
 import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxVariant
+import com.mindset.model.RaceMode
 import com.mindset.model.SessionType
 import com.mindset.model.SetEntry
 import kotlinx.coroutines.FlowPreview
@@ -29,6 +31,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(FlowPreview::class)
 class LogWorkoutViewModel(
@@ -63,26 +66,18 @@ class LogWorkoutViewModel(
 
     val stations: StateFlow<List<StationOption>> =
         combine(preferencesRepository.observe(), athleteProfile.observe()) { prefs, _ ->
-            val divisionKey = prefs.hyroxDivisionKey
-            val raceMode = prefs.raceMode
-            val gender = prefs.gender
+            val race = raceIdentity(prefs.hyroxDivisionKey, prefs.gender, prefs.raceMode)
+
+            // Hoisted out of the per-station map below: the labels are keyed by division/mode/gender,
+            // not by station, so calling it inside the map was one DB round trip per station.
+            val standards =
+                repository.stationStandardLabels(race.divisionKey, race.raceMode, race.gender)
 
             repository
-                .hyroxStations(divisionKey!!, raceMode!!, gender!!)
+                .hyroxStations(race.divisionKey, race.raceMode, race.gender)
                 .map { it.toStationOption() }
-                .filterNot { station -> divisionKey != null && station.segmentKey == null }
                 .map { station ->
-                    if (station.segmentKey != null) {
-                        val standard =
-                            repository.stationStandardLabels(
-                                divisionKey,
-                                raceMode,
-                                gender,
-                            )[station.segmentKey] ?: station.standard
-                        station.copy(standard = standard)
-                    } else {
-                        station
-                    }
+                    station.copy(standard = standards[station.segmentKey] ?: station.standard)
                 }
         }.stateIn(
             viewModelScope,
@@ -90,21 +85,13 @@ class LogWorkoutViewModel(
             emptyList(),
         )
 
-    /**
-     * Reference "standard" labels per station `segmentKey` for the athlete's gender (both tiers) + race
-     * mode — powers the separate "Standard" view on each station card. Off [uiState] for the same reason
-     * as [stations].
-     */
     val stationStandards: StateFlow<Map<String, String>> =
         preferencesRepository
             .observe()
             .distinctUntilChanged()
             .map { prefs ->
-                repository.stationStandardLabels(
-                    prefs.hyroxDivisionKey!!,
-                    prefs.raceMode!!,
-                    prefs.gender!!,
-                )
+                val race = raceIdentity(prefs.hyroxDivisionKey, prefs.gender, prefs.raceMode)
+                repository.stationStandardLabels(race.divisionKey, race.raceMode, race.gender)
             }.stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(5_000),
@@ -127,16 +114,20 @@ class LogWorkoutViewModel(
 
     init {
         notesInput
-            .debounce(400)
+            .debounce(400.milliseconds)
             .onEach { repository.updateSessionNotes(sessionId, it) }
             .launchIn(viewModelScope)
 
-        // Seed/merge drafts as the DB sets and unit change. New sets seed from actual-or-target; existing
-        // drafts are preserved (never clobber in-progress edits) — only `load` re-derives on a unit switch.
         combine(
-            uiState.map { state -> state.sections.flatMap { it.items }.flatMap { it.sets } }
+            uiState.map { state ->
+                state.sections
+                    .flatMap { it.items }
+                    .flatMap { it.sets }
+            }
                 .distinctUntilChanged(),
-            preferencesRepository.observe().map { it.weightUnit }.distinctUntilChanged(),
+            preferencesRepository.observe()
+                .map { it.weightUnit }
+                .distinctUntilChanged(),
         ) { sets, unit -> sets to unit }
             .onEach { (sets, unit) ->
                 val unitChanged = currentUnit != unit
@@ -187,54 +178,42 @@ class LogWorkoutViewModel(
         _drafts.update { drafts -> drafts + (setId to transform(drafts[setId] ?: StationDraft())) }
     }
 
-    /** Add an exercise and prefill its sets from the last time it was logged (ghost targets). */
-    fun addExercisePrefilled(exerciseId: String) {
-        viewModelScope.launch { repository.addExercisePrefilled(sessionId, exerciseId) }
-    }
-
     fun addStation(segmentKey: String) {
         viewModelScope.launch {
-            val raceInfo = preferencesRepository.getRaceInfo()
+            val (divisionKey, gender, raceMode) = preferencesRepository.getRaceInfo()
+            val race = raceIdentity(divisionKey, gender, raceMode)
             repository.addStation(
                 sessionId = sessionId,
-                divisionKey = raceInfo.first!!,
+                divisionKey = race.divisionKey,
                 segmentKey = segmentKey,
-                raceMode = raceInfo.third!!,
-                gender = raceInfo.second!!,
+                raceMode = race.raceMode,
+                gender = race.gender,
             )
         }
     }
 
-    /**
-     * One-tap: seed a whole Hyrox race [variant] (runs + stations, in order) into the session. Quick-add
-     * seeds a *whole* race, so picking one while the session already has content is a swap, not an
-     * append — [replaceExisting] clears the session first (the UI confirms before passing it).
-     */
     fun addVariant(variant: HyroxVariant, replaceExisting: Boolean = false) {
         viewModelScope.launch {
-            val raceInfo = preferencesRepository.getRaceInfo()
+            val (divisionKey, gender, raceMode) = preferencesRepository.getRaceInfo()
+            val race = raceIdentity(divisionKey, gender, raceMode)
             repository.addHyroxVariant(
                 sessionId = sessionId,
-                divisionKey = raceInfo.first!!,
+                divisionKey = race.divisionKey,
                 variant = variant,
-                raceMode = raceInfo.third!!,
-                gender = raceInfo.second!!,
+                raceMode = race.raceMode,
+                gender = race.gender,
                 replaceExisting = replaceExisting,
             )
         }
     }
 
-    /** Commit one station's draft actuals to the DB (the ✓ affordance). No-op if the set/draft is gone. */
     fun confirmStation(setId: String) {
         val set = currentSets()[setId] ?: return
         val draft = _drafts.value[setId] ?: return
         viewModelScope.launch { repository.updateSet(sessionId, draftToSet(set, draft, currentUnit)) }
     }
 
-    /** Merge a [draft] onto its [set], writing only the fields the station actually captures. */
     private fun draftToSet(set: SetEntry, draft: StationDraft, unit: WeightUnit): SetEntry {
-        // A station captures REPS or LOAD (reps wins if both targets exist — mirrors the card), plus DIST
-        // when it has one. Fields the station doesn't capture keep their existing value.
         val useReps = set.targetReps != null
         val useLoad = set.targetReps == null && set.targetLoadKg != null
         val hasDist = set.targetDistanceM != null
@@ -271,10 +250,6 @@ class LogWorkoutViewModel(
         viewModelScope.launch { repository.removeEntry(sessionId, entryId) }
     }
 
-    /**
-     * Complete the session: flush every station draft (so typed-but-unconfirmed values aren't lost),
-     * stamp finished + persist the auto-derived type, then hand control back.
-     */
     fun finish(onDone: () -> Unit) {
         if (exiting) return
         exiting = true
@@ -289,4 +264,17 @@ class LogWorkoutViewModel(
     }
 }
 
-private fun HyroxStationModel.toStationOption(): StationOption = StationOption(segmentKey = segmentKey.orEmpty(), name = title, standard = value)
+private fun HyroxStationModel.toStationOption(): StationOption =
+    StationOption(segmentKey = segmentKey.orEmpty(), name = title, standard = value)
+
+private data class RaceIdentity(val divisionKey: String, val gender: Gender, val raceMode: RaceMode)
+
+private fun raceIdentity(divisionKey: String?, gender: Gender?, raceMode: RaceMode?): RaceIdentity {
+    val resolvedGender =
+        gender ?: if (divisionKey?.startsWith("WOMEN") == true) Gender.WOMEN else Gender.MEN
+    return RaceIdentity(
+        divisionKey = divisionKey ?: if (resolvedGender == Gender.WOMEN) "WOMEN" else "MEN",
+        gender = resolvedGender,
+        raceMode = raceMode ?: RaceMode.SINGLES,
+    )
+}
