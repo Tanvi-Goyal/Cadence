@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "430540100861",
-    "project_id": "mindset-app-f0aff",
-    "storage_bucket": "mindset-app-f0aff.firebasestorage.app"
+    "project_number": "953222142215",
+    "project_id": "mindset-4ca84",
+    "storage_bucket": "mindset-4ca84.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:430540100861:android:e51a0f6e9404ba77e01a94",
+        "mobilesdk_app_id": "1:953222142215:android:2cfbda1a71b88415980da2",
         "android_client_info": {
-          "package_name": "com.mindset"
+          "package_name": "com.mindset.athlete"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyARGbHv7F-t1uufUMRAhcIfw_bHyAnASsM"
+          "current_key": "AIzaSyAjsnXyGGcdE_ySt1aw09jkPloYpmE7B2Q"
         }
       ],
       "services": {

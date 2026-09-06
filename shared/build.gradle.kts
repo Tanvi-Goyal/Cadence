@@ -5,7 +5,21 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.kotzilla)
+    alias(libs.plugins.kotzilla) apply false
+}
+
+// Kotzilla Koin profiler: OFF unless you ask for it with `-Pmindset.profiler=true`.
+//
+// It is a compile-time switch, not a runtime one. The Kotzilla SDK ships consumer ProGuard rules
+// that -keep its own classes, which makes them R8 entry points — so once the artifact is on the
+// classpath it CANNOT be shrunk out of a release build, however unreachable the calling code is.
+// Verified the hard way: a BuildConfig.DEBUG gate still left 117 SDK references (KotzillaSDK,
+// KotzillaService, the gateway URL) in a minified release APK. Keeping it off the classpath is the
+// only thing that actually works.
+val profilerEnabled: Boolean = providers.gradleProperty("mindset.profiler").orNull == "true"
+
+if (profilerEnabled) {
+    apply(plugin = libs.plugins.kotzilla.get().pluginId)
 }
 
 // Same source of truth as :app's versionName (gradle/libs.versions.toml), so a profiler session
@@ -16,8 +30,10 @@ val appVersionName: String = listOf(
     libs.versions.app.versionPatch,
 ).joinToString(".") { it.get() }
 
-kotzilla {
-    versionName = appVersionName
+if (profilerEnabled) {
+    configure<io.kotzilla.gradle.ext.KotzillaExtension> {
+        versionName.set(appVersionName)
+    }
 }
 
 kotlin {
@@ -61,6 +77,14 @@ kotlin {
     }
 
     sourceSets {
+        // Exactly one of these is on the source path, and it decides whether `appObservability`
+        // wires up the profiler or does nothing.
+        commonMain.get().kotlin.srcDir(
+            if (profilerEnabled) "src/profilerMain/kotlin" else "src/noProfilerMain/kotlin",
+        )
+        if (profilerEnabled) {
+            commonMain.dependencies { implementation(libs.kotzilla.sdk) }
+        }
         commonMain.dependencies {
             // `api` so consumers (composeApp today, the iOS umbrella later) see these leaf modules
             // transitively — the moved packages (`com.mindset.model`/`common`) keep their names, so
@@ -104,7 +128,6 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.serialization.kotlinxJson)
-            implementation(libs.kotzilla.sdk)
             api(project.dependencies.platform(libs.koin.bom))
             api(libs.koin.core)
             api(libs.koin.core.viewmodel)

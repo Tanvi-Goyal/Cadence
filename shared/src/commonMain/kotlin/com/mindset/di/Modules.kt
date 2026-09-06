@@ -8,7 +8,6 @@ import com.mindset.data.remote.di.networkModule
 import com.mindset.data.remote.di.networkPlatformModule
 import com.mindset.datastore.di.dataStorePlatformModule
 import com.mindset.sync.di.syncModule
-import io.kotzilla.generated.monitoring
 import org.koin.core.KoinApplication
 import org.koin.core.context.startKoin
 import org.koin.dsl.KoinAppDeclaration
@@ -21,8 +20,8 @@ import org.koin.dsl.KoinAppDeclaration
  * `androidContext(this)`; iOS passes nothing.
  *
  * [observability] is applied AFTER [modules] — the Kotzilla profiler inspects the assembled graph,
- * so the ordering is load-bearing. It is a parameter rather than a call here because a profiler
- * must not ship to users: only a debug build passes [kotzillaMonitoring].
+ * so the ordering is load-bearing. Platforms pass `appObservability`, which is a no-op unless the
+ * build opted into the profiler with `-Pmindset.profiler=true`.
  */
 fun initKoin(
     config: KoinAppDeclaration? = null,
@@ -50,11 +49,3 @@ fun initKoin(
     )
     observability?.invoke(this)
 }
-
-/**
- * Kotzilla Koin profiler wiring — streams the DI graph and runtime telemetry to Kotzilla's cloud,
- * and carries the API key generated from `shared/kotzilla.json`. Pass it to [initKoin] ONLY from a
- * debug build; referencing it from a release build ships a profiler, and its data collection, to
- * every user.
- */
-val kotzillaMonitoring: KoinAppDeclaration = { monitoring() }

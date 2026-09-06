@@ -6,7 +6,7 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.svg.SvgDecoder
 import com.mindset.di.initKoin
-import com.mindset.di.kotzillaMonitoring
+import com.mindset.di.appObservability
 import com.mindset.domain.ActiveWorkoutController
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -28,10 +28,9 @@ class MindSetApplication :
                 androidLogger()
                 androidContext(this@MindSetApplication)
             },
-            // Debug only. BuildConfig.DEBUG is a compile-time constant, so R8 folds this to null
-            // and shrinks the Kotzilla SDK out of every release-derived variant entirely — the
-            // profiler and its API key never reach a user's device.
-            observability = if (BuildConfig.DEBUG) kotzillaMonitoring else null,
+            // No-op unless the build was made with `-Pmindset.profiler=true`; see :shared's build
+            // script for why the profiler is a compile-time and not a runtime switch.
+            observability = appObservability,
         )
         // Rehydrate a race that outlived the process. Fire-and-forget and idempotent — it does its
         // reads on the controller's own scope, so it never blocks startup, and a restored race is

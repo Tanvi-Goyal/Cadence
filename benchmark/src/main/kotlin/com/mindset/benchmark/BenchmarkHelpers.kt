@@ -7,7 +7,7 @@ import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.Until
 
 /** The app-under-test (the `benchmark` build type keeps the release applicationId). */
-const val TARGET_PACKAGE = "com.mindset"
+const val TARGET_PACKAGE = "com.mindset.athlete"
 
 /** Intent extra the app honors (benchmark-only) to bulk-seed sessions so the list is long. */
 const val EXTRA_SEED = "mindset_seed"

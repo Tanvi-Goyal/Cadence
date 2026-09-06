@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.mindset.domain.LoggedItemUi
 import com.mindset.model.SetEntry
+import com.mindset.presentation.StationDraft
 import org.junit.Rule
 import org.junit.Test
 import kotlin.time.ExperimentalTime
@@ -32,10 +33,10 @@ class CaptureFlowTest {
         distanceM = distanceM,
         calories = null,
         rpe = null,
-        targetReps = null,
-        targetLoadKg = null,
-        targetTimeSec = null,
-        targetDistanceM = null,
+        targetReps = reps,
+        targetLoadKg = loadKg,
+        targetTimeSec = timeSec,
+        targetDistanceM = distanceM,
         targetCalories = null,
         createdAt = epoch,
         updatedAt = epoch,
@@ -45,12 +46,22 @@ class CaptureFlowTest {
     private fun card(item: LoggedItemUi) {
         rule.setContent {
             MindSetTheme {
-                ExerciseCard(
+                StationCard(
                     item = item,
-                    onAddStrengthSet = { _, _ -> },
-                    onAddCardioSet = { _, _ -> },
-                    onUpdateStrengthActual = { _, _, _ -> },
-                    onUpdateCardioActual = { _, _, _ -> },
+                    stationNumber = null,
+                    standard = null,
+                    draft = StationDraft(
+                        reps = item.sets.firstOrNull()?.reps?.toString() ?: "",
+                        load = item.sets.firstOrNull()?.loadKg?.toString() ?: "",
+                        timeDigits = item.sets.firstOrNull()?.timeSec?.toString() ?: "",
+                        dist = item.sets.firstOrNull()?.distanceM?.toString() ?: "",
+                    ),
+                    onTime = {},
+                    onReps = {},
+                    onLoad = {},
+                    onDist = {},
+                    onConfirm = {},
+                    onRemove = {},
                 )
             }
         }
@@ -66,7 +77,8 @@ class CaptureFlowTest {
                 sets = listOf(completedSet(reps = 8, loadKg = 60.0)),
             ),
         )
-        rule.onNodeWithText("8 reps", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("REPS", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("8", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -79,6 +91,7 @@ class CaptureFlowTest {
                 sets = listOf(completedSet(timeSec = 240, distanceM = 1000)),
             ),
         )
-        rule.onNodeWithText("1000 m", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("DIST (M)", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("1000", substring = true).assertIsDisplayed()
     }
 }

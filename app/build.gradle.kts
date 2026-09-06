@@ -104,7 +104,12 @@ android {
             .toInt()
 
     defaultConfig {
-        applicationId = "com.mindset"
+        // Deliberately NOT the same as `namespace` above. Play requires a globally unique
+        // applicationId and `com.mindset` was already taken; the namespace only decides where R and
+        // BuildConfig are generated, so leaving it as `com.mindset` keeps every Kotlin package and
+        // import untouched. Play Console calls this field "Package name" — same thing.
+        // Permanent once the Play app entry exists: Play does not allow reusing a package name.
+        applicationId = "com.mindset.athlete"
         minSdk =
             libs.versions.android.minSdk
                 .get()

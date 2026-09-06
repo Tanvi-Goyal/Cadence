@@ -347,7 +347,7 @@ private fun Header(
 }
 
 @Composable
-private fun StationCard(
+fun StationCard(
     item: LoggedItemUi,
     stationNumber: Int?,
     standard: String?,
