@@ -26,3 +26,11 @@ keystore.properties
 
 # Service/SDK config carrying live keys.
 kotzilla.json
+
+# Stray local SQLite scratch file (the app DB lives in app private storage).
+/mindset.db
+
+# Android Studio's "Generate Signed Bundle / APK" output. Not under build/, so it is not covered
+# by the rule above. Holds the signed APK and a copy of mapping.txt — the R8 de-obfuscation key,
+# which must never be published.
+/app/release/

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIND[SET] — Privacy Policy</title>
+<style>
+  /* MIND[SET] brand tokens (kept in sync with tools/branding/generate_brand_assets.py).
+     Committed dark: the app itself ships a dark-only scheme, so the policy page matches it. */
+  :root {
+    color-scheme: dark;
+    --bg: #0F0F11;
+    --surface: #1B1C20;
+    --ink: #FFFFFF;
+    --muted: #A0A2AA;
+    --accent: #E5484D;
+    --rule: #2A2C33;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; max-width: 46rem; padding: 3rem 1.25rem 6rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+  }
+  h1 { font-size: 1.8rem; letter-spacing: -0.01em; margin: 0 0 .35rem; }
+  h1 .brackets { color: var(--accent); }
+  h2 { font-size: 1.1rem; margin: 2.5rem 0 .5rem; letter-spacing: .01em; }
+  p, li { color: var(--ink); }
+  .meta { color: var(--muted); font-size: .9rem; margin: 0 0 2rem; }
+  a { color: var(--accent); }
+  strong { font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; display: block; overflow-x: auto; }
+  th, td { text-align: left; padding: .6rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; }
+  code { background: var(--surface); padding: .1rem .35rem; border-radius: 4px; font-size: .88em; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .35rem 0; }
+  footer { margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<h1>MIND<span class="brackets">[</span>SET<span class="brackets">]</span> — Privacy Policy</h1>
+<p class="meta">Last updated: REPLACE_WITH_DATE · Android application <code>com.mindset.athlete</code></p>
+
+<p>
+  MIND[SET] is a training tracker for HYROX athletes. It is built to work offline: your training
+  data lives on your device, not on a server we operate. This policy explains the limited
+  information the app does handle, and who else it reaches.
+</p>
+
+<h2>1. Data stored only on your device</h2>
+<p>
+  The app records your workouts, sessions, exercises, race results and station splits, together
+  with the profile you enter during onboarding — race division, gender and preferred weight unit.
+  All of it is written to a database in the app's private storage on your phone.
+</p>
+<p>
+  <strong>We never receive this data.</strong> MIND[SET] has no account system and no backend
+  server. Uninstalling the app deletes it.
+</p>
+
+<h2>2. Crash diagnostics</h2>
+<p>
+  The app uses <strong>Google Firebase Crashlytics</strong> so that crashes can be found and fixed.
+  When the app crashes, Crashlytics sends a report containing:
+</p>
+<table>
+  <tr><th>What</th><th>Why</th></tr>
+  <tr><td>Stack trace of the crash</td><td>Identify the faulty code</td></tr>
+  <tr><td>Device model, operating system version, app version</td><td>Reproduce the conditions</td></tr>
+  <tr><td>A randomly generated installation identifier</td><td>Group repeated crashes from one install</td></tr>
+  <tr><td>Device state at the time (memory, storage, orientation)</td><td>Diagnose the cause</td></tr>
+</table>
+<p>
+  This is diagnostic data. It is not linked to your name or to any account, it is not used for
+  advertising, and it is never sold. It is processed by Google on our behalf under the
+  <a href="https://firebase.google.com/support/privacy">Firebase Privacy and Security policy</a>.
+  Crash reports are retained by Firebase for a limited period and then deleted automatically.
+</p>
+
+<h2>3. Backup to your own Google Drive</h2>
+<p>
+  If Android Backup is enabled on your device, Android copies your MIND[SET] training database and
+  preferences to <em>your</em> Google Drive account, so a new phone can restore them. This is a
+  feature of Android, not of us: the backup sits in your Google account, and the developer has no
+  access to it and cannot read it.
+</p>
+<p>
+  You can turn this off in Android <strong>Settings → Google → Backup</strong>, and you can delete
+  existing backups from your Google account.
+</p>
+
+<h2>4. Content loaded from other sites</h2>
+<p>
+  Exercise illustrations and muscle diagrams are fetched on demand from
+  <a href="https://wger.de">wger.de</a> and from <code>raw.githubusercontent.com</code>. As with any
+  request to a website, those services necessarily see your device's IP address and may log it under
+  their own policies. The app sends them no identifier, no account and no training data — only a
+  request for an image.
+</p>
+
+<h2>5. Permissions the app requests</h2>
+<table>
+  <tr><th>Permission</th><th>Used for</th></tr>
+  <tr><td><code>INTERNET</code></td><td>Downloading exercise images and sending crash reports</td></tr>
+  <tr><td><code>POST_NOTIFICATIONS</code></td><td>Showing the live race timer notification</td></tr>
+  <tr><td><code>FOREGROUND_SERVICE</code>, <code>FOREGROUND_SERVICE_SPECIAL_USE</code></td>
+      <td>Keeping the race clock running accurately while the app is in the background or the screen is off</td></tr>
+</table>
+<p>
+  The app requests <strong>no</strong> access to location, contacts, camera, microphone, body
+  sensors, health data, files or the phone's advertising identifier.
+</p>
+
+<h2>6. What the app does not do</h2>
+<ul>
+  <li>No account, sign-in or personal profile stored anywhere but your device.</li>
+  <li>No advertising, ad networks, or advertising identifiers.</li>
+  <li>No behavioural or usage analytics.</li>
+  <li>No selling, renting or sharing of personal data with third parties.</li>
+  <li>No tracking across other apps or websites.</li>
+</ul>
+
+<h2>7. Children</h2>
+<p>
+  MIND[SET] is intended for adult athletes and is not directed at children under 13. We do not
+  knowingly collect personal information from children.
+</p>
+
+<h2>8. Your choices and deleting your data</h2>
+<ul>
+  <li><strong>All training data:</strong> uninstall the app; it is deleted with it.</li>
+  <li><strong>Drive backups:</strong> delete them from your Google account's backup settings.</li>
+  <li><strong>Crash reports:</strong> contact us at the address below and we will request deletion of
+      reports associated with your installation identifier.</li>
+</ul>
+
+<h2>9. Changes to this policy</h2>
+<p>
+  If the app starts handling data differently — for example when account sign-in or server sync is
+  added — this page will be updated and the date at the top changed before that version ships.
+</p>
+
+<h2>10. Contact</h2>
+<p>
+  Questions about this policy or about your data:
+  <a href="mailto:REPLACE_WITH_EMAIL">REPLACE_WITH_EMAIL</a>
+</p>
+
+<footer>
+  MIND[SET] is developed by REPLACE_WITH_NAME.
+</footer>
+
+</body>
+</html>
