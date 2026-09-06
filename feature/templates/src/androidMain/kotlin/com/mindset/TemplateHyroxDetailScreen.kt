@@ -163,6 +163,7 @@ private fun TemplateHyroxDetailContent(
 //            )
 
             StartCta(
+                blockedReason = state.startBlockedReason,
                 onStart = onStart,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
@@ -522,8 +523,14 @@ private const val FinishMedallionAlpha = 0.12f
 /** Space the floating CTA takes out of the list: the scrim's top fade + the button + its bottom inset. */
 private val CtaReservedHeight = 120.dp
 
+/**
+ * The sticky primary action. [blockedReason] non-null means a race is already live app-wide — one
+ * timer at a time — so the button names what is running instead of offering a start that the
+ * controller would refuse. Getting back to that race is the floating live pill, which
+ * `ActiveWorkoutHost` renders top-right on exactly the toolbar-less screens like this one.
+ */
 @Composable
-private fun StartCta(onStart: () -> Unit, modifier: Modifier = Modifier) {
+private fun StartCta(blockedReason: String?, onStart: () -> Unit, modifier: Modifier = Modifier) {
     val colors = MaterialTheme.colorScheme
     Box(
         modifier = modifier
@@ -544,11 +551,11 @@ private fun StartCta(onStart: () -> Unit, modifier: Modifier = Modifier) {
             ),
     ) {
         PrimaryButton(
-            text = "Start Workout",
-            enabled = true,
+            text = blockedReason ?: "Start Workout",
+            enabled = blockedReason == null,
             onClick = onStart,
             modifier = Modifier.fillMaxWidth(),
-            leadingIcon = MindSetIcons.Play,
+            leadingIcon = if (blockedReason == null) MindSetIcons.Play else MindSetIcons.Timer,
         )
     }
 }
@@ -579,17 +586,7 @@ private fun HyroxGlyph.icon(): ImageVector = when (this) {
 private fun TemplateHyroxDetailPreview() {
     MindSetTheme {
         TemplateHyroxDetailContent(
-            state = TemplateHyroxDetailUiState(
-                title = "Half Hyrox Sim",
-                badge = "Hyrox",
-                duration = "35-45 min",
-                description = "The opening four stations at full race distance.",
-                division = HyroxDivision.MEN,
-                variant = HyroxVariant.FIRST_HALF,
-                showVariantSelector = true,
-                blocks = HyroxStandards.buildBlocks(HyroxDivision.MEN, HyroxVariant.FIRST_HALF),
-                finishLabel = "Finish Line",
-            ),
+            state = previewState(),
             onBack = {},
             onStart = {},
             onEdit = {},
@@ -598,3 +595,32 @@ private fun TemplateHyroxDetailPreview() {
         )
     }
 }
+
+/** The CTA's blocked state: a race is already live, so Start names it instead of offering a start. */
+@Preview
+@Composable
+private fun TemplateHyroxDetailRaceLivePreview() {
+    MindSetTheme {
+        TemplateHyroxDetailContent(
+            state = previewState().copy(startBlockedReason = "Full simulation in progress"),
+            onBack = {},
+            onStart = {},
+            onEdit = {},
+            onDivisionSelected = {},
+            onVariantSelected = {},
+        )
+    }
+}
+
+private fun previewState(): TemplateHyroxDetailUiState =
+    TemplateHyroxDetailUiState(
+        title = "Half Hyrox Sim",
+        badge = "Hyrox",
+        duration = "35-45 min",
+        description = "The opening four stations at full race distance.",
+        division = HyroxDivision.MEN,
+        variant = HyroxVariant.FIRST_HALF,
+        showVariantSelector = true,
+        blocks = HyroxStandards.buildBlocks(HyroxDivision.MEN, HyroxVariant.FIRST_HALF),
+        finishLabel = "Finish Line",
+    )

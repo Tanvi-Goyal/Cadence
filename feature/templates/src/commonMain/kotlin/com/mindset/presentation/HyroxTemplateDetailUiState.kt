@@ -14,6 +14,12 @@ data class TemplateHyroxDetailUiState(
     val showVariantSelector: Boolean,
     val blocks: List<HyroxBlock>,
     val finishLabel: String,
+    /**
+     * Why Start is unavailable, or null when it is available. Non-null while a race is already live
+     * app-wide: the controller holds exactly ONE race and refuses a second, so this makes the CTA say
+     * what is running instead of looking startable and doing nothing.
+     */
+    val startBlockedReason: String? = null,
 )
 
 enum class HyroxGlyph {

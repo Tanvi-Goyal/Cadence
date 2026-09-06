@@ -10,10 +10,13 @@ import com.mindset.model.HyroxStation
 import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxStationType
 import com.mindset.model.RaceMode
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.mindset.model.HyroxVariant as RaceVariant
@@ -37,7 +40,13 @@ class TemplateHyroxDetailViewModel(
         }
     }
 
+    /**
+     * Starts the race, unless one is already live. The controller enforces this too — its
+     * `startHyrox` expands the running sheet rather than clobbering it — but returning here keeps the
+     * refusal in one place with the disabled CTA, so the button and the action agree.
+     */
     fun startWorkout() {
+        if (controller.state.value != null) return
         controller.startHyrox(
             divisionKey = division.value.name,
             variant = variant.value.toDomain(),
@@ -45,8 +54,22 @@ class TemplateHyroxDetailViewModel(
         )
     }
 
+    /**
+     * Why Start is blocked, or null. Mapped off the app-scoped controller and de-duplicated BEFORE it
+     * reaches [uiState]: `controller.state` re-emits on every timer tick (~5 Hz), and [buildState]
+     * reads the seeded race format from the DB, so combining the raw flow would re-run that read five
+     * times a second for the whole race. Distinct-ing here means it re-runs only when a race actually
+     * starts, finishes or is dismissed.
+     */
+    private val startBlockedReason: Flow<String?> =
+        controller.state
+            .map { live -> live?.let { blockedReason(it.variant, it.finished) } }
+            .distinctUntilChanged()
+
     val uiState: StateFlow<TemplateHyroxDetailUiState> =
-        combine(division, variant) { d, v -> buildState(d, v) }
+        combine(division, variant, startBlockedReason) { d, v, blocked ->
+            buildState(d, v).copy(startBlockedReason = blocked)
+        }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
@@ -165,6 +188,16 @@ class TemplateHyroxDetailViewModel(
             "40-50 min",
             "All eight stations at half distance and reps — full race weights, in half the time.",
         )
+    }
+
+    /**
+     * Names the race that is blocking Start. A finished race still blocks — it holds the controller
+     * until it is dismissed — but calling that "in progress" would be a lie, so it gets its own
+     * wording. Every sliced variant reads as "Half"; only [RaceVariant.FULL] is a full simulation.
+     */
+    private fun blockedReason(live: RaceVariant, finished: Boolean): String {
+        val format = if (live == RaceVariant.FULL) "Full" else "Half"
+        return if (finished) "$format simulation complete" else "$format simulation in progress"
     }
 
     private fun HyroxVariant.toDomain(): RaceVariant = when (this) {
