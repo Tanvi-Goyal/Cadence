@@ -97,6 +97,23 @@ interface SessionDao {
     fun pagedSessions(type: String?): PagingSource<Int, SessionEntity>
 
     /** Templates only (D2) — for the template picker. Ordered by name since they have no real time. */
+    /**
+     * The newest hand-logged session that was never completed — the Log tab's draft.
+     *
+     * Restricted to `MANUAL` on purpose: a live race ([SessionSource.RACE_SIM]) and a
+     * template-started session are unfinished too, and each is already owned by its own screen. Only
+     * the drafts the quick-start / Log tab create are resumable here.
+     */
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0 AND finishedAt IS NULL AND source = 'MANUAL'
+        ORDER BY startedAt DESC
+        LIMIT 1
+        """,
+    )
+    suspend fun latestUnfinishedManual(): SessionEntity?
+
     @Query("SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 1 ORDER BY name")
     fun observeTemplates(): Flow<List<SessionEntity>>
 

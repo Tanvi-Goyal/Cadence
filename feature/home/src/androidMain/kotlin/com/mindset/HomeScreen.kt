@@ -13,9 +13,11 @@ import androidx.compose.material3.FabPosition
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.components.BottomNavBar
 import com.mindset.components.LocalQuickStart
@@ -32,11 +34,11 @@ import com.mindset.presentation.WidgetType
 import kotlinx.coroutines.flow.StateFlow
 import org.koin.compose.viewmodel.koinViewModel
 
+private const val HomeGridColumns = 2
+private val CompactWidgets = setOf(WidgetType.RaceGoal, WidgetType.Performance)
 
 @Composable
 fun HomeScreen(
-    onOpenSession: (String) -> Unit,
-    onNewSession: () -> Unit,
     onOpenTemplates: () -> Unit,
     onOpenTemplate: (String) -> Unit,
     onOpenDetail: (String) -> Unit,
@@ -64,12 +66,10 @@ fun HomeScreen(
             },
             floatingActionButtonPosition = FabPosition.Center,
         ) { padding ->
-
             HomeContent(
                 state = state,
                 activeWorkout = viewModel.activeWorkout,
                 onOpenDetail = onOpenDetail,
-                onOpenTemplates = onOpenTemplates,
                 onOpenTemplate = onOpenTemplate,
                 onSeeAll = onSeeAll,
                 onExpandWorkout = viewModel::onExpandWorkout,
@@ -87,7 +87,6 @@ private fun HomeContent(
     state: HomeUiState,
     activeWorkout: StateFlow<ActiveWorkout?>,
     onOpenDetail: (String) -> Unit,
-    onOpenTemplates: () -> Unit,
     onOpenTemplate: (String) -> Unit,
     onSeeAll: () -> Unit,
     onExpandWorkout: () -> Unit,
@@ -97,13 +96,11 @@ private fun HomeContent(
     contentPadding: PaddingValues,
 ) {
     val spacing = MaterialTheme.spacing
-    // A 2-column grid, like the Stations board. Most widgets span the full line and read exactly as
-    // they did in the old LazyColumn; the two compact cards (race countdown, this week) take one
-    // column each and share a row. Span is a per-type layout property rather than something the
-    // ViewModel decides, so `WidgetOrder` stays a plain ordered list.
+
     LazyVerticalGrid(
         columns = GridCells.Fixed(HomeGridColumns),
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        modifier = Modifier.fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(
             start = spacing.md,
             end = spacing.md,
@@ -117,14 +114,15 @@ private fun HomeContent(
             state.widgets,
             key = { it.type },
             span = { slot ->
-                if (slot.type in CompactWidgets) GridItemSpan(1) else GridItemSpan(maxLineSpan)
+                if (slot.type in CompactWidgets)
+                    GridItemSpan(1)
+                else GridItemSpan(maxLineSpan)
             },
         ) { slot ->
             WidgetSlotContent(
                 slot = slot,
                 activeWorkout = activeWorkout,
                 onOpenDetail = onOpenDetail,
-                onOpenTemplates = onOpenTemplates,
                 onOpenTemplate = onOpenTemplate,
                 onSeeAll = onSeeAll,
                 onExpandWorkout = onExpandWorkout,
@@ -136,18 +134,11 @@ private fun HomeContent(
     }
 }
 
-private const val HomeGridColumns = 2
-
-/** The widgets that take one column instead of the full line — the compact pair that shares a row.
- *  They are kept adjacent in `WidgetOrder.Default`; anything else spans the full width. */
-private val CompactWidgets = setOf(WidgetType.RaceGoal, WidgetType.Performance)
-
 @Composable
 private fun WidgetSlotContent(
     slot: WidgetSlot,
     activeWorkout: StateFlow<ActiveWorkout?>,
     onOpenDetail: (String) -> Unit,
-    onOpenTemplates: () -> Unit,
     onOpenTemplate: (String) -> Unit,
     onSeeAll: () -> Unit,
     onExpandWorkout: () -> Unit,
@@ -157,8 +148,12 @@ private fun WidgetSlotContent(
     modifier: Modifier = Modifier,
 ) {
     when (val widgetState = slot.state) {
-        WidgetState.Loading -> Unit // TODO: skeleton placeholder per widget type
-        is WidgetState.Error -> HomeEmptyHint(widgetState.message, modifier.fillMaxWidth())
+        WidgetState.Loading -> Unit
+        is WidgetState.Error -> EmptyHomePlaceholder(
+            widgetState.message,
+            modifier.fillMaxWidth(),
+        )
+
         is WidgetState.Content -> when (val widget = widgetState.widget) {
             is Widget.RaceGoalWidget ->
                 RaceGoalCard(widget, modifier)
@@ -166,14 +161,14 @@ private fun WidgetSlotContent(
             is Widget.PerformanceWidget ->
                 WeeklyPerformanceCard(widget, modifier)
 
+            is Widget.SimulationWidget ->
+                SimulationCard(widget, onOpenTemplate, modifier)
+
             is Widget.BrowseTemplatesWidget -> Unit
 //                BrowseTemplatesCard(onOpenTemplates, modifier)
 
             is Widget.RecentSessionsWidget ->
                 RecentSessionsCard(widget, onOpenDetail, onSeeAll, modifier)
-
-            is Widget.SimulationWidget ->
-                SimulationCard(widget, onOpenTemplate, modifier)
 
             Widget.LiveWorkoutWidget ->
                 LiveWorkoutSlot(

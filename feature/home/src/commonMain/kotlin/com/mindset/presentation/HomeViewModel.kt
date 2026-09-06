@@ -29,10 +29,6 @@ class HomeViewModel(
     private val raceGoalRepository: RaceGoalRepository,
 ) : ViewModel() {
 
-    /**
-     * The ticking live race, exposed RAW rather than folded into [HomeUiState]: the card collects this
-     * itself so the ~200 ms tick invalidates only the clock, never the widget list. See [liveWorkoutSlot].
-     */
     val activeWorkout: StateFlow<ActiveWorkout?> = activeWorkoutController.state
 
     val uiState: StateFlow<HomeUiState> = combine(
@@ -41,12 +37,13 @@ class HomeViewModel(
         recentSessionsSlot(),
         liveWorkoutSlot(),
     ) { race, performance, recent, liveWorkout ->
-        // BrowseTemplates and the sim rail are static entry points (no data source), so they're added
-        // directly, not via a flow.
-        val browse = slot(WidgetType.BrowseTemplates, Widget.BrowseTemplatesWidget)
-        val simulations = slot(WidgetType.Simulation, Widget.SimulationWidget(SIMULATIONS))
+//        val browse = slot(WidgetType.BrowseTemplates, Widget.BrowseTemplatesWidget)
+        val simulations = slot(
+            WidgetType.Simulation,
+            Widget.SimulationWidget(SIMULATIONS),
+        )
         val bySlotType = (
-            listOfNotNull(race, performance, recent, liveWorkout) + browse + simulations
+            listOfNotNull(race, performance, recent, liveWorkout) + simulations
             ).associateBy { it.type }
         HomeUiState(widgets = WidgetOrder.Default.types.mapNotNull { bySlotType[it] })
     }.stateIn(
@@ -160,12 +157,6 @@ class HomeViewModel(
     }
 
     private companion object {
-        /**
-         * The two race simulations, in rail order. Static for the same reason the Template Library's
-         * class templates are: the sims are the fixed HYROX format, not user content. The ids are the
-         * ones the nav host maps to `TemplateHyroxDetail`, and the copy matches the Library's cards so
-         * the same workout doesn't read as two different things on two screens.
-         */
         val SIMULATIONS = listOf(
             SimulationEntry(
                 id = "full-hyrox-simulation",

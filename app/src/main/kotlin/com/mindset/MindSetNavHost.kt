@@ -19,13 +19,15 @@ fun MindSetNavHost() {
     val scope = rememberCoroutineScope()
     val sessionRepository = koinInject<SessionRepository>()
 
+    val quickStart: () -> Unit = {
+        scope.launch {
+            val session = sessionRepository.createSession(SessionType.STRENGTH.name)
+            nav.navigate(LogWorkout(session.id))
+        }
+    }
+
     CompositionLocalProvider(
-        LocalQuickStart provides {
-            scope.launch {
-                val session = sessionRepository.createSession(SessionType.STRENGTH.name)
-                nav.navigate(LogWorkout(session.id))
-            }
-        },
+        LocalQuickStart provides quickStart,
     ) {
         NavHost(
             navController = nav,
@@ -49,19 +51,19 @@ fun MindSetNavHost() {
             )
 
             homeScreen(
-                onOpenSession = { id -> nav.navigate(LogWorkout(id)) },
-                onNewSession = { nav.navigate(NewSession) },
                 onOpenTemplates = { nav.navigate(Templates) },
                 onOpenTemplate = { id -> nav.openTemplateDetail(id) },
                 onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
-                onSeeAll = { nav.switchTab(BottomNavTab.History) },
+                onSeeAll = { nav.navigate(History) },
                 onTab = nav::switchTab,
             )
 
+            // History is no longer a tab — it is a push from Home's "See all", so it carries a back
+            // arrow and no bottom bar.
             historyScreen(
                 onOpenDetail = { id -> nav.navigate(SessionDetail(id)) },
+                onBack = { nav.popBackStack() },
                 onOpenProfile = { nav.switchTab(BottomNavTab.Profile) },
-                onTab = nav::switchTab,
             )
 
             stationsScreen(onTab = nav::switchTab)
@@ -69,6 +71,13 @@ fun MindSetNavHost() {
             profileScreen(onTab = nav::switchTab)
 
             creditsScreen(onBack = { nav.popBackStack() })
+
+            logTabScreen(
+                onAddExercise = { nav.navigate(ExercisePicker(PickerTarget.LOG_TAB)) },
+                onTab = nav::switchTab,
+                // Completing from the tab lands on Home, where the session now shows under Recent.
+                onCompleted = { nav.switchTab(BottomNavTab.Home) },
+            )
 
             logWorkoutScreen(
                 onBack = { nav.popBackStack() },
@@ -92,11 +101,13 @@ fun MindSetNavHost() {
                 onAdd = { exerciseId, target ->
                     val origin = when (target) {
                         PickerTarget.LOG -> nav.getBackStackEntry<LogWorkout>()
+                        PickerTarget.LOG_TAB -> nav.getBackStackEntry<Log>()
                         PickerTarget.BUILDER -> nav.getBackStackEntry<TemplateBuilder>()
                     }
                     origin.savedStateHandle[PICKED_EXERCISE] = exerciseId
                     when (target) {
                         PickerTarget.LOG -> nav.popBackStack<LogWorkout>(inclusive = false)
+                        PickerTarget.LOG_TAB -> nav.popBackStack<Log>(inclusive = false)
                         PickerTarget.BUILDER -> nav.popBackStack<TemplateBuilder>(inclusive = false)
                     }
                 },
@@ -159,7 +170,7 @@ private fun NavController.openTemplateDetail(id: String) {
 private fun NavController.switchTab(tab: BottomNavTab) {
     val route: Any = when (tab) {
         BottomNavTab.Home -> Home
-        BottomNavTab.History -> History
+        BottomNavTab.Log -> Log
         BottomNavTab.Stations -> Stations
         BottomNavTab.Profile -> Profile
     }

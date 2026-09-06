@@ -223,6 +223,9 @@ class SessionRepositoryImpl(
 
     override suspend fun createSession(type: String): Session = insertSession(name = displayName(type), type = type).toDomain()
 
+    override suspend fun resumeOrCreateSession(type: String): Session =
+        sessions.latestUnfinishedManual()?.toDomain() ?: createSession(type)
+
     override suspend fun createTemplate(name: String, type: String): Session = insertSession(
         name = name,
         type = type,

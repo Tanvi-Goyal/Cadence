@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mindset.components.PrimaryButton
 import com.mindset.components.SecondaryButton
+import com.mindset.components.formatClockMs
 import com.mindset.icons.ChevronRight
 import com.mindset.model.ActiveWorkout
 import kotlinx.coroutines.flow.StateFlow
@@ -64,7 +65,7 @@ fun LiveWorkoutSlot(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
     ) {
-        HomeSectionHeader("In progress", Modifier.fillMaxWidth())
+        MindSetSectionHeader("In progress", Modifier.fillMaxWidth())
         Column(
             modifier = Modifier.fillMaxWidth()
                 .homeGlass(border = liveBorder())
@@ -175,7 +176,7 @@ private fun LiveClock(activeWorkout: StateFlow<ActiveWorkout?>) {
 
     Column(horizontalAlignment = Alignment.End) {
         Text(
-            text = formatClock(live.totalElapsedMs),
+            text = formatClockMs(live.totalElapsedMs),
             style = clockStyle,
             color = if (dimmed) colors.onSurfaceVariant else colors.onSurface,
         )

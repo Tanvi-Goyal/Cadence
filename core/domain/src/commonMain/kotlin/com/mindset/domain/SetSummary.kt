@@ -20,7 +20,7 @@ fun SetEntry.detailSummary(capture: CaptureFields, unit: WeightUnit): String = w
     CaptureFields.Calories -> "${calories?.toString() ?: DASH} cal"
 }
 
-private fun clockOrDash(sec: Int?): String = sec?.let { formatClock(it) } ?: DASH
+private fun clockOrDash(sec: Int?): String = sec?.let { formatClockSec(it.toLong()) } ?: DASH
 
 private fun loadText(kg: Double?, unit: WeightUnit): String {
     if (kg == null) return DASH

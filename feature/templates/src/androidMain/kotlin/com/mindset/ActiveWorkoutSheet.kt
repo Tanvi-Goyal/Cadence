@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
@@ -46,8 +47,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.components.LiveWorkoutPill
+import com.mindset.components.LiveWorkoutPillSlot
 import com.mindset.components.PrimaryButton
 import com.mindset.components.SecondaryButton
+import com.mindset.components.formatClockMs
 import com.mindset.domain.ActiveWorkoutController
 import com.mindset.helpers.UIHelper
 import com.mindset.icons.ChevronRight
@@ -109,23 +113,33 @@ fun ActiveWorkoutHost(controller: ActiveWorkoutController) {
         var last by remember { mutableStateOf<ActiveWorkout?>(null) }
         if (workout != null) last = workout
 
-        // Minimized: a compact pill so a running race is always reachable again. This lives in the
-        // host, not on Home, because the only screen a race is started from (the Hyrox sim detail)
-        // has no bottom nav — without it, minimizing there would strand a running workout with no
-        // route back. The host is a sibling of the NavHost and deliberately cannot read the route,
-        // so it can't (and shouldn't) gate itself per-screen.
+        // Minimized: a compact pill so a running race is always reachable again.
+        //
+        // The pill's HOME is now the toolbar ([MindSetTopBar] renders it inline) — floating it
+        // bottom-right sat it directly on top of the bottom tabs. This overlay is only the fallback
+        // for screens with no toolbar: the Hyrox sim detail a race is started from, Log Workout, the
+        // template builder. Without it, minimizing there would strand a running workout with no route
+        // back. The host is a sibling of the NavHost and deliberately cannot read the route, so
+        // [LiveWorkoutPillSlot] — claimed by the toolbar while it is composed — is what keeps the two
+        // from both rendering.
+        //
+        // Top-right, not bottom: the fallback screens all put their own back/close affordance
+        // top-LEFT and their primary action at the bottom, so this is the one corner nothing owns.
         Box(Modifier.fillMaxSize()) {
             AnimatedVisibility(
-                visible = workout != null && !expanded,
+                visible = workout != null && !expanded && !LiveWorkoutPillSlot.claimed,
                 enter = slideInVertically(
                     tween(240),
-                ) { it } + fadeIn(tween(240)),
+                ) { -it } + fadeIn(tween(240)),
                 exit = slideOutVertically(
                     tween(200),
-                ) { it } + fadeOut(tween(200)),
-                modifier = Modifier.align(Alignment.BottomEnd),
+                ) { -it } + fadeOut(tween(200)),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(MaterialTheme.spacing.md),
             ) {
-                last?.let { MinimizedPill(it, onClick = controller::expand) }
+                last?.let { LiveWorkoutPill(it, onClick = controller::expand) }
             }
         }
     }
@@ -230,14 +244,14 @@ private fun TimerReadout(totalMs: Long, splitMs: Long, paused: Boolean) {
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
     ) {
         Text(
-            text = formatClock(totalMs),
+            text = formatClockMs(totalMs),
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             color = if (paused) colors.onSurfaceVariant else colors.onSurface,
         )
         Text(
             text = if (paused) "Paused".uppercase()
-            else "Split ${formatClock(splitMs)}".uppercase(),
+            else "Split ${formatClockMs(splitMs)}".uppercase(),
             style = MaterialTheme.typography.labelMedium,
             color = if (paused) colors.error else colors.primary,
         )
@@ -403,7 +417,7 @@ private fun ColumnScope.FinishedSummary(totalMs: Long, steps: Int, onClose: () -
             color = colors.onSurfaceVariant,
         )
         Text(
-            text = formatClock(totalMs),
+            text = formatClockMs(totalMs),
             style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold,
             color = colors.primary,

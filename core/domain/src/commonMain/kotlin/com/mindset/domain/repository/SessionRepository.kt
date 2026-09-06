@@ -98,6 +98,17 @@ interface SessionRepository {
     suspend fun exerciseById(id: String): Exercise?
 
     /** Creates a blank session, persisting it and enqueuing its sync mutation atomically. */
+    /**
+     * The Log tab's draft session: resume the newest hand-logged session that was never completed,
+     * or create one when there is none.
+     *
+     * A tab is a *place* — leaving it and coming back (or killing the app) must return the same
+     * half-filled workout, which [createSession] alone can't give: it would mint a new row on every
+     * visit and strand the previous one. Race sims and template-started sessions are deliberately not
+     * resumable here; see `SessionDao.latestUnfinishedManual`.
+     */
+    suspend fun resumeOrCreateSession(type: String): Session
+
     suspend fun createSession(type: String): Session
 
     /**

@@ -37,20 +37,6 @@ import com.mindset.presentation.SimulationEntry
 import com.mindset.presentation.Widget
 import com.mindset.ui.R
 
-/**
- * Home's race-simulation rail — the full and half HYROX sims as photo-backed cards that scroll
- * horizontally.
- *
- * **Why a rail.** Home is otherwise a vertical stack of same-width, same-weight cards on a near-black
- * background; the horizontal axis is what stops it reading as one undifferentiated column, and these
- * are the only two photographs in the app. The cards are narrower than the viewport on purpose so the
- * second one peeks past the edge — that peek is the scroll affordance, so no indicator is needed.
- *
- * **Cost.** The `LazyRow` is given a fixed [RailHeight], so it measures inside the parent `LazyColumn`
- * item with a bounded constraint (an unbounded one would throw). Two items means the row never
- * actually recycles; it is a `LazyRow` rather than a scrolling `Row` so adding the doubles/relay sims
- * later composes only what is on screen.
- */
 @Composable
 fun SimulationCard(
     widget: Widget.SimulationWidget,
@@ -61,7 +47,8 @@ fun SimulationCard(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md),
     ) {
-        HomeSectionHeader("Simulations", Modifier.fillMaxWidth())
+        MindSetSectionHeader("Simulations", Modifier.fillMaxWidth())
+
         LazyRow(
             modifier = Modifier.fillMaxWidth().height(RailHeight),
             horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),

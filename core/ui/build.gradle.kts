@@ -46,4 +46,9 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
     implementation(libs.compose.uiToolingPreview)
+    // MindSetTopBar hosts the minimized live-race pill: it observes the app-scoped
+    // ActiveWorkoutController (:core:domain) directly instead of every screen threading it down.
+    implementation(libs.androidx.lifecycle.runtimeCompose)
+    implementation(project.dependencies.platform(libs.koin.bom))
+    implementation(libs.koin.compose)
 }

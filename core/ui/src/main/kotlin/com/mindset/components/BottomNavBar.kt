@@ -12,15 +12,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.mindset.MindSetIcons
+import com.mindset.icons.Add
 import com.mindset.icons.Grid
 import com.mindset.icons.NavAccount
-import com.mindset.icons.NavHistory
 import com.mindset.icons.NavHome
 import com.mindset.model.BottomNavTab
 
 private fun BottomNavTab.icon(): ImageVector = when (this) {
     BottomNavTab.Home -> NavHome
-    BottomNavTab.History -> NavHistory
+    BottomNavTab.Log -> MindSetIcons.Add
     BottomNavTab.Stations -> MindSetIcons.Grid
     BottomNavTab.Profile -> NavAccount
 }

@@ -30,6 +30,11 @@ object Home
 @Serializable
 object History
 
+// The Log tab's root. Unlike [LogWorkout] it carries no sessionId — the tab resolves (resumes or
+// creates) its own draft session, so the tab is a stable place rather than a per-session push.
+@Serializable
+object Log
+
 @Serializable
 object Stations
 
@@ -73,13 +78,18 @@ object NewTemplate
 data class TemplateBuilder(val templateId: String)
 
 /**
- * Where the shared exercise picker should hand its pick back to. Both Log Workout and the Template
- * Builder launch the same picker → detail flow; the target rides through the picker/detail routes as
- * a typed arg so the detail screen knows which back-stack entry to return the chosen exercise to.
+ * Where the shared exercise picker should hand its pick back to. Log Session (pushed or as the Log
+ * tab) and the Template Builder all launch the same picker → detail flow; the target rides through
+ * the picker/detail routes as a typed arg so the detail screen knows which back-stack entry to
+ * return the chosen exercise to.
+ *
+ * [LOG] and [LOG_TAB] open the same screen but sit on DIFFERENT routes ([LogWorkout] vs [Log]) — the
+ * pick has to pop back to whichever one actually launched the picker.
  */
 @Serializable
 enum class PickerTarget {
     LOG,
+    LOG_TAB,
     BUILDER,
 }
 

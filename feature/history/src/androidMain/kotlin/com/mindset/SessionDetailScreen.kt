@@ -41,6 +41,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.components.formatClockMs
+import com.mindset.components.formatVolume
+import com.mindset.components.relativeDate
+import com.mindset.components.typeLabel
 import com.mindset.domain.LoggedItemUi
 import com.mindset.domain.Units
 import com.mindset.domain.detailSummary
@@ -180,7 +184,7 @@ private fun DetailHeader(state: SessionDetailUiState, onBack: () -> Unit) {
             val meta = listOfNotNull(
                 typeLabel(state.type).uppercase(),
                 relativeDate(state.startedAt),
-                state.totalTimeMs?.let { formatClock(it) },
+                state.totalTimeMs?.let { formatClockMs(it) },
             ).joinToString("  ·  ")
             Text(meta, style = MaterialTheme.typography.labelMedium, color = colors.onSurfaceVariant)
             Text(
@@ -199,7 +203,7 @@ private fun DetailHeader(state: SessionDetailUiState, onBack: () -> Unit) {
 private fun StatRow(state: SessionDetailUiState) {
     val unit = LocalWeightUnit.current
     Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)) {
-        StatTile(value = state.totalTimeMs?.let { formatClock(it) } ?: "—", label = "Total Time")
+        StatTile(value = state.totalTimeMs?.let { formatClockMs(it) } ?: "—", label = "Total Time")
         StatTile(value = "${formatVolume(state.totalVolumeKg, unit)} ${Units.label(unit)}", label = "Volume")
     }
 }
@@ -397,7 +401,7 @@ private fun ExerciseCard(item: LoggedItemUi) {
 // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
 /** Logged split (actual time) as m:ss, or an em-dash when nothing was recorded. */
-private fun splitText(set: SetEntry?): String = set?.timeSec?.let { formatClock(it * 1000L) } ?: "—"
+private fun splitText(set: SetEntry?): String = set?.timeSec?.let { formatClockMs(it * 1000L) } ?: "—"
 
 /** Distance/reps context beside a station name (e.g. "1000 m" or "100 reps"); null if neither set. */
 private fun segmentContext(set: SetEntry): String? {

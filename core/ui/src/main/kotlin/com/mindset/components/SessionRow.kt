@@ -1,4 +1,4 @@
-package com.mindset
+package com.mindset.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,31 +22,25 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mindset.MindSetIcons
 import com.mindset.domain.Units
 import com.mindset.domain.WeightUnit
+import com.mindset.glassSurface
 import com.mindset.icons.Bolt
+import com.mindset.icons.ChevronRight
 import com.mindset.icons.Dumbbell
 import com.mindset.icons.Lightning
 import com.mindset.icons.Run
 import com.mindset.model.Session
 import com.mindset.model.SessionType
+import com.mindset.spacing
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlin.time.ExperimentalTime
 
-/*
- * Shared session-list UI + formatting used across the home, history, stats and templates features.
- * Promoted here from HomeScreen (B11) so features can share them without depending on each other.
- * The type helpers key off `model.SessionType` names so this module needs no dependency on the
- * database layer.
- */
-
-/**
- * A tappable session row: type medallion + name + relative date, with optional volume. When [isPb] is
- * set, a small green "PB" tag is shown under the trailing metric (a personal-best session).
- */
-@OptIn(kotlin.time.ExperimentalTime::class)
+@OptIn(ExperimentalTime::class)
 @Composable
 fun SessionRow(
     session: Session,
@@ -59,9 +54,8 @@ fun SessionRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = MaterialTheme.spacing.xs)
+            .glassSurface()
             .clickable(onClick = onClick)
-            .clip(MaterialTheme.shapes.medium)
-            .background(colors.surfaceContainer)
             .padding(MaterialTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -81,7 +75,7 @@ fun SessionRow(
                 Icon(
                     typeIcon(session.type.name),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    tint = colors.onSurfaceVariant,
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -104,26 +98,31 @@ fun SessionRow(
                 )
             }
         }
+
         Column(
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
         ) {
-            if (volumeKg > 0.0) {
-                val unit = LocalWeightUnit.current
-                Text(
-                    text = "${formatVolume(volumeKg, unit)} ${Units.label(unit)}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = colors.onSurface,
-                )
-            } else if (durationSec != null && durationSec > 0) {
+            if (durationSec != null && durationSec > 0) {
                 Text(
                     text = formatDuration(durationSec * 1000L),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurface,
                 )
             }
-            if (isPb) PbTag()
 
+            if (isPb) PbTag()
+        }
+
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier.size(32.dp),
+        ) {
+            Icon(
+                MindSetIcons.ChevronRight,
+                contentDescription = null,
+                tint = colors.onSurfaceVariant,
+            )
         }
     }
 }
@@ -147,8 +146,16 @@ private fun PbTag() {
 }
 
 
-/** Live count-up clock: "mm:ss", or "h:mm:ss" past an hour. Used by the timer sheet and Home widget. */
-fun formatClock(ms: Long): String {
+/**
+ * Live count-up clock from **milliseconds**: "mm:ss", or "h:mm:ss" past an hour. Used by the race
+ * timer sheet, the minimized pill, the Home card and the notification.
+ *
+ * Note the sibling [com.mindset.domain.formatClockSec], which takes **seconds** and renders an
+ * unpadded "m:ss" for read-only summaries. Both used to be called `formatClock` and both take a
+ * `Long`, so picking the wrong import compiled silently and rendered times 1000x off — hence the
+ * unit in each name.
+ */
+fun formatClockMs(ms: Long): String {
     val totalSec = (ms / 1000).coerceAtLeast(0)
     val h = totalSec / 3600
     val m = (totalSec % 3600) / 60
@@ -178,7 +185,7 @@ fun formatVolume(kg: Double, unit: WeightUnit): String {
 /** Readable session-type label (AccentPill uppercases it). */
 fun typeLabel(type: String): String = when (type) {
     SessionType.CONDITIONING.name -> "Conditioning"
-    SessionType.HYROX.name -> "Hyrox"
+    SessionType.HYROX.name -> "Hyrox Simulation"
     SessionType.MIXED.name -> "Mixed"
     else -> "Strength"
 }

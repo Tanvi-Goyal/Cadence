@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,8 +52,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mindset.components.BottomNavBar
 import com.mindset.components.GlassTextField
-import com.mindset.components.PrimaryButton
+import com.mindset.components.MindSetTopBar
+import com.mindset.components.typeLabel
 import com.mindset.domain.LoggedItemUi
 import com.mindset.domain.Units
 import com.mindset.helpers.UIHelper
@@ -64,6 +65,7 @@ import com.mindset.icons.Close
 import com.mindset.icons.Delete
 import com.mindset.icons.Dumbbell
 import com.mindset.icons.Info
+import com.mindset.model.BottomNavTab
 import com.mindset.model.HyroxVariant
 import com.mindset.model.SessionType
 import com.mindset.presentation.LogWorkoutViewModel
@@ -75,6 +77,17 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+/**
+ * Log Session — the capture surface, used two ways:
+ *  - **pushed** (from the quick-start FAB or a template), where it owns the whole screen and its own
+ *    close affordance, and
+ *  - **as the Log tab**, when [onTab] is non-null: it then wears the app's standard chrome (wordmark
+ *    top bar + bottom nav) like every other tab, and drops the ✕ / back interception, because a tab
+ *    root has nothing to close back to.
+ *
+ * The ViewModel is keyed on [sessionId]: the tab reuses one back-stack entry across sessions, so
+ * without the key a completed session's VM would be handed to the next draft.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogWorkoutScreen(
@@ -82,20 +95,24 @@ fun LogWorkoutScreen(
     onBack: () -> Unit,
     onAddExercise: () -> Unit,
     onFinish: () -> Unit,
-    viewModel: LogWorkoutViewModel = koinViewModel { parametersOf(sessionId) },
+    onTab: ((BottomNavTab) -> Unit)? = null,
+    viewModel: LogWorkoutViewModel = koinViewModel(key = sessionId) { parametersOf(sessionId) },
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val stations by viewModel.stations.collectAsStateWithLifecycle()
     val standards by viewModel.stationStandards.collectAsStateWithLifecycle()
     val drafts by viewModel.drafts.collectAsStateWithLifecycle()
     var showAddSheet by remember { mutableStateOf(false) }
-    // Non-null while a Quick-add pick waits on the replace confirmation.
     var pendingVariant by remember { mutableStateOf<HyroxVariant?>(null) }
 
     // Leaving without completing has to clean up after itself — the quick-start FAB persisted the
     // session row before this screen opened. Both exits (the X and system back) share one path.
+    //
+    // As a tab there is no such exit: the draft is meant to survive, and system back belongs to the
+    // NavHost (it leaves the tab), so neither the ✕ nor the discard-on-exit applies.
+    val isTab = onTab != null
     val onClose = { viewModel.close(onBack) }
-    BackHandler(onBack = onClose)
+    if (!isTab) BackHandler(onBack = onClose)
 
     MindSetTheme {
         val colors = MaterialTheme.colorScheme
@@ -110,7 +127,16 @@ fun LogWorkoutScreen(
 
         Scaffold(
             contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
-            bottomBar = { CompleteCta(onClick = { viewModel.finish(onFinish) }) },
+            containerColor = colors.background,
+            topBar = {
+                if (onTab != null) MindSetTopBar(onProfileClick = { onTab(BottomNavTab.Profile) })
+            },
+            bottomBar = {
+                Column {
+//                    CompleteCta(onClick = { viewModel.finish(onFinish) })
+                    if (onTab != null) BottomNavBar(current = BottomNavTab.Log, onTabClick = onTab)
+                }
+            },
         ) { inner ->
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -128,7 +154,7 @@ fun LogWorkoutScreen(
                         startedAtMillis = state.startedAtMillis,
                         notes = state.notes,
                         sessionId = sessionId,
-                        onBack = onClose,
+                        onBack = if (isTab) null else onClose,
                         onNotesChange = viewModel::onNotesChange,
                     )
                 }
@@ -220,8 +246,7 @@ private fun ReplaceRaceDialog(variant: HyroxVariant, loggedCount: Int, onConfirm
         title = { Text("Replace current log?") },
         text = {
             Text(
-                "Quick-adding ${variant.label} clears the $loggedCount " +
-                    "${if (loggedCount == 1) "entry" else "entries"} already in this session.",
+                "Quick-adding ${variant.label} clears the $loggedCount " + "${if (loggedCount == 1) "entry" else "entries"} already in this session.",
             )
         },
         confirmButton = { TextButton(onClick = onConfirm) { Text("Replace") } },
@@ -238,7 +263,7 @@ private fun Header(
     startedAtMillis: Long,
     notes: String,
     sessionId: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onNotesChange: (String) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -258,31 +283,73 @@ private fun Header(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top,
         ) {
-            Column {
-                Text(
-                    text = typeLabel(sessionType.name).uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = colors.primary,
-                )
-                if (startedAtMillis > 0L) {
+            Row(
+                modifier = Modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.sm),
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+                    horizontalAlignment = Alignment.Start,
+                    modifier = Modifier.weight(1f),
+                ) {
                     Text(
-                        text = formatDateTime(startedAtMillis),
+                        text = typeLabel(sessionType.name).uppercase(),
                         style = MaterialTheme.typography.labelMedium,
-                        color = colors.onSurfaceVariant,
+                        color = colors.primary,
                     )
+
+                    if (startedAtMillis > 0L) {
+                        Text(
+                            text = formatDateTime(startedAtMillis),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.xs),
+                ) {
+//                    Box(
+//                        Modifier.size(40.dp)
+//                            .clip(CircleShape)
+//                            .background(colors.surfaceContainerHigh),
+//                        contentAlignment = Alignment.Center,
+//                    ) {
+//                        IconButton(
+//                            onClick = { /*TODO*/ },
+//                        ) {
+//                            Icon(
+//                                MindSetIcons.Check,
+//                                contentDescription = null,
+//                                tint = colors.primary,
+//                            )
+//                        }
+//                    }
+
+                    CompleteCta(onClick = { })
+
+//                    Text(
+//                        text = "Complete \nSession",
+//                        style = MaterialTheme.typography.labelMedium,
+//                        color = colors.primary,
+//                    )
                 }
             }
-            Box(
-                Modifier.size(40.dp).clip(CircleShape).background(colors.surfaceContainerHigh)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    MindSetIcons.Close,
-                    contentDescription = "Close",
-                    tint = colors.onSurface,
-                    modifier = Modifier.size(18.dp),
-                )
+
+            if (onBack != null) {
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).background(colors.surfaceContainerHigh).clickable(onClick = onBack),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        MindSetIcons.Close,
+                        contentDescription = "Close",
+                        tint = colors.onSurface,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
 
@@ -413,8 +480,7 @@ private fun StationCard(
     val logged = set?.timeSec != null
 
     Column(
-        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill)
-            .border(1.dp, GlassBorder, shape).padding(MaterialTheme.spacing.md),
+        modifier = Modifier.fillMaxWidth().clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape).padding(MaterialTheme.spacing.md),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
     ) {
         Row(
@@ -501,11 +567,7 @@ private enum class SecondField { REPS, LOAD, NONE }
 private fun ConfirmChip(logged: Boolean, onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Box(
-        Modifier
-            .size(24.dp)
-            .clip(CircleShape)
-            .background(if (logged) colors.primary else colors.surfaceContainerHigh)
-            .clickable(onClick = onClick),
+        Modifier.size(24.dp).clip(CircleShape).background(if (logged) colors.primary else colors.surfaceContainerHigh).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -522,10 +584,7 @@ private fun ConfirmChip(logged: Boolean, onClick: () -> Unit) {
 private fun DeleteButton(onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Box(
-        Modifier
-            .size(24.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
+        Modifier.size(24.dp).clip(CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -543,8 +602,7 @@ private fun StandardView(standard: String) {
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.small
     Row(
-        modifier = Modifier.fillMaxWidth().clip(shape)
-            .background(colors.primary.copy(alpha = 0.06f))
+        modifier = Modifier.fillMaxWidth().clip(shape).background(colors.primary.copy(alpha = 0.06f))
             .border(1.dp, colors.primary.copy(alpha = 0.25f), shape)
             .padding(horizontal = MaterialTheme.spacing.smd, vertical = MaterialTheme.spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -576,10 +634,7 @@ private fun MetricField(
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
     Column(
-        modifier
-            .clip(shape)
-            .background(GlassFill)
-            .border(1.dp, GlassBorder, shape)
+        modifier.clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape)
             .padding(horizontal = MaterialTheme.spacing.smd, vertical = MaterialTheme.spacing.sm),
     ) {
         Text(
@@ -635,8 +690,7 @@ private val ClockVisualTransformation = VisualTransformation { text ->
 private fun AddToSessionSheet(stations: List<StationOption>, onBrowseExercises: () -> Unit, onPickStation: (String) -> Unit) {
     val colors = MaterialTheme.colorScheme
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.md)
-            .padding(bottom = MaterialTheme.spacing.xl),
+        Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.md).padding(bottom = MaterialTheme.spacing.xl),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
     ) {
         Text(
@@ -676,8 +730,8 @@ private fun SheetRow(title: String, subtitle: String, leading: androidx.compose.
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
     Row(
-        Modifier.fillMaxWidth().clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape)
-            .clickable(onClick = onClick).padding(MaterialTheme.spacing.smd),
+        Modifier.fillMaxWidth().clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape).clickable(onClick = onClick)
+            .padding(MaterialTheme.spacing.smd),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smd),
     ) {
@@ -717,8 +771,8 @@ private fun AddCta(onClick: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth().clip(MaterialTheme.shapes.medium)
-            .border(1.dp, colors.outlineVariant.copy(alpha = 0.5f), MaterialTheme.shapes.medium)
-            .clickable(onClick = onClick).padding(vertical = MaterialTheme.spacing.smd),
+            .border(1.dp, colors.outlineVariant.copy(alpha = 0.5f), MaterialTheme.shapes.medium).clickable(onClick = onClick)
+            .padding(vertical = MaterialTheme.spacing.smd),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -772,8 +826,8 @@ private fun VariantChip(label: String, modifier: Modifier = Modifier, onClick: (
     val colors = MaterialTheme.colorScheme
     val shape = MaterialTheme.shapes.medium
     Box(
-        modifier = modifier.clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape)
-            .clickable(onClick = onClick).padding(vertical = MaterialTheme.spacing.smd),
+        modifier = modifier.clip(shape).background(GlassFill).border(1.dp, GlassBorder, shape).clickable(onClick = onClick)
+            .padding(vertical = MaterialTheme.spacing.smd),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -789,14 +843,25 @@ private fun VariantChip(label: String, modifier: Modifier = Modifier, onClick: (
 
 @Composable
 private fun CompleteCta(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    PrimaryButton(
-        text = "Complete Session",
-        enabled = true,
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(MaterialTheme.spacing.md),
-    )
+    val colors = MaterialTheme.colorScheme
+    val shape = MaterialTheme.shapes.medium
+    Box(
+        modifier.clip(shape).border(1.dp, GlassBorder, shape)
+            .background(MaterialTheme.colorScheme.primary)
+            .clickable(onClick = onClick)
+            .padding(
+                vertical = MaterialTheme.spacing.smd,
+                horizontal = MaterialTheme.spacing.smd,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "Complete Session",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = colors.onSurface,
+        )
+    }
 }
 
 private fun digitsToClock(digits: String): String {

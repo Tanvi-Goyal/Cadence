@@ -23,8 +23,13 @@ fun digitsToSeconds(digits: String): Int {
     return mm * 60 + ss
 }
 
-/** Seconds → display clock "m:ss" (e.g. 185 → "3:05"). For read-only summaries. */
-fun formatClock(sec: Int): String {
+/**
+ * **Seconds** → display clock "m:ss" (e.g. 185 → "3:05"). For read-only summaries.
+ *
+ * Distinct from `com.mindset.components.formatClockMs`, which takes **milliseconds** and zero-pads
+ * the minutes for a live clock. Both take a `Long`, so the unit lives in the name.
+ */
+fun formatClockSec(sec: Long): String {
     val m = sec / 60
     val s = sec % 60
     return "$m:${s.toString().padStart(2, '0')}"

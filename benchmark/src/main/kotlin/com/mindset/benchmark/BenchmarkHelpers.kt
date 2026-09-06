@@ -28,7 +28,10 @@ fun MacrobenchmarkScope.launchWithSeed(seed: Int = 200) {
 }
 
 /**
- * Tap the History tab and wait for its list to appear.
+ * Open History from Home's "See all" and wait for its list to appear.
+ *
+ * History left the bottom nav (the second tab is now Log, an action that starts a workout), so the
+ * entry point is the Recent widget's "See all" affordance.
  *
  * Retries the find+click: right after a cold launch the Home screen is still settling (its data
  * Flow emits and recomposes), so the tab node can be recycled between `findObject` and `click`,
@@ -40,7 +43,7 @@ fun MacrobenchmarkScope.openHistory() {
     device.waitForIdle()
     repeat(5) {
         try {
-            device.findObject(By.text("History"))?.click()
+            device.findObject(By.text("See all"))?.click()
             if (device.wait(Until.hasObject(By.res(HISTORY_LIST_TAG)), 3_000)) {
                 device.waitForIdle()
                 return

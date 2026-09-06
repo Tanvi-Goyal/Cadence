@@ -12,16 +12,15 @@ import com.mindset.model.Gender
 import com.mindset.model.HyroxStationModel
 import com.mindset.model.HyroxVariant
 import com.mindset.model.RaceMode
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
@@ -46,11 +45,8 @@ class ActiveWorkoutControllerImpl(
     private val preferences: PreferencesRepository,
     private val store: ActiveRaceStore,
     private val clock: Clock,
-    // Defaulted so production wiring is unchanged; tests pass a TestDispatcher to drive the tick loop
-    // deterministically instead of waiting on real 200ms delays.
-    dispatcher: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(1),
 ) : ActiveWorkoutController {
-    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
 
     private val _state = MutableStateFlow<ActiveWorkout?>(null)
     override val state: StateFlow<ActiveWorkout?> = _state.asStateFlow()
@@ -64,11 +60,12 @@ class ActiveWorkoutControllerImpl(
     private var sessionId: String = ""
     private var divisionKey: String = ""
     private var variant: HyroxVariant = HyroxVariant.FULL
+
     // Snapshotted at start so a restore rebuilds the SAME step list even if the athlete changed
     // division or race mode in Profile meanwhile. (hyroxFormat ignores `gender` today; kept so the
     // rebuild call is byte-identical and forward-proof.)
     private var raceMode: RaceMode = RaceMode.SINGLES
-    private var gender: Gender = Gender.MEN
+    private var gender: Gender = Gender.WOMEN
     private var steps: List<HyroxStationModel> = emptyList()
     private var currentIndex = 0
     private var totalAccumMs = 0L // total elapsed banked at the last pause/advance
@@ -91,12 +88,13 @@ class ActiveWorkoutControllerImpl(
     private var lastPersistMark: Instant = Instant.DISTANT_PAST
 
     override fun startHyrox(divisionKey: String, variant: HyroxVariant, templateId: String) = onScope {
-        // Already racing (or mid-start): surface the running race instead of replacing it.
         if (starting || steps.isNotEmpty()) {
             _expanded.value = true
             return@onScope
         }
+
         starting = true
+
         try {
             // Mode + gender come from the athlete's profile. Note hyroxFormat ignores `gender` today
             // (it keys standards off divisionKey + raceMode), so an overridden division cannot desync
@@ -107,7 +105,7 @@ class ActiveWorkoutControllerImpl(
                 ?: if (divisionKey.startsWith("WOMEN")) Gender.WOMEN else Gender.MEN
 
             val format = repository.hyroxFormat(divisionKey, variant, raceMode, gender)
-            if (format.isEmpty()) return@onScope // unseeded format — nothing to run
+            if (format.isEmpty()) return@onScope
 
             val id = repository.startHyroxSession(divisionKey, variant, raceMode, gender, templateId)
 
@@ -193,7 +191,11 @@ class ActiveWorkoutControllerImpl(
             // anyway — but every other assignment site maintains this invariant, and DISTANT_PAST
             // would yield a nonsense elapsed if that short-circuit were ever removed.
             runStartMark = clock.now()
-            _expanded.value = true // an interrupted race needs an explicit Resume-or-Dismiss
+            // Restored MINIMIZED. A rehydrated race arrives on cold start, so expanding here would
+            // throw the full sheet over Home before the athlete has asked for anything. The toolbar
+            // pill (and Home's "In progress" card) carry it; both reopen the sheet on tap, and both
+            // already show the paused clock, so the Resume-or-Dismiss decision is still right there.
+            _expanded.value = false
 
             // Deliberately no startTicking(): the race is paused, so a tick loop would spin as a no-op
             // for as long as it stays paused. resume() starts it.
