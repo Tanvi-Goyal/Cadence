@@ -18,7 +18,8 @@ Outputs
     AppIcon-1024.png / -dark.png / -tinted.png  +  Contents.json
   Source / store (docs/branding/):
     mindset-icon.svg            canonical vector source
-    playstore-512.png           Play Store listing icon
+    playstore-512.png           Play Store listing icon (512x512, opaque)
+    playstore-feature.png       Play Store feature graphic (1024x500, opaque)
 
 Run:  python3 tools/branding/generate_brand_assets.py
 Requires Pillow (pip install Pillow).
@@ -29,7 +30,7 @@ from __future__ import annotations
 import json
 import os
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 # ---------------------------------------------------------------------------
 # Brand tokens — keep in sync with app colors.xml and the Compose splash.
@@ -122,6 +123,73 @@ def render_png(size: int, bg: str | None, ink: str, red: str, tile: str) -> Imag
 
 
 # ---------------------------------------------------------------------------
+# Play Store feature graphic
+# ---------------------------------------------------------------------------
+# Play crops the feature graphic to several aspect ratios and overlays a play button on some
+# placements, so the lockup is centered and kept inside a generous safe box rather than filling
+# the frame. Play also rejects transparency here, so this is the one output flattened to RGB.
+FEATURE_W, FEATURE_H = 1024, 500
+FEATURE_TILE_FRAC = 0.46   # icon tile height as a fraction of the canvas height
+FEATURE_GAP_FRAC = 0.055   # gap between tile and wordmark, fraction of canvas width
+FEATURE_TRACK = 0.06       # extra letter tracking, fraction of the type size
+FEATURE_SAFE_W = 0.72      # max lockup width as a fraction of the canvas; the lockup is scaled
+FEATURE_SAFE_H = 0.62      # down to fit whichever of these two bounds binds first
+
+# "MIND" and "SET" in ink, the brackets in red — the wordmark treatment the brand tokens describe.
+WORDMARK = [("MIND", BRAND_INK), ("[", BRAND_RED), ("SET", BRAND_INK), ("]", BRAND_RED)]
+
+
+def _wordmark_font(px: int) -> ImageFont.FreeTypeFont:
+    """Inter ExtraBold, loaded from the app's own bundled font so the graphic matches the UI."""
+    path = os.path.join(
+        REPO, "core", "designsystem", "src", "main", "res", "font", "inter_extrabold.ttf"
+    )
+    return ImageFont.truetype(path, px)
+
+
+def render_feature_graphic() -> Image.Image:
+    """1024x500 opaque RGB feature graphic: icon tile + MIND[SET] wordmark, centered."""
+    w, h = FEATURE_W * SS, FEATURE_H * SS
+    img = Image.new("RGB", (w, h), BRAND_BG)
+    d = ImageDraw.Draw(img)
+
+    def measure(tile_px: int):
+        font = _wordmark_font(max(1, int(tile_px * 0.52)))
+        track = font.size * FEATURE_TRACK
+        runs = [(t, c) for (t, c) in WORDMARK]
+        glyphs = sum(len(t) for (t, _) in runs)
+        text_w = sum(d.textlength(t, font=font) for (t, _) in runs) + track * (glyphs - 1)
+        gap = int(w * FEATURE_GAP_FRAC)
+        return font, track, runs, tile_px + gap + text_w, gap
+
+    # Size the lockup to the safe box instead of hard-coding a scale: text advance widths depend on
+    # the font's metrics, so the only reliable way to keep clear of the crop is to measure, then
+    # scale by the ratio that actually binds. Advances scale linearly with size, so one pass fits.
+    tile_px = int(h * FEATURE_TILE_FRAC)
+    font, track, runs, total_w, gap = measure(tile_px)
+    fit = min(w * FEATURE_SAFE_W / total_w, h * FEATURE_SAFE_H / tile_px, 1.0)
+    if fit < 1.0:
+        tile_px = int(tile_px * fit)
+        font, track, runs, total_w, gap = measure(tile_px)
+
+    tile = render_png(tile_px, BRAND_TILE, BRAND_INK, BRAND_RED, "rounded")
+    x = (w - total_w) / 2
+
+    img.paste(tile, (int(x), int((h - tile_px) / 2)), tile)
+    x += tile_px + gap
+
+    # Optical centering: cap-height, not the font's full line box (which includes descender room).
+    cap_top, cap_bot = font.getbbox("M")[1], font.getbbox("M")[3]
+    y = (h - (cap_bot - cap_top)) / 2 - cap_top
+    for (text, color) in runs:
+        for ch in text:                       # per-glyph so tracking and per-run color both apply
+            d.text((x, y), ch, font=font, fill=color)
+            x += d.textlength(ch, font=font) + track
+
+    return img.resize((FEATURE_W, FEATURE_H), Image.LANCZOS)
+
+
+# ---------------------------------------------------------------------------
 # Vector path builders (shared by SVG + Android <vector>)
 # ---------------------------------------------------------------------------
 def _round_rect_path(x0, y0, x1, y1, r, v):
@@ -208,6 +276,8 @@ def svg_source(v: int = 108) -> str:
 # ---------------------------------------------------------------------------
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 RES = os.path.join(REPO, "app", "src", "main", "res")
+# brand_logo is consumed by Compose screens, which live in :core:ui — not in :app.
+UI_RES = os.path.join(REPO, "core", "ui", "src", "main", "res")
 IOS_ICON = os.path.join(
     REPO, "iosApp", "iosApp", "Assets.xcassets", "AppIcon.appiconset"
 )
@@ -250,7 +320,7 @@ def main():
            android_background())
     _write(os.path.join(RES, "drawable", "ic_launcher_monochrome.xml"),
            android_vector(include_tile=False, mono=True))
-    _write(os.path.join(RES, "drawable", "brand_logo.xml"),
+    _write(os.path.join(UI_RES, "drawable", "brand_logo.xml"),
            android_vector(include_tile=True, mono=False))
 
     # Android legacy PNG mipmaps (API 24-25)
@@ -284,8 +354,11 @@ def main():
 
     # Source + store
     _write(os.path.join(BRANDING, "mindset-icon.svg"), svg_source())
-    _save(render_png(512, BRAND_TILE, BRAND_INK, BRAND_RED, "rounded"),
+    # Play's listing icon must be a full-bleed opaque square: Play applies its own corner mask,
+    # so shipping pre-rounded corners leaves transparent wedges over Play's background.
+    _save(render_png(512, BRAND_TILE, BRAND_INK, BRAND_RED, "square"),
           os.path.join(BRANDING, "playstore-512.png"))
+    _save(render_feature_graphic(), os.path.join(BRANDING, "playstore-feature.png"))
 
     print("\nDone.")
 

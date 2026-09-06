@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.mindset.domain.ActiveWorkoutController
+import com.mindset.domain.repository.PreferencesRepository
 import com.mindset.domain.repository.SessionRepository
 import com.mindset.presentation.PreferencesViewModel
 import com.mindset.race.RaceNotifications
@@ -56,14 +57,22 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
 
-        // Macro benchmark-only bulk seed (:benchmark BenchmarkHelpers.EXTRA_SEED), gated to the
-        // `benchmark` variant. This Activity is exported, so an ungated hook lets any app on the
-        // device inject unbounded rows into a real athlete's history — and the runBlocking below
-        // would ANR onCreate doing it.
+        // Macro benchmark-only bulk seed (:benchmark BenchmarkHelpers.EXTRA_SEED). SEED_HOOK_ENABLED
+        // is false everywhere except the benchmark variants (see :app's build script for the exact
+        // allowlist). This Activity is exported, so an ungated hook lets any app on the device
+        // inject unbounded rows into a real athlete's history and silently skip onboarding — and
+        // the runBlocking below would ANR onCreate doing it.
         if (BuildConfig.SEED_HOOK_ENABLED) {
             val seed = intent.getIntExtra("mindset_seed", 0)
             if (seed > 0) {
-                runBlocking { GlobalContext.get().get<SessionRepository>().seedBenchmarkSessions(seed) }
+                runBlocking {
+                    val koin = GlobalContext.get()
+                    koin.get<SessionRepository>().seedBenchmarkSessions(seed)
+                    // Baseline-profile runs install fresh, so Splash would route to Onboarding and
+                    // the generator would never reach Home. Clearing the gate here keeps the
+                    // benchmark independent of onboarding's UI copy.
+                    koin.get<PreferencesRepository>().setOnboardingComplete(true)
+                }
             }
         }
 

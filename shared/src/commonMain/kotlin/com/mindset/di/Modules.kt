@@ -19,8 +19,15 @@ import org.koin.dsl.KoinAppDeclaration
  * (B11). Each feature module owns its own `xModule` in package `com.mindset.di`, so they resolve here
  * with no import. [config] lets a platform add bindings it alone can supply — e.g. Android passes
  * `androidContext(this)`; iOS passes nothing.
+ *
+ * [observability] is applied AFTER [modules] — the Kotzilla profiler inspects the assembled graph,
+ * so the ordering is load-bearing. It is a parameter rather than a call here because a profiler
+ * must not ship to users: only a debug build passes [kotzillaMonitoring].
  */
-fun initKoin(config: KoinAppDeclaration? = null): KoinApplication = startKoin {
+fun initKoin(
+    config: KoinAppDeclaration? = null,
+    observability: KoinAppDeclaration? = null,
+): KoinApplication = startKoin {
     config?.invoke(this)
     modules(
         commonModule,
@@ -41,5 +48,13 @@ fun initKoin(config: KoinAppDeclaration? = null): KoinApplication = startKoin {
         profileModule,
         onboardingModule,
     )
-    monitoring()
+    observability?.invoke(this)
 }
+
+/**
+ * Kotzilla Koin profiler wiring — streams the DI graph and runtime telemetry to Kotzilla's cloud,
+ * and carries the API key generated from `shared/kotzilla.json`. Pass it to [initKoin] ONLY from a
+ * debug build; referencing it from a release build ships a profiler, and its data collection, to
+ * every user.
+ */
+val kotzillaMonitoring: KoinAppDeclaration = { monitoring() }

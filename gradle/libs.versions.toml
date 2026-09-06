@@ -9,6 +9,12 @@ androidx-core = "1.19.0"
 androidx-espresso = "3.7.0"
 androidx-lifecycle = "2.11.0-beta01"
 androidx-testExt = "1.3.0"
+# App version — the single source of truth for versionName and the derived versionCode (see
+# :app's build script). Bump `app-versionPatch` before every Play upload: Play permanently
+# rejects a versionCode less than or equal to one already published.
+app-versionMajor = "1"
+app-versionMinor = "0"
+app-versionPatch = "0"
 composeMultiplatform = "1.11.1"
 junit = "4.13.2"
 kotlin = "2.4.0"

@@ -1,3 +1,4 @@
+import com.android.build.api.variant.BuildConfigField
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -11,6 +12,16 @@ plugins {
 }
 
 val hasFirebaseConfig: Boolean = project.file("google-services.json").exists()
+
+// App version, from gradle/libs.versions.toml. versionCode is DERIVED rather than maintained
+// alongside versionName, because Play permanently rejects a code <= one already published and a
+// hand-kept pair drifts silently. The packing keeps codes ordered exactly as semver orders
+// releases; ceiling 99.99.99 -> 999_999, well under Play's 2_100_000_000 limit.
+val versionMajor = libs.versions.app.versionMajor.get().toInt()
+val versionMinor = libs.versions.app.versionMinor.get().toInt()
+val versionPatch = libs.versions.app.versionPatch.get().toInt()
+val appVersionName = "$versionMajor.$versionMinor.$versionPatch"
+val appVersionCode = versionMajor * 10_000 + versionMinor * 100 + versionPatch
 
 if (hasFirebaseConfig) {
     apply(plugin = libs.plugins.googleServices.get().pluginId)
@@ -102,8 +113,8 @@ android {
             libs.versions.android.targetSdk
                 .get()
                 .toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // Off everywhere by default; only the `benchmark` variant turns it on. MainActivity is
@@ -125,7 +136,11 @@ android {
         val file = rootProject.file("keystore.properties")
         if (file.exists()) file.inputStream().use(::load)
     }
-    val hasReleaseKeystore = keystoreProperties.getProperty("storeFile") != null
+    // Checks the FILE, not just the property: a stale path in keystore.properties otherwise fails
+    // deep in the signing task ("Keystore file ... not found") on every release-derived variant,
+    // including the nonMinifiedRelease one the baseline-profile plugin generates.
+    val hasReleaseKeystore = keystoreProperties.getProperty("storeFile")
+        ?.let { rootProject.file(it).exists() } == true
 
     signingConfigs {
         if (hasReleaseKeystore) {
@@ -140,7 +155,18 @@ android {
 
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            // R8: shrink + optimize + obfuscate. See proguard-rules.pro for what has to be kept —
+            // the one real hazard here is enums persisted by `name`, not DI or serialization.
+            isMinifyEnabled = true
+            // Strips resources no kept code references. Legal only with minify on, because it
+            // relies on R8's reachability graph. Anything looked up by name via
+            // Resources.getIdentifier() is invisible to that graph — we have none today; if that
+            // changes, list the survivors in res/raw/keep.xml rather than turning this off.
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             if (hasReleaseKeystore) signingConfig = signingConfigs.getByName("release")
         }
         // Non-debuggable, profileable variant Macrobenchmark runs against (it refuses debuggable
@@ -149,6 +175,10 @@ android {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
+            // initWith copied both R8 flags off `release`. Resource shrinking is only legal with
+            // code shrinking on, so clearing minify alone leaves an invalid pair and AGP fails the
+            // build. Macrobenchmark wants unobfuscated symbols anyway, so both stay off here.
+            isShrinkResources = false
             matchingFallbacks += listOf("release")
 
             // Macrobenchmark needs a long History list to scroll; this is the only variant allowed
@@ -159,5 +189,26 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+// The androidx.baselineprofile plugin synthesizes its own build types off `release`, so the
+// SEED_HOOK_ENABLED flag set on our hand-written `benchmark` type never reaches the variant that
+// actually runs BaselineProfileGenerator — the seed intent extra was silently ignored there.
+//
+// Enabled by an EXACT-NAME allowlist, never a build-type or prefix match. MainActivity is
+// exported and this hook writes to the user's real database, so the set of variants that honor it
+// has to be auditable by reading this list: `release` is deliberately absent, and a new variant
+// cannot acquire the hook by accident.
+val seedHookVariants = setOf("nonMinifiedRelease", "benchmarkRelease")
+
+androidComponents {
+    onVariants { variant ->
+        if (variant.name in seedHookVariants) {
+            variant.buildConfigFields?.put(
+                "SEED_HOOK_ENABLED",
+                BuildConfigField("boolean", true, "Benchmark-only: honors the bulk-seed extra."),
+            )
+        }
     }
 }

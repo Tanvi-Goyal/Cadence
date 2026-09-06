@@ -24,6 +24,10 @@ import org.koin.mp.KoinPlatform
  * generated Objective-C/Swift facade is the predictable `KoinIosKt`.
  */
 fun doInitKoin() {
+    // No `observability` argument: the Kotzilla profiler is deliberately off on iOS. Android gates
+    // it on BuildConfig.DEBUG (see MindSetApplication); the native analogue is
+    // `kotlin.native.Platform.isDebugBinary`, which needs an ExperimentalNativeApi opt-in — add it
+    // here, passing `kotzillaMonitoring`, if the iOS profiler is wanted back for dev builds.
     initKoin()
 }
 

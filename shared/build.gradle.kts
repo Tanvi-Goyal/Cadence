@@ -8,8 +8,16 @@ plugins {
     alias(libs.plugins.kotzilla)
 }
 
+// Same source of truth as :app's versionName (gradle/libs.versions.toml), so a profiler session
+// can be attributed to a specific release.
+val appVersionName: String = listOf(
+    libs.versions.app.versionMajor,
+    libs.versions.app.versionMinor,
+    libs.versions.app.versionPatch,
+).joinToString(".") { it.get() }
+
 kotzilla {
-    versionName = "1.0"
+    versionName = appVersionName
 }
 
 kotlin {
