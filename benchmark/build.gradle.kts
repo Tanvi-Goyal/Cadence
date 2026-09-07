@@ -13,13 +13,19 @@ kotlin {
 }
 
 android {
-    namespace = "dev.cadence.benchmark"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    namespace = "com.mindset.benchmark"
+    compileSdk =
+        libs.versions.android.compileSdk
+            .get()
+            .toInt()
 
     defaultConfig {
         // Macrobenchmark/BaselineProfile need API 24+; startup metrics are most accurate on 28+.
         minSdk = 28
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
+        targetSdk =
+            libs.versions.android.targetSdk
+                .get()
+                .toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {

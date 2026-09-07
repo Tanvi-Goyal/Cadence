@@ -1,12 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.data"
+        namespace = "com.mindset.data"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
@@ -17,12 +17,14 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(projects.core.domain)   // implements the repository interfaces
+            implementation(projects.core.domain) // implements the repository interfaces
             implementation(projects.core.database) // AppDatabase, DAOs, entities, importer, asset reader
-            implementation(projects.core.network)  // WgerApi (MuscleImageProvider)
-            implementation(projects.core.model)    // mappers produce domain models
-            implementation(projects.core.common)   // UuidGenerator
-            implementation(libs.room.runtime)        // useWriterConnection / immediateTransaction
+            implementation(projects.core.datastore) // DataStore<Preferences> (device-local settings)
+            implementation(projects.core.network) // WgerApi (MuscleImageProvider)
+            implementation(projects.core.model) // mappers produce domain models
+            implementation(projects.core.common) // UuidGenerator
+            implementation(libs.room.runtime) // useWriterConnection / immediateTransaction
+            implementation(libs.androidx.datastore.preferences.core) // PreferencesRepositoryImpl
             implementation(libs.androidx.paging.common) // Pager / PagingData.map
             implementation(libs.kotlinx.coroutines.core)
             // dataModule (DI): repo impls bound to domain interfaces + MuscleImageProvider.

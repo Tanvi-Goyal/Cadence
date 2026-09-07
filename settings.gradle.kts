@@ -1,4 +1,4 @@
-rootProject.name = "Cadence"
+rootProject.name = "MindSet"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {
@@ -37,6 +37,7 @@ include(":benchmark")
 include(":core:model")
 include(":core:common")
 include(":core:database")
+include(":core:datastore")
 include(":core:network")
 include(":core:domain")
 include(":core:data")
@@ -45,10 +46,11 @@ include(":core:designsystem")
 include(":core:ui")
 include(":core:navigation")
 include(":feature:profile")
-include(":feature:stats")
+include(":feature:stations")
 include(":feature:history")
 include(":feature:exercises")
 include(":feature:logging")
 include(":feature:templates")
 include(":feature:home")
 include(":feature:auth")
+include(":feature:onboarding")

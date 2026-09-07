@@ -1,7 +1,7 @@
-# Cadence — Offline-First Cross-Platform Training Tracker
+# MindSet — Offline-First Cross-Platform Training Tracker
 ### Product & Engineering Requirements (Living Document)
 
-*Working title — rename freely. "Cadence" nods to both running tempo and training rhythm; alternatives: Loadout, Splits, Tempo, PR.*
+*Working title — rename freely. "MindSet" nods to both running tempo and training rhythm; alternatives: Loadout, Splits, Tempo, PR.*
 
 **Status:** Draft v0.1 · **Owner:** Tanvi Goyal · **Last updated:** _[date]_
 

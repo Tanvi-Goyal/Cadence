@@ -7,14 +7,14 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
  * never on :core:data / :core:sync / other features.
  */
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.feature.profile"
+        namespace = "com.mindset.feature.profile"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
@@ -36,16 +36,16 @@ kotlin {
             implementation(libs.compose.runtime)
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)          // CadenceBottomBar, Tab
-            implementation(projects.core.designsystem) // CadenceTheme + color tokens
-            implementation(projects.core.navigation)   // Credits typed route
+            implementation(projects.core.ui) // MindSetBottomBar, Tab
+            implementation(projects.core.designsystem) // MindSetTheme + color tokens
+            implementation(projects.core.navigation) // Credits typed route
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
             implementation(libs.androidx.lifecycle.runtimeCompose) // collectAsStateWithLifecycle
-            implementation(libs.androidx.navigation.compose)        // NavGraphBuilder / composable
+            implementation(libs.androidx.navigation.compose) // NavGraphBuilder / composable
             implementation(project.dependencies.platform(libs.koin.bom))
-            implementation(libs.koin.compose.viewmodel)             // koinViewModel()
+            implementation(libs.koin.compose.viewmodel) // koinViewModel()
         }
     }
 }

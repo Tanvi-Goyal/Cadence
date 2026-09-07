@@ -1,0 +1,287 @@
+package com.mindset.domain.repository
+
+import androidx.paging.PagingData
+import com.mindset.model.Exercise
+import com.mindset.model.ExerciseRef
+import com.mindset.model.Gender
+import com.mindset.model.HyroxStation
+import com.mindset.model.HyroxStationModel
+import com.mindset.model.HyroxVariant
+import com.mindset.model.PlannedSession
+import com.mindset.model.RaceMode
+import com.mindset.model.Session
+import com.mindset.model.SessionDetail
+import com.mindset.model.SessionType
+import com.mindset.model.SetEntry
+import com.mindset.model.StationAggregate
+import com.mindset.model.StationRecord
+import com.mindset.model.VolumePoint
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * The app's entry point to session data. Deliberately framework-agnostic (plain interface, plain
+ * types) — nothing here knows about Koin, so the DI framework can be swapped without touching it.
+ */
+interface SessionRepository {
+    /** The single source of truth for the UI: a reactive stream of non-deleted, non-template sessions. */
+    fun observeSessions(): Flow<List<Session>>
+
+    /**
+     * All cached Hyrox station PBs, division-bucketed — the Station board's records list. Derived from
+     * the `personal_records` cache (the single source of PB truth); the UI groups them by station.
+     */
+    fun observeStationRecords(): Flow<List<StationRecord>>
+
+    /**
+     * Per-station RECENT + SESSIONS metrics for [divisionKey], reactive — the Station board's history
+     * columns beside the PB. Scoped to one division so a card never mixes race weights; a station with
+     * nothing logged at that weight is simply absent from the map. Aggregated in SQL.
+     */
+    fun observeStationAggregates(divisionKey: String): Flow<Map<HyroxStation, StationAggregate>>
+
+    /**
+     * The most recent [limit] live sessions (newest first) — Home's "Recent" widget. Bounded in SQL, so
+     * it observes only what the fixed-size preview shows. Deliberately NOT Paging: the widget doesn't
+     * scroll, so there's no page to load — Paging belongs on the unbounded History list ([pagedSessions]).
+     */
+    fun observeRecentSessions(limit: Int): Flow<List<Session>>
+
+    fun observeSessionsSince(startMillis: Long): Flow<List<Session>>
+
+    /** Reactive stream of the user's templates (D2) — for the template picker. */
+    fun observeTemplates(): Flow<List<Session>>
+
+    /** The current planned/next session shown on the Home "Today" card (null if none). */
+    fun observePlannedSession(): Flow<PlannedSession?>
+
+    /**
+     * A fully hydrated session (its blocks → exercise entries → sets, with each entry's catalog
+     * exercise + derived capture fields resolved), reactive — what Log Workout / Session Detail /
+     * the template builder render. Emits null while the session id doesn't resolve.
+     */
+    fun observeSessionDetail(sessionId: String): Flow<SessionDetail?>
+
+    /** Strength volume (Σ reps×loadKg) keyed by session id, reactive — for Home stats/rows. */
+    fun observeVolumesBySession(): Flow<Map<String, Double>>
+
+    /**
+     * Training time in seconds (Σ of the logged splits, **runs included**) keyed by session id,
+     * reactive — the duration a list row shows for a timed workout. Aggregated in SQL like
+     * [observeVolumesBySession]. A session with nothing timed is absent from the map.
+     */
+    fun observeDurationsBySession(): Flow<Map<String, Int>>
+
+    /** Exercises that have logged data — for the Stats chart selector. */
+    fun observeExercisesWithHistory(): Flow<List<ExerciseRef>>
+
+    /** Per-exercise volume over time (oldest→newest) — the Stats trend chart. */
+    fun observeVolumeOverTime(exerciseId: String): Flow<List<VolumePoint>>
+
+    /**
+     * Paged exercise library. Empty [query] = all; [query] free-text matches name/muscle/equipment;
+     * [equipment] and [muscle] narrow by exact equipment and primary-muscle membership. Backed by a
+     * Room [PagingSource].
+     */
+    fun searchExercises(query: String, equipment: String? = null, muscle: String? = null): Flow<PagingData<Exercise>>
+
+    /**
+     * The reverse-chronological session feed as a Paging 3 stream — the History (Pro) list. [type]
+     * narrows by [SessionType] (null = all live, non-template sessions). Backed by a Room PagingSource
+     * so the UI only materializes a window; collected in the UI as `LazyPagingItems`.
+     */
+    fun pagedSessions(type: SessionType? = null): Flow<PagingData<Session>>
+
+    /** The full seeded catalog as a lookup, for resolving `exerciseId` → name/metric in the UI. */
+    suspend fun exercisesById(): Map<String, Exercise>
+
+    /** A single catalog exercise by id (for the Exercise Detail screen). */
+    suspend fun exerciseById(id: String): Exercise?
+
+    /** Creates a blank session, persisting it and enqueuing its sync mutation atomically. */
+    /**
+     * The Log tab's draft session: resume the newest hand-logged session that was never completed,
+     * or create one when there is none.
+     *
+     * A tab is a *place* — leaving it and coming back (or killing the app) must return the same
+     * half-filled workout, which [createSession] alone can't give: it would mint a new row on every
+     * visit and strand the previous one. Race sims and template-started sessions are deliberately not
+     * resumable here; see `SessionDao.latestUnfinishedManual`.
+     */
+    suspend fun resumeOrCreateSession(type: String): Session
+
+    suspend fun createSession(type: String): Session
+
+    /**
+     * Creates an empty template (a session with `isTemplate = true`), atomically with its outbox
+     * row. Build it up with [addExercise] + [addTargetSet], then spawn sessions via
+     * [instantiateTemplate].
+     */
+    suspend fun createTemplate(name: String, type: String): Session
+
+    /** Starts a real session from a plan (carries its name/type), atomically with its outbox row. */
+    suspend fun startPlannedSession(plan: PlannedSession): Session
+
+    /** Adds an exercise to a session (a new [com.mindset.data.local.LoggedItem]). */
+    suspend fun addExercise(sessionId: String, exerciseId: String)
+
+    /**
+     * Adds an exercise to a real (non-template) session and **prefills its sets from the last time
+     * this exercise was logged** — the app's highest-value capture shortcut. The recreated sets carry
+     * only `target*` values (actuals null), so the UI renders them as editable ghosts to confirm (✓)
+     * or adjust. With no history it seeds no sets (identical to [addExercise] — the add-set row
+     * captures the first set). Distinct from [addExercise] so template building stays unaffected.
+     */
+    suspend fun addExercisePrefilled(sessionId: String, exerciseId: String)
+
+    /**
+     * Adds a Hyrox station (identified by its `event_segment` [segmentKey]) to a session, seeding a
+     * ghost **target** set from the station's division standard (weight/reps/distance for
+     * [divisionKey]) and tagging the entry with its [segmentKey]. Resolved from the seeded reference
+     * tables via [hyroxStations].
+     */
+    suspend fun addStation(sessionId: String, divisionKey: String, segmentKey: String, raceMode: RaceMode, gender: Gender)
+
+    /**
+     * Seeds an entire Hyrox race [variant] into a session in one transaction: every segment the variant
+     * covers (runs **and** stations, in race order) is added as a ghost-target entry from the [divisionKey]
+     * standard. Order indices continue contiguously after any existing entries. Unlike [addStation] this
+     * includes run segments and applies the variant's targets (e.g. [HyroxVariant.HALVED] halves each
+     * distance/rep). Resolved from the seeded reference tables via [hyroxFormat].
+     *
+     * With [replaceExisting] the session's current contents are tombstoned first (every live entry and
+     * its sets, across all blocks) and the new segments start at order 0 — so picking a second variant
+     * *swaps* the race instead of appending a second one. Still one transaction: the session is never
+     * observable in a half-cleared state.
+     */
+    suspend fun addHyroxVariant(
+        sessionId: String,
+        divisionKey: String,
+        variant: HyroxVariant,
+        raceMode: RaceMode,
+        gender: Gender,
+        replaceExisting: Boolean = false,
+    )
+
+    /**
+     * The 8 Hyrox stations for [divisionKey] (division-accurate standards) — the "Stations" section of
+     * the add-to-session sheet. Thin filter over [hyroxFormat] (`kind == STATION`).
+     */
+    suspend fun hyroxStations(divisionKey: String, raceMode: RaceMode, gender: Gender): List<HyroxStationModel>
+
+    /**
+     * Per-station reference "standard" labels for the athlete's gender (both tiers) at [mode], keyed by
+     * `event_segment.id` — e.g. `"78kg (Pro) / 53kg (Open)"`. Gender is taken from [divisionKey]; both
+     * the Open and Pro standards are read so the Log Session card can show the full reference. Falls back
+     * to SINGLES standards when [mode] has none seeded. Stations with no meaningful standard are omitted.
+     */
+    suspend fun stationStandardLabels(divisionKey: String, mode: RaceMode, gender: Gender): Map<String, String>
+
+    /** Updates a session's free-text [notes], touching it so the change re-syncs. */
+    suspend fun updateSessionNotes(sessionId: String, notes: String)
+
+    /**
+     * Removes an exercise/station ([entryId]) from a session — soft-deletes (tombstones) the entry and
+     * its sets and touches the parent session, all in one transaction, so the removal re-syncs.
+     */
+    suspend fun removeEntry(sessionId: String, entryId: String)
+
+    /** Appends a set to a logged item. Strength uses reps/loadKg; conditioning uses timeSec/distanceM. */
+    suspend fun addSet(
+        sessionId: String,
+        loggedItemId: String,
+        reps: Int? = null,
+        loadKg: Double? = null,
+        timeSec: Int? = null,
+        distanceM: Int? = null,
+    )
+
+    /**
+     * Appends a **prescription** set to a logged item — writes the `target*` columns, leaving
+     * actuals null. Used when building a template. Mirrors [addSet] and touches the parent session.
+     */
+    suspend fun addTargetSet(
+        sessionId: String,
+        loggedItemId: String,
+        reps: Int? = null,
+        loadKg: Double? = null,
+        timeSec: Int? = null,
+        distanceM: Int? = null,
+    )
+
+    /**
+     * Persists an edited [set] (typically actuals filled in against a ghost target) and touches the
+     * parent [sessionId] so the whole aggregate re-syncs — both in one transaction. The caller owns
+     * the copy: pass `set.copy(reps = …, loadKg = …)` with the new values.
+     */
+    suspend fun updateSet(sessionId: String, set: SetEntry)
+
+    /**
+     * Instantiates a template into a new, real session (D2's core flow). Deep-copies the whole tree:
+     * each set's targets are copied and its actuals left null (so the UI shows ghost values), the new
+     * session records [Session.templateId] provenance with `source = FROM_TEMPLATE`. Copy-on-
+     * instantiate — later edits to the template never touch sessions already spawned from it.
+     */
+    suspend fun instantiateTemplate(templateId: String): Session
+
+    // ── HYROX live workout ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * The ordered run→station sequence for a [divisionKey] + [variant], resolved from the reference
+     * tables (distances, reps, and division-accurate weights). This is the single source both the
+     * detail screen and the live timer consume — replacing the in-code `HyroxStandards`.
+     */
+    /**
+     * Synthesizes a live HYROX race session and returns its id: type HYROX, `source = RACE_SIM`, and
+     * one target-carrying entry+set per segment of [variant] at [divisionKey]'s standards.
+     *
+     * Delegates the per-segment seeding to [addHyroxVariant], so the live timer and Log Session's
+     * quick-add share ONE seeder. That shared seeder is what guarantees `orderIndex` is contiguous
+     * from 0, which is the contract [recordHyroxSplit] resolves a split by (`orderIndex == stepIndex`)
+     * — duplicating the seeding here would mean two implementations of an invariant the timer depends
+     * on silently.
+     *
+     * Consequence of that reuse: the session row and its segments land in two transactions rather than
+     * one, so a crash in between can leave a HYROX session with no entries. That is already covered —
+     * such a row is hidden from every live feed (no entries, no `finishedAt`) and reaped by
+     * [discardSessionIfEmpty]. Do not "fix" this back into a single transaction by inlining the seeding.
+     */
+    suspend fun startHyroxSession(
+        divisionKey: String,
+        variant: HyroxVariant,
+        raceMode: RaceMode,
+        gender: Gender,
+        templateId: String? = null,
+    ): String
+
+    suspend fun hyroxFormat(divisionKey: String, variant: HyroxVariant, raceMode: RaceMode, gender: Gender): List<HyroxStationModel>
+
+    /** Records the elapsed split ([elapsedSec]) for the step at [stepIndex] onto its set. */
+    suspend fun recordHyroxSplit(sessionId: String, stepIndex: Int, elapsedSec: Int)
+
+    /**
+     * Stamps a session finished (total time = `finishedAt − startedAt`), atomically re-syncing it.
+     * When [derivedType] is non-null it is persisted as the session's [Session.type] in the same
+     * transaction — the Log Session screen passes the type auto-derived from what was logged (see
+     * [deriveSessionType]); the Hyrox timer passes null to leave its HYROX type untouched.
+     */
+    suspend fun finishSession(sessionId: String, derivedType: SessionType? = null)
+
+    /**
+     * Drops a session that was opened but never used — the quick-start FAB persists the row *before*
+     * Log Session opens, so backing out of an untouched screen would otherwise leave an empty session
+     * in History. Tombstones it (soft delete + outbox touch, one transaction) when it is live,
+     * non-template and has no live entries; returns whether it discarded. Notes do not count as
+     * content — a note against nothing logged is still not a session. Idempotent, so the exit path
+     * can call it unconditionally.
+     */
+    suspend fun discardSessionIfEmpty(sessionId: String): Boolean
+
+    /** Inserts a sensible default plan + the exercise catalog if absent. */
+    suspend fun ensureSeeded()
+
+    /**
+     * Benchmark-only: ensure at least [target] logged sessions exist (with a few sets each) so the
+     * History scroll benchmark has a non-trivial list. Idempotent — a no-op once the count is met.
+     */
+    suspend fun seedBenchmarkSessions(target: Int)
+}

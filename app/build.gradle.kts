@@ -1,10 +1,31 @@
+import com.android.build.api.variant.BuildConfigField
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.baselineprofile)
+    alias(libs.plugins.googleServices) apply false
+    alias(libs.plugins.firebaseCrashlytics) apply false
+}
+
+val hasFirebaseConfig: Boolean = project.file("google-services.json").exists()
+
+// App version, from gradle/libs.versions.toml. versionCode is DERIVED rather than maintained
+// alongside versionName, because Play permanently rejects a code <= one already published and a
+// hand-kept pair drifts silently. The packing keeps codes ordered exactly as semver orders
+// releases; ceiling 99.99.99 -> 999_999, well under Play's 2_100_000_000 limit.
+val versionMajor = libs.versions.app.versionMajor.get().toInt()
+val versionMinor = libs.versions.app.versionMinor.get().toInt()
+val versionPatch = libs.versions.app.versionPatch.get().toInt()
+val appVersionName = "$versionMajor.$versionMinor.$versionPatch"
+val appVersionCode = versionMajor * 10_000 + versionMinor * 100 + versionPatch
+
+if (hasFirebaseConfig) {
+    apply(plugin = libs.plugins.googleServices.get().pluginId)
+    apply(plugin = libs.plugins.firebaseCrashlytics.get().pluginId)
 }
 
 kotlin {
@@ -14,12 +35,8 @@ kotlin {
 }
 
 composeCompiler {
-    // Treat immutable :shared model types as stable (that module has no Compose compiler to infer
-    // it). See composeApp/compose_stability.conf for the rationale and scope.
     stabilityConfigurationFiles.add(layout.projectDirectory.file("compose_stability.conf"))
 
-    // Compose compiler stability/skippability reports, opt-in via `-PcomposeReports=true` so normal
-    // builds aren't slowed. Output lands in composeApp/build/compose_compiler/*.txt.
     if (project.findProperty("composeReports") == "true") {
         val dir = layout.buildDirectory.dir("compose_compiler")
         reportsDestination = dir
@@ -32,13 +49,14 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.core.navigation)
     implementation(projects.feature.profile)
-    implementation(projects.feature.stats)
+    implementation(projects.feature.stations)
     implementation(projects.feature.history)
     implementation(projects.feature.exercises)
     implementation(projects.feature.logging)
     implementation(projects.feature.templates)
     implementation(projects.feature.home)
     implementation(projects.feature.auth)
+    implementation(projects.feature.onboarding)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.runtime)
@@ -63,39 +81,107 @@ dependencies {
     // Installs the baseline profile packaged in the APK at first run (Phase 3).
     implementation(libs.androidx.profileinstaller)
 
+    if (hasFirebaseConfig) {
+        implementation(platform(libs.firebase.bom))
+        implementation(libs.firebase.crashlytics)
+    }
+
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 
     // The :benchmark module produces the baseline profile this app consumes.
     baselineProfile(projects.benchmark)
 
-    // Compose UI (instrumented) tests — the capture-flow test. Wired now; executed on a device / in
-    // CI (LLD §9 "wired now, gated in CI from Phase 3"), not in the host/sim gate loop. Running on a
-    // device additionally needs `androidx.compose.ui:ui-test-manifest` (JB doesn't publish one).
     androidTestImplementation(libs.androidx.testExt.junit)
     androidTestImplementation(libs.compose.uiTestJunit4)
 }
 
 android {
-    namespace = "dev.cadence"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    namespace = "com.mindset"
+    // Needed only so AGP can find llvm-objcopy: we ship no native code of our own, but Room's
+    // bundled SQLite driver and DataStore do, and without an NDK AGP silently packages their .so
+    // files unstripped (~213 KB of symbol tables per ABI riding in the download).
+    ndkVersion = libs.versions.android.ndk.get()
+    compileSdk =
+        libs.versions.android.compileSdk
+            .get()
+            .toInt()
 
     defaultConfig {
-        applicationId = "dev.cadence"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        // Deliberately NOT the same as `namespace` above. Play requires a globally unique
+        // applicationId and `com.mindset` was already taken; the namespace only decides where R and
+        // BuildConfig are generated, so leaving it as `com.mindset` keeps every Kotlin package and
+        // import untouched. Play Console calls this field "Package name" — same thing.
+        // Permanent once the Play app entry exists: Play does not allow reusing a package name.
+        applicationId = "com.mindset.athlete"
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
+        targetSdk =
+            libs.versions.android.targetSdk
+                .get()
+                .toInt()
+        versionCode = appVersionCode
+        versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Off everywhere by default; only the `benchmark` variant turns it on. MainActivity is
+        // exported, so the bulk-seed intent extra it gates must never be honored in a shipped build.
+        buildConfigField("boolean", "SEED_HOOK_ENABLED", "false")
+    }
+    buildFeatures {
+        buildConfig = true
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    // Upload-key config, read from a gitignored keystore.properties at the repo root. Absent on CI
+    // and on a fresh clone, so this must degrade to "no release signing" rather than failing
+    // configuration — an unsigned assembleRelease is a clearer failure than a broken build script.
+    val keystoreProperties = Properties().apply {
+        val file = rootProject.file("keystore.properties")
+        if (file.exists()) file.inputStream().use(::load)
+    }
+    // Checks the FILE, not just the property: a stale path in keystore.properties otherwise fails
+    // deep in the signing task ("Keystore file ... not found") on every release-derived variant,
+    // including the nonMinifiedRelease one the baseline-profile plugin generates.
+    val hasReleaseKeystore = keystoreProperties.getProperty("storeFile")
+        ?.let { rootProject.file(it).exists() } == true
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            // R8: shrink + optimize + obfuscate. See proguard-rules.pro for what has to be kept —
+            // the one real hazard here is enums persisted by `name`, not DI or serialization.
+            isMinifyEnabled = true
+            // Strips resources no kept code references. Legal only with minify on, because it
+            // relies on R8's reachability graph. Anything looked up by name via
+            // Resources.getIdentifier() is invisible to that graph — we have none today; if that
+            // changes, list the survivors in res/raw/keep.xml rather than turning this off.
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            // Extracts native symbols into the AAB (BUNDLE-METADATA/...debugsymbols/) so Play can
+            // symbolicate native crashes, and lets AGP strip the shipped .so. SYMBOL_TABLE gives
+            // function names — enough to read a stack trace; FULL adds line numbers and a much
+            // larger upload, which is not worth it for libraries we do not maintain.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
+            if (hasReleaseKeystore) signingConfig = signingConfigs.getByName("release")
         }
         // Non-debuggable, profileable variant Macrobenchmark runs against (it refuses debuggable
         // builds). Signed with the debug key so the release-like APK still installs locally.
@@ -103,11 +189,40 @@ android {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
+            // initWith copied both R8 flags off `release`. Resource shrinking is only legal with
+            // code shrinking on, so clearing minify alone leaves an invalid pair and AGP fails the
+            // build. Macrobenchmark wants unobfuscated symbols anyway, so both stay off here.
+            isShrinkResources = false
             matchingFallbacks += listOf("release")
+
+            // Macrobenchmark needs a long History list to scroll; this is the only variant allowed
+            // to honor :benchmark's EXTRA_SEED intent extra.
+            buildConfigField("boolean", "SEED_HOOK_ENABLED", "true")
         }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+// The androidx.baselineprofile plugin synthesizes its own build types off `release`, so the
+// SEED_HOOK_ENABLED flag set on our hand-written `benchmark` type never reaches the variant that
+// actually runs BaselineProfileGenerator — the seed intent extra was silently ignored there.
+//
+// Enabled by an EXACT-NAME allowlist, never a build-type or prefix match. MainActivity is
+// exported and this hook writes to the user's real database, so the set of variants that honor it
+// has to be auditable by reading this list: `release` is deliberately absent, and a new variant
+// cannot acquire the hook by accident.
+val seedHookVariants = setOf("nonMinifiedRelease", "benchmarkRelease")
+
+androidComponents {
+    onVariants { variant ->
+        if (variant.name in seedHookVariants) {
+            variant.buildConfigFields?.put(
+                "SEED_HOOK_ENABLED",
+                BuildConfigField("boolean", true, "Benchmark-only: honors the bulk-seed extra."),
+            )
+        }
     }
 }

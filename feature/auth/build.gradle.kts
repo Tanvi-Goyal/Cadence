@@ -7,16 +7,22 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
  * target. Firebase Auth + real state land in a later phase.
  */
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.feature.auth"
-        compileSdk = libs.versions.android.compileSdk.get().toInt()
-        minSdk = libs.versions.android.minSdk.get().toInt()
+        namespace = "com.mindset.feature.auth"
+        compileSdk =
+            libs.versions.android.compileSdk
+                .get()
+                .toInt()
+        minSdk =
+            libs.versions.android.minSdk
+                .get()
+                .toInt()
         compilerOptions {
             jvmTarget = JvmTarget.JVM_11
         }
@@ -29,9 +35,9 @@ kotlin {
             implementation(libs.compose.runtime)
         }
         androidMain.dependencies {
-            implementation(projects.core.ui)           // CadenceIcons + icon extensions
-            implementation(projects.core.designsystem)  // CadenceTheme + color tokens
-            implementation(projects.core.navigation)    // Login typed route
+            implementation(projects.core.ui) // MindSetIcons + icon extensions
+            implementation(projects.core.designsystem) // MindSetTheme + color tokens
+            implementation(projects.core.navigation) // Login typed route
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)

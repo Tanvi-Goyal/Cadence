@@ -1,4 +1,4 @@
-// Standalone included build for Cadence's Gradle convention plugins. Kept separate from the main
+// Standalone included build for MindSet's Gradle convention plugins. Kept separate from the main
 // build so the plugins compile once and the 15+ module build files stay DRY.
 dependencyResolutionManagement {
     repositories {

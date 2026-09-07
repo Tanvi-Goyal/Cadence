@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "953222142215",
+    "project_id": "mindset-4ca84",
+    "storage_bucket": "mindset-4ca84.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:953222142215:android:2cfbda1a71b88415980da2",
+        "android_client_info": {
+          "package_name": "com.mindset.athlete"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAjsnXyGGcdE_ySt1aw09jkPloYpmE7B2Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,18 @@
+{
+  "_comment": [
+    "Copy to `kotzilla.json` (gitignored, same directory) and fill in. Never commit the filled copy.",
+    "Download the real file from the Kotzilla dashboard: app settings -> SDK configuration.",
+    "The Kotzilla Gradle plugin (shared/build.gradle.kts) reads it at build time and generates",
+    "`io.kotzilla.generated.monitoring`, which di/Modules.kt calls — so a build without this file",
+    "present behaves differently from yours. See README before assuming CI is fine.",
+    "applicationPackageName must match the app's applicationId: com.mindset"
+  ],
+  "keys": [
+    {
+      "appId": "<from the Kotzilla dashboard>",
+      "applicationPackageName": "com.mindset",
+      "keyId": "<from the Kotzilla dashboard>",
+      "apiKey": "<from the Kotzilla dashboard>"
+    }
+  ]
+}

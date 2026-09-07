@@ -1,0 +1,33 @@
+<!--
+  Notification small icon: a stopwatch silhouette.
+
+  Notification icons are rendered from their ALPHA CHANNEL only and tinted by the system, so the fill
+  colour is irrelevant — the shape must read at 24dp and be full-bleed within the box. That is why
+  ic_launcher_monochrome isn't reused: it is a 108dp adaptive-icon layer whose content sits inside the
+  central 72dp safe zone, so it renders about a third too small here.
+
+  This is a drawable resource rather than an ImageVector composable (the project convention) because a
+  notification is RemoteViews rendered by SystemUI in another process — it can only take a @DrawableRes.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+
+    <!-- Crown / stem. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9,1h6v2h-6z" />
+
+    <!-- Dial: a ring, so the hand inside stays legible at small sizes. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,4C7.03,4 3,8.03 3,13s4.03,9 9,9 9,-4.03 9,-9 -4.03,-9 -9,-9zM12,20c-3.87,0 -7,-3.13 -7,-7s3.13,-7 7,-7 7,3.13 7,7 -3.13,7 -7,7z" />
+
+    <!-- Hand, pointing up-right. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12.5,8h-1.5v5.25l4.25,2.55 0.75,-1.23 -3.5,-2.07z" />
+</vector>

@@ -1,0 +1,25 @@
+@file:OptIn(ExperimentalTime::class)
+
+package com.mindset.model
+
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
+
+/**
+ * One exercise slotted into a [Block] (the v8 successor to the pre-v8 `LoggedItem`, now parented by
+ * [blockId] instead of the session). [exerciseId] references a catalog [Exercise]; [targetSets] and
+ * [restMs] are the prescription hints carried from a template.
+ */
+data class ExerciseEntry(
+    override val id: String,
+    val blockId: String,
+    val exerciseId: String,
+    val orderIndex: Int,
+    val targetSets: Int?,
+    val restMs: Long?,
+    val eachSide: Boolean = false,
+    val segmentKey: String? = null,
+    override val createdAt: Instant,
+    override val updatedAt: Instant,
+    override val deletedAt: Instant?,
+) : Syncable

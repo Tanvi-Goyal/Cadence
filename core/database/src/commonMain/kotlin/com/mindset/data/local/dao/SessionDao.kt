@@ -1,0 +1,140 @@
+package com.mindset.data.local.dao
+
+import androidx.paging.PagingSource
+import androidx.room3.Dao
+import androidx.room3.DaoReturnTypeConverters
+import androidx.room3.Insert
+import androidx.room3.Query
+import androidx.room3.Upsert
+import androidx.room3.paging.PagingSourceDaoReturnTypeConverter
+import com.mindset.data.local.SessionEntity
+import kotlinx.coroutines.flow.Flow
+
+/**
+ * Reads/writes for [SessionEntity]. [observeAll] returns a [Flow] so the UI observes the DB reactively
+ * and never has to poll — the single-source-of-truth contract in AGENTS.md. The class-level converter
+ * lets a [PagingSource]-returning query compile in commonMain (Room-KMP requirement, same as ExerciseDao).
+ *
+ * Every live-feed read ([observeAll], [observeRecent], [observeSince], [pagedSessions]) shares one
+ * predicate: live, non-template, and **substantive** — either finished, or carrying at least one live
+ * entry. The FAB creates the session row *before* Log Session opens, so an abandoned open leaves an
+ * empty row behind; the repository tombstones it on exit, and this clause is the safety net for the
+ * ones that escape (process death, rows predating the fix). Kept as a correlated `EXISTS` rather than
+ * a JOIN so it short-circuits on the first matching entry and can't fan out duplicate session rows;
+ * it rides the existing `blocks(sessionId)` and `exercise_entries(blockId)` indices.
+ */
+@Dao
+@DaoReturnTypeConverters(PagingSourceDaoReturnTypeConverter::class)
+interface SessionDao {
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0
+          AND (finishedAt IS NOT NULL OR EXISTS (
+            SELECT 1 FROM exercise_entries e
+            INNER JOIN blocks b ON e.blockId = b.id
+            WHERE b.sessionId = sessions.id AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+          ))
+        ORDER BY startedAt DESC
+        """,
+    )
+    fun observeAll(): Flow<List<SessionEntity>>
+
+    /**
+     * The most recent [limit] live sessions (newest first) — Home's "Recent" widget preview. Same
+     * predicate/ordering as [observeAll] with a SQL `LIMIT`, so the observer materializes only the few
+     * rows the widget shows, not the whole table. Full, scrollable history uses [pagedSessions].
+     */
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0
+          AND (finishedAt IS NOT NULL OR EXISTS (
+            SELECT 1 FROM exercise_entries e
+            INNER JOIN blocks b ON e.blockId = b.id
+            WHERE b.sessionId = sessions.id AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+          ))
+        ORDER BY startedAt DESC LIMIT :limit
+        """,
+    )
+    fun observeRecent(limit: Int): Flow<List<SessionEntity>>
+
+    /**
+     * Live sessions on or after [startMillis] (newest first) — the Home "This Week" widget. Bounded by
+     * time in SQL so the observer reads only the current window, not the whole table as history grows.
+     */
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0 AND startedAt >= :startMillis
+          AND (finishedAt IS NOT NULL OR EXISTS (
+            SELECT 1 FROM exercise_entries e
+            INNER JOIN blocks b ON e.blockId = b.id
+            WHERE b.sessionId = sessions.id AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+          ))
+        ORDER BY startedAt DESC
+        """,
+    )
+    fun observeSince(startMillis: Long): Flow<List<SessionEntity>>
+
+    /**
+     * The reverse-chronological session feed as a Room [PagingSource] — the History (Pro) list.
+     * Same predicate/ordering as [observeAll]; [type] narrows by [SessionType] (null = all), guarded
+     * the same way as the exercise search query.
+     */
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0 AND (:type IS NULL OR type = :type)
+          AND (finishedAt IS NOT NULL OR EXISTS (
+            SELECT 1 FROM exercise_entries e
+            INNER JOIN blocks b ON e.blockId = b.id
+            WHERE b.sessionId = sessions.id AND e.deletedAt IS NULL AND b.deletedAt IS NULL
+          ))
+        ORDER BY startedAt DESC
+        """,
+    )
+    fun pagedSessions(type: String?): PagingSource<Int, SessionEntity>
+
+    /** Templates only (D2) — for the template picker. Ordered by name since they have no real time. */
+    /**
+     * The newest hand-logged session that was never completed — the Log tab's draft.
+     *
+     * Restricted to `MANUAL` on purpose: a live race ([SessionSource.RACE_SIM]) and a
+     * template-started session are unfinished too, and each is already owned by its own screen. Only
+     * the drafts the quick-start / Log tab create are resumable here.
+     */
+    @Query(
+        """
+        SELECT * FROM sessions
+        WHERE deletedAt IS NULL AND isTemplate = 0 AND finishedAt IS NULL AND source = 'MANUAL'
+        ORDER BY startedAt DESC
+        LIMIT 1
+        """,
+    )
+    suspend fun latestUnfinishedManual(): SessionEntity?
+
+    @Query("SELECT * FROM sessions WHERE deletedAt IS NULL AND isTemplate = 1 ORDER BY name")
+    fun observeTemplates(): Flow<List<SessionEntity>>
+
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    fun observeById(id: String): Flow<SessionEntity?>
+
+    @Insert
+    suspend fun insert(sessionEntity: SessionEntity)
+
+    /** Insert-or-replace, used by the pull path to apply a remote version of a row. */
+    @Upsert
+    suspend fun upsert(sessionEntity: SessionEntity)
+
+    /** Read one row (may be soft-deleted) — the sync engine needs it to apply Last-Write-Wins. */
+    @Query("SELECT * FROM sessions WHERE id = :id")
+    suspend fun getById(id: String): SessionEntity?
+
+    /** Mark a set of sessions as synced after a successful push. */
+    @Query("UPDATE sessions SET syncStatus = :status WHERE id IN (:ids)")
+    suspend fun markStatus(ids: List<String>, status: String)
+
+    @Query("SELECT COUNT(*) FROM sessions")
+    suspend fun count(): Int
+}

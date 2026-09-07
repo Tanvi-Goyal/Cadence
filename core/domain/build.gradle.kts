@@ -1,12 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    id("cadence.kmp.library")
+    id("mindset.kmp.library")
 }
 
 kotlin {
     androidLibrary {
-        namespace = "dev.cadence.domain"
+        namespace = "com.mindset.domain"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions {
@@ -20,7 +20,7 @@ kotlin {
             // `api`: repository interfaces + use cases expose domain model types to their consumers.
             api(projects.core.model)
             implementation(libs.kotlinx.coroutines.core) // Flow on the repo ports
-            implementation(libs.androidx.paging.common)   // SessionRepository.searchExercises → PagingData
+            implementation(libs.androidx.paging.common) // SessionRepository.searchExercises → PagingData
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

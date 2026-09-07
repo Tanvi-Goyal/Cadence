@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  API 31+ replacement for backup_rules.xml. Two independent surfaces:
+    cloud-backup    — Google Drive backup, leaves the device.
+    device-transfer — direct device-to-device migration, never touches a server.
+
+  Same allow-list as backup_rules.xml, and the same reason for omitting the Room WAL sidecars.
+  Both surfaces carry the same set: the athlete's history and their onboarding/race identity are
+  exactly what should survive a new phone.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="mindset.db" />
+        <include domain="file" path="datastore/mindset.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="mindset.db" />
+        <include domain="file" path="datastore/mindset.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,4 +1,4 @@
-# Cadence
+# MindSet
 
 A cross-platform training log for hybrid/functional athletes (strength + conditioning + running).
 **Offline-first**: the local database is the single source of truth, the UI only ever observes it,
@@ -86,7 +86,7 @@ document, so a half-synced workout can never exist on another device.
 
 Kotlin/Native exposes `suspend` functions to Swift, but **not `Flow`** in an observable form. Rather
 than pull in SKIE or KMP-NativeCoroutines, I hand-rolled the bridge so the boundary stays explicit
-and dependency-free ([`FlowObserver.kt`](shared/src/iosMain/kotlin/dev/cadence/FlowObserver.kt)):
+and dependency-free ([`FlowObserver.kt`](shared/src/iosMain/kotlin/com/mindset/FlowObserver.kt)):
 
 ```kotlin
 // shared/iosMain — collect on Main, push each value to Swift, return a cancel handle
@@ -183,11 +183,11 @@ Pro has too much headroom to jank either way). The List/Map-holding UI states (`
 
 # 2. Startup: StartupBenchmark runs None vs Baseline Profile (before/after) — cold start.
 ./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=dev.cadence.benchmark.StartupBenchmark
+  -Pandroid.testInstrumentationRunnerArguments.class=com.mindset.benchmark.StartupBenchmark
 
 # 3. Scroll frame timing on the seeded History list.
 ./gradlew :benchmark:connectedBenchmarkReleaseAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=dev.cadence.benchmark.ScrollBenchmark
+  -Pandroid.testInstrumentationRunnerArguments.class=com.mindset.benchmark.ScrollBenchmark
 ```
 Results print per-metric (min/median/max for startup; P50/P90/P95/P99 for frame timing) and are
 written under `benchmark/build/outputs/`.

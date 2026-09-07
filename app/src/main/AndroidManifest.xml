@@ -3,28 +3,59 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+      Keeps the race clock running with the app backgrounded and the screen off.
+      Type is `specialUse`, not `health`: `health` additionally requires a runtime sensor permission
+      (BODY_SENSORS / ACTIVITY_RECOGNITION / ...), and a race clock reads no sensors — asking for one
+      just to satisfy a type gate would be both a denial-path liability and more access than we need.
+      Revisit when Health Connect lands (roadmap Phase 5) and the app genuinely reads heart rate.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
-        android:name=".CadenceApplication"
+        android:name=".MindSetApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:theme="@style/Theme.MindSet">
 
-        <!-- Lets Macrobenchmark capture traces from the non-debuggable benchmark build. -->
-        <profileable android:shell="true" />
-
+        <!--
+          singleTop so a notification tap is delivered to the running instance via onNewIntent instead
+          of recreating the Activity (and blowing away the Compose tree and nav back stack) just to
+          expand the race sheet.
+        -->
         <activity
             android:exported="true"
-            android:name=".MainActivity">
+            android:name=".MainActivity"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          stopWithTask="false" is already the platform default; declared explicitly because "the race
+          survives swiping the app from Recents" is a deliberate product decision that would otherwise
+          be invisible and easy to break.
+        -->
+        <service
+            android:name=".race.RaceTimerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="@string/race_fgs_subtype" />
+        </service>
     </application>
 
 </manifest>

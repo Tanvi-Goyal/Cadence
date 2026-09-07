@@ -31,5 +31,5 @@ dependencies {
 }
 
 application {
-    mainClass = "dev.cadence.server.ApplicationKt"
+    mainClass = "com.mindset.server.ApplicationKt"
 }

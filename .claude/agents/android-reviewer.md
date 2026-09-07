@@ -5,7 +5,7 @@ tools: Read, Grep, Bash
 model: sonnet
 memory: project
 ---
-You review changes to the Cadence codebase. Read AGENTS.md for the architecture
+You review changes to the MindSet codebase. Read AGENTS.md for the architecture
 rules first. Check your memory for recurring issues in this repo before reviewing;
 record new patterns after.
 

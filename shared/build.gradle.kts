@@ -5,11 +5,35 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.kotzilla)
+    alias(libs.plugins.kotzilla) apply false
 }
 
-kotzilla {
-    versionName = "1.0"
+// Kotzilla Koin profiler: OFF unless you ask for it with `-Pmindset.profiler=true`.
+//
+// It is a compile-time switch, not a runtime one. The Kotzilla SDK ships consumer ProGuard rules
+// that -keep its own classes, which makes them R8 entry points — so once the artifact is on the
+// classpath it CANNOT be shrunk out of a release build, however unreachable the calling code is.
+// Verified the hard way: a BuildConfig.DEBUG gate still left 117 SDK references (KotzillaSDK,
+// KotzillaService, the gateway URL) in a minified release APK. Keeping it off the classpath is the
+// only thing that actually works.
+val profilerEnabled: Boolean = providers.gradleProperty("mindset.profiler").orNull == "true"
+
+if (profilerEnabled) {
+    apply(plugin = libs.plugins.kotzilla.get().pluginId)
+}
+
+// Same source of truth as :app's versionName (gradle/libs.versions.toml), so a profiler session
+// can be attributed to a specific release.
+val appVersionName: String = listOf(
+    libs.versions.app.versionMajor,
+    libs.versions.app.versionMinor,
+    libs.versions.app.versionPatch,
+).joinToString(".") { it.get() }
+
+if (profilerEnabled) {
+    configure<io.kotzilla.gradle.ext.KotzillaExtension> {
+        versionName.set(appVersionName)
+    }
 }
 
 kotlin {
@@ -20,7 +44,7 @@ kotlin {
     }
 
     androidLibrary {
-        namespace = "dev.cadence.shared"
+        namespace = "com.mindset.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 
@@ -32,30 +56,38 @@ kotlin {
 
     listOf(
         iosArm64(),
-        iosSimulatorArm64()
+        iosSimulatorArm64(),
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
             // Export the modules whose types cross the Swift boundary so they enter Shared.framework's
             // Obj-C header (KoinIos returns the VMs; Swift holds them + casts their UI-state types).
-            export(projects.core.model)   // Exercise, MuscleDiagram
-            export(projects.core.common)  // FlowSubscription
-            export(projects.core.domain)  // UserPreferences
+            export(projects.core.model) // Exercise, MuscleDiagram
+            export(projects.core.common) // FlowSubscription
+            export(projects.core.domain) // UserPreferences
             export(projects.feature.home)
             export(projects.feature.logging)
             export(projects.feature.templates)
             export(projects.feature.exercises)
             export(projects.feature.history)
-            export(projects.feature.stats)
+            export(projects.feature.stations)
             export(projects.feature.profile)
         }
     }
 
     sourceSets {
+        // Exactly one of these is on the source path, and it decides whether `appObservability`
+        // wires up the profiler or does nothing.
+        commonMain.get().kotlin.srcDir(
+            if (profilerEnabled) "src/profilerMain/kotlin" else "src/noProfilerMain/kotlin",
+        )
+        if (profilerEnabled) {
+            commonMain.dependencies { implementation(libs.kotzilla.sdk) }
+        }
         commonMain.dependencies {
             // `api` so consumers (composeApp today, the iOS umbrella later) see these leaf modules
-            // transitively — the moved packages (`dev.cadence.model`/`common`) keep their names, so
+            // transitively — the moved packages (`com.mindset.model`/`common`) keep their names, so
             // no import in :shared or :composeApp changes.
             api(projects.core.model)
             api(projects.core.common)
@@ -64,6 +96,8 @@ kotlin {
             api(projects.core.domain)
             // The repository impls + MuscleImageProvider (bound in DI here); package unchanged.
             implementation(projects.core.data)
+            // dataStorePlatformModule (device-local settings seam), aggregated in Modules.kt below.
+            implementation(projects.core.datastore)
             // `api` (not implementation) is transitional: composeApp still references some entity
             // types (ExerciseMetric/Session/Exercise/VolumePoint/PlannedSession) — a UI→database leak
             // cleaned up when features are extracted (B11) and those types move to :core:model.
@@ -73,12 +107,15 @@ kotlin {
             implementation(projects.contracts)
             // Feature modules — `api` so their ViewModels stay exported in Shared.framework for Swift (B11).
             api(projects.feature.profile)
-            api(projects.feature.stats)
+            api(projects.feature.stations)
             api(projects.feature.history)
             api(projects.feature.exercises)
             api(projects.feature.logging)
             api(projects.feature.templates)
             api(projects.feature.home)
+            // Onboarding VM graph. `api` for Koin aggregation in Modules.kt; not exported to the iOS
+            // framework (Android-first per the port-later decision) — add export(...) when iOS parity lands.
+            api(projects.feature.onboarding)
             // Room RUNTIME stays: the repository + sync engine + iosTest still call useWriterConnection /
             // Room.inMemoryDatabaseBuilder. Only the Room *plugin*/KSP/schemas moved to :core:database.
             implementation(libs.room.runtime)
@@ -91,7 +128,6 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.serialization.kotlinxJson)
-            implementation(libs.kotzilla.sdk)
             api(project.dependencies.platform(libs.koin.bom))
             api(libs.koin.core)
             api(libs.koin.core.viewmodel)

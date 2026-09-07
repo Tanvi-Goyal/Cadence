@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">MIND[SET]</string>
+
+    <!-- Live-race foreground service + its ongoing notification. -->
+    <string name="race_channel_name">Live race</string>
+    <string name="race_channel_description">Shows the clock and controls while a HYROX race is running.</string>
+    <string name="race_fgs_subtype">Live HYROX race timer: counts total elapsed and per-station splits while the athlete races with the screen off.</string>
+    <string name="race_action_pause">Pause</string>
+    <string name="race_action_resume">Resume</string>
+    <string name="race_action_next">Next</string>
+    <string name="race_action_finish">Finish</string>
+    <string name="race_step_progress">Step %1$d of %2$d</string>
+    <string name="race_paused">Paused</string>
 </resources>
