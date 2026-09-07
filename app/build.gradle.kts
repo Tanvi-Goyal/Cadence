@@ -98,6 +98,10 @@ dependencies {
 
 android {
     namespace = "com.mindset"
+    // Needed only so AGP can find llvm-objcopy: we ship no native code of our own, but Room's
+    // bundled SQLite driver and DataStore do, and without an NDK AGP silently packages their .so
+    // files unstripped (~213 KB of symbol tables per ABI riding in the download).
+    ndkVersion = libs.versions.android.ndk.get()
     compileSdk =
         libs.versions.android.compileSdk
             .get()
@@ -172,6 +176,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            // Extracts native symbols into the AAB (BUNDLE-METADATA/...debugsymbols/) so Play can
+            // symbolicate native crashes, and lets AGP strip the shipped .so. SYMBOL_TABLE gives
+            // function names — enough to read a stack trace; FULL adds line numbers and a much
+            // larger upload, which is not worth it for libraries we do not maintain.
+            ndk { debugSymbolLevel = "SYMBOL_TABLE" }
             if (hasReleaseKeystore) signingConfig = signingConfigs.getByName("release")
         }
         // Non-debuggable, profileable variant Macrobenchmark runs against (it refuses debuggable

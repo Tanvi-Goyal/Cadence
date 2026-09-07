@@ -1,6 +1,8 @@
 [versions]
 agp = "9.4.0"
 android-compileSdk = "37"
+android-ndk = "30.0.16138531"   # pinned: AGP's default NDK may differ from what is installed, and
+                                # a mismatch fails the release build outright. Bump when you update the NDK.
 android-minSdk = "26"    # Context.startForegroundService (RaceTimerService) is API 26+
 #noinspection OldTargetApi
 android-targetSdk = "36"
